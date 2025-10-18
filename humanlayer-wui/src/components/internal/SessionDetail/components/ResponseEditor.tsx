@@ -1,38 +1,38 @@
-import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
+import { useStore } from '@/AppStore'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { logger } from '@/lib/logging'
+import { openPath } from '@tauri-apps/plugin-opener'
+import Mention from '@tiptap/extension-mention'
+import { Placeholder } from '@tiptap/extensions'
+import { Plugin } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import {
-  useEditor,
+  Content,
   EditorContent,
   Extension,
-  Content,
-  ReactRenderer,
   ReactNodeViewRenderer,
+  ReactRenderer,
+  useEditor,
 } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { Placeholder } from '@tiptap/extensions'
-import Mention from '@tiptap/extension-mention'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { Plugin } from '@tiptap/pm/state'
-import { SlashCommandList } from './SlashCommandList'
-import { FuzzyFileMentionList } from './FuzzyFileMentionList'
-import { FileMentionNode } from './FileMentionNode'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { createLowlight } from 'lowlight'
+import bash from 'highlight.js/lib/languages/bash'
 import clojure from 'highlight.js/lib/languages/clojure'
-import javascript from 'highlight.js/lib/languages/javascript'
-import typescript from 'highlight.js/lib/languages/typescript'
-import python from 'highlight.js/lib/languages/python'
-import rust from 'highlight.js/lib/languages/rust'
+import cpp from 'highlight.js/lib/languages/cpp'
 import go from 'highlight.js/lib/languages/go'
 import java from 'highlight.js/lib/languages/java'
-import cpp from 'highlight.js/lib/languages/cpp'
-import bash from 'highlight.js/lib/languages/bash'
+import javascript from 'highlight.js/lib/languages/javascript'
 import json from 'highlight.js/lib/languages/json'
 import markdown from 'highlight.js/lib/languages/markdown'
+import python from 'highlight.js/lib/languages/python'
+import rust from 'highlight.js/lib/languages/rust'
+import typescript from 'highlight.js/lib/languages/typescript'
 import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
-import { logger } from '@/lib/logging'
-import { useStore } from '@/AppStore'
-import { openPath } from '@tauri-apps/plugin-opener'
+import { createLowlight } from 'lowlight'
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { FileMentionNode } from './FileMentionNode'
+import { FuzzyFileMentionList } from './FuzzyFileMentionList'
+import { SlashCommandList } from './SlashCommandList'
 
 // Export regex patterns for markdown italic syntax
 export const italicRegex = /(?<=^|\s|[^\w])\*(?!\*)([^*]+)\*(?!\*)(?=\s|[^\w]|$)/g
@@ -543,7 +543,24 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           HTMLAttributes: {
             class: 'mention slash-command',
           },
+          renderText({ node }) {
+            // The label already contains the slash (e.g., "/research_codebase")
+            // Return it as-is to avoid double slashes in getText() output
+            const text = node.attrs.label || node.attrs.id || ''
+            logger.log('[SLASH_DEBUG] ResponseEditor - renderText for slash command:', {
+              nodeId: node.attrs.id,
+              nodeLabel: node.attrs.label,
+              textToReturn: text,
+              timestamp: Date.now(),
+            })
+            return text
+          },
           renderHTML({ node }) {
+            logger.log('[SLASH_DEBUG] ResponseEditor - renderHTML for slash command:', {
+              nodeId: node.attrs.id,
+              nodeLabel: node.attrs.label,
+              timestamp: Date.now(),
+            })
             return [
               'span',
               {
@@ -557,7 +574,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
             char: '/',
             startOfLine: true, // Only trigger at start of message
             allowSpaces: false,
-            items: () => ['placeholder'], // Dummy items, actual search in component
+            items: () => {
+              logger.log('[SLASH_DEBUG] ResponseEditor - items() called for slash command suggestion')
+              return ['placeholder'] // Dummy items, actual search in component
+            },
 
             render: () => {
               let component: ReactRenderer<any> | null = null
@@ -565,6 +585,18 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
 
               return {
                 onStart: (props: any) => {
+                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onStart:', {
+                    query: props.query,
+                    text: props.text,
+                    range: props.range,
+                    editor: {
+                      isEmpty: props.editor.isEmpty,
+                      textContent: props.editor.getText(),
+                      jsonContent: props.editor.getJSON(),
+                    },
+                    timestamp: Date.now(),
+                  })
+
                   // Create popup div
                   popup = document.createElement('div')
                   popup.className =
@@ -608,6 +640,18 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                 },
 
                 onUpdate(props: any) {
+                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onUpdate:', {
+                    query: props.query,
+                    text: props.text,
+                    range: props.range,
+                    editor: {
+                      isEmpty: props.editor.isEmpty,
+                      textContent: props.editor.getText(),
+                      jsonContent: props.editor.getJSON(),
+                    },
+                    timestamp: Date.now(),
+                  })
+
                   component?.updateProps({
                     ...props,
                     workingDir: effectiveWorkingDirRef.current,
@@ -631,10 +675,29 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                 },
 
                 onKeyDown(props: any) {
-                  return component?.ref?.onKeyDown(props) ?? false
+                  const result = component?.ref?.onKeyDown(props) ?? false
+                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onKeyDown:', {
+                    key: props.event.key,
+                    handledByList: result,
+                    editor: {
+                      isEmpty: props.editor.isEmpty,
+                      textContent: props.editor.getText(),
+                      jsonContent: props.editor.getJSON(),
+                    },
+                    timestamp: Date.now(),
+                  })
+                  return result
                 },
 
                 onExit() {
+                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onExit:', {
+                    editor: editor ? {
+                      isEmpty: editor.isEmpty,
+                      textContent: editor.getText(),
+                      jsonContent: editor.getJSON(),
+                    } : 'editor not available',
+                    timestamp: Date.now(),
+                  })
                   popup?.remove()
                   component?.destroy()
                 },
@@ -642,8 +705,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
             },
           },
         }),
-        // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
-        // Uncomment the block below to re-enable @-mention file search
+
         Mention.extend({
           addAttributes() {
             return {
@@ -821,10 +883,12 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
       ],
       content: initialValue,
       onCreate: ({ editor }) => {
-        logger.log('ResponseEditor - Editor created with content:', {
-          content: editor.getJSON(),
+        logger.log('[SLASH_DEBUG] ResponseEditor - Editor created with content:', {
+          textContent: editor.getText(),
+          jsonContent: editor.getJSON(),
           isEmpty: editor.isEmpty,
           initialValue,
+          timestamp: Date.now(),
         })
       },
       editorProps: {
@@ -835,6 +899,21 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           autocapitalize: 'off',
         },
         handleKeyDown: (view, event) => {
+          // Debug slash key presses
+          if (event.key === '/') {
+            logger.log('[SLASH_DEBUG] ResponseEditor - handleKeyDown slash key pressed:', {
+              key: event.key,
+              shiftKey: event.shiftKey,
+              ctrlKey: event.ctrlKey,
+              altKey: event.altKey,
+              metaKey: event.metaKey,
+              selectionPos: view.state.selection.$from.pos,
+              textBefore: view.state.doc.textBetween(0, view.state.selection.$from.pos),
+              textContent: view.state.doc.textContent,
+              timestamp: Date.now(),
+            })
+          }
+
           // Only handle Shift+Enter in regular paragraphs, not in code blocks or other special nodes
           if (event.key === 'Enter' && event.shiftKey) {
             const { state } = view
@@ -858,7 +937,20 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
         },
       },
       onUpdate: ({ editor }) => {
-        onChangeRef.current?.(editor.getJSON())
+        const jsonContent = editor.getJSON()
+        const textContent = editor.getText()
+
+        // Only log if content contains slash
+        if (textContent.includes('/')) {
+          logger.log('[SLASH_DEBUG] ResponseEditor - Editor updated with slash content:', {
+            textContent,
+            jsonContent,
+            isEmpty: editor.isEmpty,
+            timestamp: Date.now(),
+          })
+        }
+
+        onChangeRef.current?.(jsonContent)
         setResponseEditorEmpty(editor.isEmpty)
       },
       editable: !disabled,
