@@ -9,9 +9,14 @@ import { dirname } from 'path'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
+type ModelType = 'haiku' | 'sonnet' | 'opus'
+
 interface InitOptions {
   force?: boolean
   all?: boolean
+  alwaysThinking?: boolean
+  maxThinkingTokens?: number
+  model?: ModelType
 }
 
 function ensureGitignoreEntry(targetDir: string, entry: string): void {
@@ -44,6 +49,12 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
   try {
     p.intro(chalk.blue('Initialize Claude Code Configuration'))
 
+    // Validate model option if provided
+    if (options.model && !['haiku', 'sonnet', 'opus'].includes(options.model)) {
+      p.log.error(`Invalid model: ${options.model}. Must be one of: haiku, sonnet, opus`)
+      process.exit(1)
+    }
+
     // Check if running in interactive terminal
     if (!process.stdin.isTTY && !options.all) {
       p.log.error('Not running in interactive terminal.')
@@ -55,15 +66,29 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
     const claudeTargetDir = path.join(targetDir, '.claude')
 
     // Determine source location
-    // When installed via npm: node_modules/humanlayer/.claude
-    // When running from repo: ../../.claude (from hlyr/dist/ to repo root)
-    // Note: The build bundles everything into dist/index.js, so __dirname points to hlyr/dist/
-    const repoRoot = path.resolve(__dirname, '../..')
-    const sourceClaudeDir = path.join(repoRoot, '.claude')
+    // Try multiple possible locations for the .claude directory
+    const possiblePaths = [
+      // When installed via npm: package root is one level up from dist
+      path.resolve(__dirname, '..', '.claude'),
+      // When running from repo: repo root is two levels up from dist
+      path.resolve(__dirname, '../..', '.claude'),
+    ]
+
+    let sourceClaudeDir: string | null = null
+    for (const candidatePath of possiblePaths) {
+      if (fs.existsSync(candidatePath)) {
+        sourceClaudeDir = candidatePath
+        break
+      }
+    }
 
     // Verify source directory exists
-    if (!fs.existsSync(sourceClaudeDir)) {
-      p.log.error(`Source .claude directory not found at ${sourceClaudeDir}`)
+    if (!sourceClaudeDir) {
+      p.log.error('Source .claude directory not found in expected locations')
+      p.log.info('Searched paths:')
+      possiblePaths.forEach(candidatePath => {
+        p.log.info(`  - ${candidatePath}`)
+      })
       p.log.info('Are you running from the humanlayer repository or npm package?')
       process.exit(1)
     }
@@ -191,6 +216,79 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
       }
     }
 
+    // Configure settings
+    let alwaysThinking = options.alwaysThinking
+    let maxThinkingTokens = options.maxThinkingTokens
+    let model = options.model
+
+    // Prompt for settings if in interactive mode and not provided via flags
+    if (!options.all && selectedCategories.includes('settings')) {
+      if (alwaysThinking === undefined) {
+        const thinkingPrompt = await p.confirm({
+          message: 'Enable always-on thinking mode for Claude Code?',
+          initialValue: true,
+        })
+
+        if (p.isCancel(thinkingPrompt)) {
+          p.cancel('Operation cancelled.')
+          process.exit(0)
+        }
+
+        alwaysThinking = thinkingPrompt as boolean
+      }
+
+      if (maxThinkingTokens === undefined) {
+        const tokensPrompt = await p.text({
+          message: 'Maximum thinking tokens:',
+          initialValue: '32000',
+          validate: value => {
+            const num = parseInt(value, 10)
+            if (isNaN(num) || num < 1000) {
+              return 'Please enter a valid number (minimum 1000)'
+            }
+            return undefined
+          },
+        })
+
+        if (p.isCancel(tokensPrompt)) {
+          p.cancel('Operation cancelled.')
+          process.exit(0)
+        }
+
+        maxThinkingTokens = parseInt(tokensPrompt as string, 10)
+      }
+
+      if (model === undefined) {
+        const modelPrompt = await p.select({
+          message: 'Select default model:',
+          options: [
+            { value: 'opus' as ModelType, label: 'Opus (most capable)' },
+            { value: 'sonnet' as ModelType, label: 'Sonnet (balanced)' },
+            { value: 'haiku' as ModelType, label: 'Haiku (fastest)' },
+          ],
+          initialValue: 'opus' as ModelType,
+        })
+
+        if (p.isCancel(modelPrompt)) {
+          p.cancel('Operation cancelled.')
+          process.exit(0)
+        }
+
+        model = modelPrompt as ModelType
+      }
+    } else if (selectedCategories.includes('settings')) {
+      // Non-interactive mode: use defaults if not provided
+      if (alwaysThinking === undefined) {
+        alwaysThinking = true
+      }
+      if (maxThinkingTokens === undefined) {
+        maxThinkingTokens = 32000
+      }
+      if (model === undefined) {
+        model = 'opus'
+      }
+    }
+
     // Copy selected categories
     for (const category of selectedCategories) {
       if (category === 'commands' || category === 'agents') {
@@ -233,9 +331,35 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
         const targetSettingsPath = path.join(claudeTargetDir, 'settings.json')
 
         if (fs.existsSync(settingsPath)) {
-          fs.copyFileSync(settingsPath, targetSettingsPath)
+          // Read source settings
+          const settingsContent = fs.readFileSync(settingsPath, 'utf8')
+          const settings = JSON.parse(settingsContent)
+
+          // Merge user's configuration into settings
+          if (alwaysThinking !== undefined) {
+            settings.alwaysThinkingEnabled = alwaysThinking
+          }
+          if (maxThinkingTokens !== undefined) {
+            if (!settings.env) {
+              settings.env = {}
+            }
+            settings.env.MAX_THINKING_TOKENS = maxThinkingTokens.toString()
+          }
+          // Always set CLAUDE_BASH_MAINTAIN_WORKING_DIR to 1
+          if (!settings.env) {
+            settings.env = {}
+          }
+          settings.env.CLAUDE_BASH_MAINTAIN_WORKING_DIR = '1'
+          if (model !== undefined) {
+            settings.model = model
+          }
+
+          // Write modified settings
+          fs.writeFileSync(targetSettingsPath, JSON.stringify(settings, null, 2) + '\n')
           filesCopied++
-          p.log.success('Copied settings.json')
+          p.log.success(
+            `Copied settings.json (model: ${model}, alwaysThinking: ${alwaysThinking}, maxTokens: ${maxThinkingTokens})`,
+          )
         } else {
           p.log.warn('settings.json not found in source, skipping')
         }
