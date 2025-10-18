@@ -165,7 +165,7 @@ export const ActiveSessionInput = forwardRef<
         // Save to localStorage for active sessions
         localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
       },
-      [session.id, responseEditor],
+      [session.id],
     )
 
     const handleSubmit = () => {
