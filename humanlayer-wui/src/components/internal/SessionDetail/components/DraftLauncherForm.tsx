@@ -5,6 +5,8 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { SearchInput } from '@/components/FuzzySearchInput'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { Input } from '@/components/ui/input'
@@ -29,6 +31,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const { trackEvent } = usePostHogTracking()
 
   // Core Form State
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -493,6 +496,16 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         // Launch the draft session with the prompt
         await daemonClient.launchDraftSession(sessionId, currentPrompt)
 
+        // Track session creation event
+        trackEvent(POSTHOG_EVENTS.SESSION_CREATED, {
+          model: model || proxyModelOverride || undefined,
+          provider: proxyEnabled
+            ? proxyBaseUrl?.includes('baseten')
+              ? 'baseten'
+              : 'openrouter'
+            : 'anthropic',
+        })
+
         // Store working directory in localStorage
         localStorage.setItem('humanlayer-last-working-dir', workingDir)
 
@@ -514,7 +527,18 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         setIsLaunchingDraft(false)
       }
     },
-    [sessionId, workingDirectory, isLaunchingDraft, navigate, savedBypassTimeout],
+    [
+      sessionId,
+      workingDirectory,
+      isLaunchingDraft,
+      navigate,
+      savedBypassTimeout,
+      trackEvent,
+      model,
+      proxyModelOverride,
+      proxyEnabled,
+      proxyBaseUrl,
+    ],
   )
 
   // Handle discard draft

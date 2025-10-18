@@ -6,6 +6,8 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { HotkeysProvider } from 'react-hotkeys-hook'
 import { attachConsole } from '@tauri-apps/plugin-log'
 import { initializeSentry } from '@/lib/telemetry/sentry'
+import { PostHogProvider } from '@/providers/PostHogProvider'
+import { AppLaunchTracker } from '@/components/AppLaunchTracker'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { HotkeyScopeDebugger } from './components/HotkeyScopeDebugger'
 
@@ -19,12 +21,15 @@ initializeSentry().catch(console.error)
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <ThemeProvider>
-        <HotkeysProvider initiallyActiveScopes={['*', '.']}>
-          <RouterProvider router={router} />
-          <HotkeyScopeDebugger />
-        </HotkeysProvider>
-      </ThemeProvider>
+      <PostHogProvider>
+        <ThemeProvider>
+          <HotkeysProvider initiallyActiveScopes={['*', '.']}>
+            <AppLaunchTracker />
+            <RouterProvider router={router} />
+            <HotkeyScopeDebugger />
+          </HotkeysProvider>
+        </ThemeProvider>
+      </PostHogProvider>
     </ErrorBoundary>
   </React.StrictMode>,
 )

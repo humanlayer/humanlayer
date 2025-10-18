@@ -33,6 +33,8 @@ jobs:
       SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+      # PostHog host is always the same
+      VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
 
     steps:
       - name: Generate version
@@ -142,6 +144,15 @@ jobs:
             console.log(`Is Nightly: ${isNightly}`);
             console.log(`Is Stable: ${isStable}`);
             console.log(`Should Create Tag: ${shouldCreateTag}`);
+
+      - name: Set PostHog API Key
+        run: |
+          if [[ "${{ steps.version.outputs.is_nightly }}" == "true" ]]; then
+            echo "VITE_PUBLIC_POSTHOG_KEY=phc_de6RVF0G7CkTzv2UvxHddSk7nfFnE5QWD7KmZV5KfSo" >> $GITHUB_ENV
+          else
+            echo "VITE_PUBLIC_POSTHOG_KEY=phc_6RQ0mVrcMDwSgbKeGToTXC4ja11Hzhkm7tKyO5gjBrK" >> $GITHUB_ENV
+          fi
+          echo "PostHog key set for ${{ steps.version.outputs.is_nightly == 'true' && 'nightly' || 'stable' }} build"
 
       - name: Checkout code
         uses: actions/checkout@v4

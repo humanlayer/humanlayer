@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertCircle, CheckCircle, Eye, EyeOff, Pencil } from 'lucide-react'
 import { Button } from './ui/button'
-import { Input } from './ui/input'
+import { SensitiveInput } from './ui/sensitive-input'
 import { Label } from './ui/label'
 
 interface ProviderApiKeyFieldProps {
@@ -65,7 +65,7 @@ export function ProviderApiKeyField({
           </Label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Input
+              <SensitiveInput
                 id={`${provider}-api-key`}
                 type={showApiKey ? 'text' : 'password'}
                 value={apiKey || ''}
