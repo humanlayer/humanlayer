@@ -237,6 +237,167 @@ describe('claude init e2e tests', () => {
       }
     }, 15000)
   })
+
+  describe('thinking settings', () => {
+    it('should set alwaysThinkingEnabled when --always-thinking flag is used', async () => {
+      const result = await runCommand(['claude', 'init', '--all', '--always-thinking'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.alwaysThinkingEnabled).toBe(true)
+    }, 15000)
+
+    it('should disable alwaysThinkingEnabled when --no-always-thinking flag is used', async () => {
+      const result = await runCommand(
+        ['claude', 'init', '--all', '--no-always-thinking'],
+        testProjectDir,
+      )
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.alwaysThinkingEnabled).toBe(false)
+    }, 15000)
+
+    it('should set MAX_THINKING_TOKENS when --max-thinking-tokens flag is used', async () => {
+      const result = await runCommand(
+        ['claude', 'init', '--all', '--max-thinking-tokens', '50000'],
+        testProjectDir,
+      )
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.env.MAX_THINKING_TOKENS).toBe('50000')
+    }, 15000)
+
+    it('should use defaults when no thinking flags are provided', async () => {
+      const result = await runCommand(['claude', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.alwaysThinkingEnabled).toBe(true)
+      expect(settings.env.MAX_THINKING_TOKENS).toBe('32000')
+    }, 15000)
+
+    it('should combine thinking flags correctly', async () => {
+      const result = await runCommand(
+        ['claude', 'init', '--all', '--no-always-thinking', '--max-thinking-tokens', '100000'],
+        testProjectDir,
+      )
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.alwaysThinkingEnabled).toBe(false)
+      expect(settings.env.MAX_THINKING_TOKENS).toBe('100000')
+    }, 15000)
+  })
+
+  describe('model configuration', () => {
+    it('should set model to opus by default', async () => {
+      const result = await runCommand(['claude', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.model).toBe('opus')
+    }, 15000)
+
+    it('should set model when --model flag is used with opus', async () => {
+      const result = await runCommand(['claude', 'init', '--all', '--model', 'opus'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.model).toBe('opus')
+    }, 15000)
+
+    it('should set model when --model flag is used with sonnet', async () => {
+      const result = await runCommand(['claude', 'init', '--all', '--model', 'sonnet'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.model).toBe('sonnet')
+    }, 15000)
+
+    it('should set model when --model flag is used with haiku', async () => {
+      const result = await runCommand(['claude', 'init', '--all', '--model', 'haiku'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.model).toBe('haiku')
+    }, 15000)
+
+    it('should reject invalid model values', async () => {
+      const result = await runCommand(
+        ['claude', 'init', '--all', '--model', 'invalid'],
+        testProjectDir,
+      )
+
+      expect(result.exitCode).toBe(1)
+      const output = result.stdout + result.stderr
+      expect(output).toContain('Invalid model')
+      expect(output).toContain('haiku, sonnet, opus')
+    }, 15000)
+
+    it('should combine model with other settings flags', async () => {
+      const result = await runCommand(
+        [
+          'claude',
+          'init',
+          '--all',
+          '--model',
+          'haiku',
+          '--no-always-thinking',
+          '--max-thinking-tokens',
+          '50000',
+        ],
+        testProjectDir,
+      )
+
+      expect(result.exitCode).toBe(0)
+
+      const settingsPath = join(testProjectDir, '.claude', 'settings.json')
+      const settingsContent = await fs.readFile(settingsPath, 'utf8')
+      const settings = JSON.parse(settingsContent)
+
+      expect(settings.model).toBe('haiku')
+      expect(settings.alwaysThinkingEnabled).toBe(false)
+      expect(settings.env.MAX_THINKING_TOKENS).toBe('50000')
+    }, 15000)
+  })
 })
 
 async function runCommand(
