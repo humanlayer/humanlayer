@@ -162,18 +162,6 @@ export const ActiveSessionInput = forwardRef<
       async (value: Content) => {
         const valueStr = JSON.stringify(value)
 
-        // Debug logging for slash commands
-        const textContent = responseEditor?.getText() ?? ''
-        if (textContent.includes('/')) {
-          logger.log('[SLASH_DEBUG] ActiveSessionInput - handleChange with slash:', {
-            textContent,
-            jsonContent: value,
-            valueToStore: valueStr,
-            sessionId: session.id,
-            timestamp: Date.now(),
-          })
-        }
-
         // Save to localStorage for active sessions
         localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
       },
@@ -182,22 +170,6 @@ export const ActiveSessionInput = forwardRef<
 
     const handleSubmit = () => {
       logger.log('ActiveSessionInput.handleSubmit()')
-
-      // Debug log the content being sent
-      const editorContent = responseEditor?.getText() ?? ''
-      const editorJSON = responseEditor?.getJSON()
-
-      logger.log('[SLASH_DEBUG] ActiveSessionInput - Submitting with content:', {
-        textContent: editorContent,
-        jsonContent: editorJSON,
-        containsSlash: editorContent.includes('/'),
-        doubleSlash: editorContent.includes('//'),
-        sessionId: session.id,
-        sessionStatus: session.status,
-        isDenying,
-        isForkMode,
-        timestamp: Date.now(),
-      })
 
       // Check if this is an interruption attempt without claudeSessionId
       const isRunning =

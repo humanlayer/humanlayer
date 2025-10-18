@@ -86,14 +86,6 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
     // Keyboard navigation
     const onKeyDown = useCallback(
       ({ event }: { event: KeyboardEvent }) => {
-        logger.log('[SLASH_DEBUG] SlashCommandList - onKeyDown:', {
-          key: event.key,
-          selectedIndex,
-          commands: commands.map(c => c.name),
-          currentlySelected: commands[selectedIndex]?.name,
-          timestamp: Date.now(),
-        })
-
         if (event.key === 'ArrowUp') {
           event.preventDefault()
           mouseEnabledRef.current = false
@@ -123,12 +115,6 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
           event.preventDefault()
           if (commands.length > 0) {
             const selected = commands[selectedIndex]
-            logger.log('[SLASH_DEBUG] SlashCommandList - Enter pressed, selecting command:', {
-              selectedCommand: selected.name,
-              selectedIndex,
-              commandToSend: { id: selected.name, label: selected.name },
-              timestamp: Date.now(),
-            })
             // Pass the full command with slash - Tiptap will replace the trigger /
             command({ id: selected.name, label: selected.name })
           }
@@ -136,13 +122,11 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
         }
 
         if (event.key === ' ') {
-          logger.log('[SLASH_DEBUG] SlashCommandList - Space pressed, closing dropdown')
           // Space closes dropdown, leaves raw text
           return false
         }
 
         if (event.key === 'Escape') {
-          logger.log('[SLASH_DEBUG] SlashCommandList - Escape pressed, closing dropdown')
           return false
         }
 
@@ -206,11 +190,6 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
                 mouseEnabledRef.current = true
               }}
               onClick={() => {
-                logger.log('[SLASH_DEBUG] SlashCommandList - Button clicked, selecting command:', {
-                  selectedCommand: cmd.name,
-                  commandToSend: { id: cmd.name, label: cmd.name },
-                  timestamp: Date.now(),
-                })
                 // Pass the full command with slash - Tiptap will replace the trigger /
                 command({ id: cmd.name, label: cmd.name })
               }}

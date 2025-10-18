@@ -546,21 +546,9 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           renderText({ node }) {
             // The label already contains the slash (e.g., "/research_codebase")
             // Return it as-is to avoid double slashes in getText() output
-            const text = node.attrs.label || node.attrs.id || ''
-            logger.log('[SLASH_DEBUG] ResponseEditor - renderText for slash command:', {
-              nodeId: node.attrs.id,
-              nodeLabel: node.attrs.label,
-              textToReturn: text,
-              timestamp: Date.now(),
-            })
-            return text
+            return node.attrs.label || node.attrs.id || ''
           },
           renderHTML({ node }) {
-            logger.log('[SLASH_DEBUG] ResponseEditor - renderHTML for slash command:', {
-              nodeId: node.attrs.id,
-              nodeLabel: node.attrs.label,
-              timestamp: Date.now(),
-            })
             return [
               'span',
               {
@@ -572,10 +560,23 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           },
           suggestion: {
             char: '/',
-            startOfLine: true, // Only trigger at start of message
+            startOfLine: true, // Only trigger at start of line
             allowSpaces: false,
+            // Only allow slash commands if there isn't already one in the document
+            // The startOfLine: true setting already ensures it only triggers at line starts
+            allow: ({ state }) => {
+              // Check if there are any existing slash-command mentions in the document
+              let hasExistingSlashCommand = false
+              state.doc.descendants((node) => {
+                if (node.type.name === 'slash-command') {
+                  hasExistingSlashCommand = true
+                  return false // Stop searching
+                }
+              })
+
+              return !hasExistingSlashCommand
+            },
             items: () => {
-              logger.log('[SLASH_DEBUG] ResponseEditor - items() called for slash command suggestion')
               return ['placeholder'] // Dummy items, actual search in component
             },
 
@@ -585,18 +586,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
 
               return {
                 onStart: (props: any) => {
-                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onStart:', {
-                    query: props.query,
-                    text: props.text,
-                    range: props.range,
-                    editor: {
-                      isEmpty: props.editor.isEmpty,
-                      textContent: props.editor.getText(),
-                      jsonContent: props.editor.getJSON(),
-                    },
-                    timestamp: Date.now(),
-                  })
-
                   // Create popup div
                   popup = document.createElement('div')
                   popup.className =
@@ -640,18 +629,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                 },
 
                 onUpdate(props: any) {
-                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onUpdate:', {
-                    query: props.query,
-                    text: props.text,
-                    range: props.range,
-                    editor: {
-                      isEmpty: props.editor.isEmpty,
-                      textContent: props.editor.getText(),
-                      jsonContent: props.editor.getJSON(),
-                    },
-                    timestamp: Date.now(),
-                  })
-
                   component?.updateProps({
                     ...props,
                     workingDir: effectiveWorkingDirRef.current,
@@ -675,29 +652,10 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
                 },
 
                 onKeyDown(props: any) {
-                  const result = component?.ref?.onKeyDown(props) ?? false
-                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onKeyDown:', {
-                    key: props.event.key,
-                    handledByList: result,
-                    editor: {
-                      isEmpty: props.editor.isEmpty,
-                      textContent: props.editor.getText(),
-                      jsonContent: props.editor.getJSON(),
-                    },
-                    timestamp: Date.now(),
-                  })
-                  return result
+                  return component?.ref?.onKeyDown(props) ?? false
                 },
 
                 onExit() {
-                  logger.log('[SLASH_DEBUG] ResponseEditor - Slash command suggestion onExit:', {
-                    editor: editor ? {
-                      isEmpty: editor.isEmpty,
-                      textContent: editor.getText(),
-                      jsonContent: editor.getJSON(),
-                    } : 'editor not available',
-                    timestamp: Date.now(),
-                  })
                   popup?.remove()
                   component?.destroy()
                 },
@@ -882,14 +840,8 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
         }),
       ],
       content: initialValue,
-      onCreate: ({ editor }) => {
-        logger.log('[SLASH_DEBUG] ResponseEditor - Editor created with content:', {
-          textContent: editor.getText(),
-          jsonContent: editor.getJSON(),
-          isEmpty: editor.isEmpty,
-          initialValue,
-          timestamp: Date.now(),
-        })
+      onCreate: () => {
+        // Editor created
       },
       editorProps: {
         attributes: {
@@ -899,21 +851,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           autocapitalize: 'off',
         },
         handleKeyDown: (view, event) => {
-          // Debug slash key presses
-          if (event.key === '/') {
-            logger.log('[SLASH_DEBUG] ResponseEditor - handleKeyDown slash key pressed:', {
-              key: event.key,
-              shiftKey: event.shiftKey,
-              ctrlKey: event.ctrlKey,
-              altKey: event.altKey,
-              metaKey: event.metaKey,
-              selectionPos: view.state.selection.$from.pos,
-              textBefore: view.state.doc.textBetween(0, view.state.selection.$from.pos),
-              textContent: view.state.doc.textContent,
-              timestamp: Date.now(),
-            })
-          }
-
           // Only handle Shift+Enter in regular paragraphs, not in code blocks or other special nodes
           if (event.key === 'Enter' && event.shiftKey) {
             const { state } = view
@@ -938,18 +875,6 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
       },
       onUpdate: ({ editor }) => {
         const jsonContent = editor.getJSON()
-        const textContent = editor.getText()
-
-        // Only log if content contains slash
-        if (textContent.includes('/')) {
-          logger.log('[SLASH_DEBUG] ResponseEditor - Editor updated with slash content:', {
-            textContent,
-            jsonContent,
-            isEmpty: editor.isEmpty,
-            timestamp: Date.now(),
-          })
-        }
-
         onChangeRef.current?.(jsonContent)
         setResponseEditorEmpty(editor.isEmpty)
       },

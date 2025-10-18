@@ -90,17 +90,6 @@ export const DraftLauncherInput = forwardRef<
 
         const textContent = responseEditor?.getText() ?? ''
 
-        // Debug logging for slash commands
-        if (textContent.includes('/')) {
-          logger.log('[SLASH_DEBUG] DraftLauncherInput - handleChange with slash:', {
-            textContent,
-            jsonContent: value,
-            editorStateToSave: valueStr,
-            sessionId: session.id,
-            timestamp: Date.now(),
-          })
-        }
-
         // Only notify parent if there's actual text content (not just empty editor structure)
         if (onContentChange && textContent.trim().length > 0) {
           onContentChange()
@@ -129,19 +118,6 @@ export const DraftLauncherInput = forwardRef<
       if (isResponseEditorEmpty) {
         return
       }
-
-      // Debug log the final content being sent
-      const editorContent = responseEditor?.getText() ?? ''
-      const editorJSON = responseEditor?.getJSON()
-
-      logger.log('[SLASH_DEBUG] DraftLauncherInput - Submitting draft with content:', {
-        textContent: editorContent,
-        jsonContent: editorJSON,
-        containsSlash: editorContent.includes('/'),
-        doubleSlash: editorContent.includes('//'),
-        sessionId: session.id,
-        timestamp: Date.now(),
-      })
 
       // Launch the draft with current settings
       onLaunchDraft({
