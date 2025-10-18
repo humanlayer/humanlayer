@@ -1,38 +1,38 @@
-import React, { useEffect, forwardRef, useImperativeHandle, useState, useRef } from 'react'
+import { useStore } from '@/AppStore'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { logger } from '@/lib/logging'
+import { openPath } from '@tauri-apps/plugin-opener'
+import Mention from '@tiptap/extension-mention'
+import { Placeholder } from '@tiptap/extensions'
+import { Plugin } from '@tiptap/pm/state'
+import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import {
-  useEditor,
+  Content,
   EditorContent,
   Extension,
-  Content,
-  ReactRenderer,
   ReactNodeViewRenderer,
+  ReactRenderer,
+  useEditor,
 } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { Placeholder } from '@tiptap/extensions'
-import Mention from '@tiptap/extension-mention'
-import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { Plugin } from '@tiptap/pm/state'
-import { SlashCommandList } from './SlashCommandList'
-import { FuzzyFileMentionList } from './FuzzyFileMentionList'
-import { FileMentionNode } from './FileMentionNode'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { createLowlight } from 'lowlight'
+import bash from 'highlight.js/lib/languages/bash'
 import clojure from 'highlight.js/lib/languages/clojure'
-import javascript from 'highlight.js/lib/languages/javascript'
-import typescript from 'highlight.js/lib/languages/typescript'
-import python from 'highlight.js/lib/languages/python'
-import rust from 'highlight.js/lib/languages/rust'
+import cpp from 'highlight.js/lib/languages/cpp'
 import go from 'highlight.js/lib/languages/go'
 import java from 'highlight.js/lib/languages/java'
-import cpp from 'highlight.js/lib/languages/cpp'
-import bash from 'highlight.js/lib/languages/bash'
+import javascript from 'highlight.js/lib/languages/javascript'
 import json from 'highlight.js/lib/languages/json'
 import markdown from 'highlight.js/lib/languages/markdown'
+import python from 'highlight.js/lib/languages/python'
+import rust from 'highlight.js/lib/languages/rust'
+import typescript from 'highlight.js/lib/languages/typescript'
 import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
-import { logger } from '@/lib/logging'
-import { useStore } from '@/AppStore'
-import { openPath } from '@tauri-apps/plugin-opener'
+import { createLowlight } from 'lowlight'
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { FileMentionNode } from './FileMentionNode'
+import { FuzzyFileMentionList } from './FuzzyFileMentionList'
+import { SlashCommandList } from './SlashCommandList'
 
 // Export regex patterns for markdown italic syntax
 export const italicRegex = /(?<=^|\s|[^\w])\*(?!\*)([^*]+)\*(?!\*)(?=\s|[^\w]|$)/g
@@ -543,6 +543,11 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           HTMLAttributes: {
             class: 'mention slash-command',
           },
+          renderText({ node }) {
+            // The label already contains the slash (e.g., "/research_codebase")
+            // Return it as-is to avoid double slashes in getText() output
+            return node.attrs.label || node.attrs.id || ''
+          },
           renderHTML({ node }) {
             return [
               'span',
@@ -555,9 +560,25 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           },
           suggestion: {
             char: '/',
-            startOfLine: true, // Only trigger at start of message
+            startOfLine: true, // Only trigger at start of line
             allowSpaces: false,
-            items: () => ['placeholder'], // Dummy items, actual search in component
+            // Only allow slash commands if there isn't already one in the document
+            // The startOfLine: true setting already ensures it only triggers at line starts
+            allow: ({ state }) => {
+              // Check if there are any existing slash-command mentions in the document
+              let hasExistingSlashCommand = false
+              state.doc.descendants(node => {
+                if (node.type.name === 'slash-command') {
+                  hasExistingSlashCommand = true
+                  return false // Stop searching
+                }
+              })
+
+              return !hasExistingSlashCommand
+            },
+            items: () => {
+              return ['placeholder'] // Dummy items, actual search in component
+            },
 
             render: () => {
               let component: ReactRenderer<any> | null = null
@@ -642,8 +663,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
             },
           },
         }),
-        // TEMPORARILY DISABLED: Mention functionality for fuzzy file finding
-        // Uncomment the block below to re-enable @-mention file search
+
         Mention.extend({
           addAttributes() {
             return {
@@ -820,12 +840,8 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
         }),
       ],
       content: initialValue,
-      onCreate: ({ editor }) => {
-        logger.log('ResponseEditor - Editor created with content:', {
-          content: editor.getJSON(),
-          isEmpty: editor.isEmpty,
-          initialValue,
-        })
+      onCreate: () => {
+        // Editor created
       },
       editorProps: {
         attributes: {
@@ -858,7 +874,8 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
         },
       },
       onUpdate: ({ editor }) => {
-        onChangeRef.current?.(editor.getJSON())
+        const jsonContent = editor.getJSON()
+        onChangeRef.current?.(jsonContent)
         setResponseEditorEmpty(editor.isEmpty)
       },
       editable: !disabled,

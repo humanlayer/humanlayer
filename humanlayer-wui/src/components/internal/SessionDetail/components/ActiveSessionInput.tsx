@@ -161,6 +161,7 @@ export const ActiveSessionInput = forwardRef<
     const handleChange = useCallback(
       async (value: Content) => {
         const valueStr = JSON.stringify(value)
+
         // Save to localStorage for active sessions
         localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
       },

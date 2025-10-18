@@ -1,10 +1,10 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useStore } from '@/AppStore'
+import { Button } from '@/components/ui/button'
+import { daemonClient } from '@/lib/daemon/client'
+import { logger } from '@/lib/logging'
 import { Editor } from '@tiptap/react'
 import { AlertCircle, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { useStore } from '@/AppStore'
-import { logger } from '@/lib/logging'
-import { daemonClient } from '@/lib/daemon/client'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 interface SlashCommandListProps {
   query: string
