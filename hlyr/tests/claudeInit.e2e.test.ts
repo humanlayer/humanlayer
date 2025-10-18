@@ -292,6 +292,7 @@ describe('claude init e2e tests', () => {
 
       expect(settings.alwaysThinkingEnabled).toBe(true)
       expect(settings.env.MAX_THINKING_TOKENS).toBe('32000')
+      expect(settings.env.CLAUDE_BASH_MAINTAIN_WORKING_DIR).toBe('1')
     }, 15000)
 
     it('should combine thinking flags correctly', async () => {
@@ -308,6 +309,7 @@ describe('claude init e2e tests', () => {
 
       expect(settings.alwaysThinkingEnabled).toBe(false)
       expect(settings.env.MAX_THINKING_TOKENS).toBe('100000')
+      expect(settings.env.CLAUDE_BASH_MAINTAIN_WORKING_DIR).toBe('1')
     }, 15000)
   })
 
@@ -393,6 +395,7 @@ describe('claude init e2e tests', () => {
       expect(settings.model).toBe('haiku')
       expect(settings.alwaysThinkingEnabled).toBe(false)
       expect(settings.env.MAX_THINKING_TOKENS).toBe('50000')
+      expect(settings.env.CLAUDE_BASH_MAINTAIN_WORKING_DIR).toBe('1')
     }, 15000)
   })
 })

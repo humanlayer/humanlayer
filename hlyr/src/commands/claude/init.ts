@@ -331,6 +331,11 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
             }
             settings.env.MAX_THINKING_TOKENS = maxThinkingTokens.toString()
           }
+          // Always set CLAUDE_BASH_MAINTAIN_WORKING_DIR to 1
+          if (!settings.env) {
+            settings.env = {}
+          }
+          settings.env.CLAUDE_BASH_MAINTAIN_WORKING_DIR = '1'
           if (model !== undefined) {
             settings.model = model
           }
