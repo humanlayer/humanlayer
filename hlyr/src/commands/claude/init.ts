@@ -66,15 +66,29 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
     const claudeTargetDir = path.join(targetDir, '.claude')
 
     // Determine source location
-    // When installed via npm: node_modules/humanlayer/.claude
-    // When running from repo: ../../.claude (from hlyr/dist/ to repo root)
-    // Note: The build bundles everything into dist/index.js, so __dirname points to hlyr/dist/
-    const repoRoot = path.resolve(__dirname, '../..')
-    const sourceClaudeDir = path.join(repoRoot, '.claude')
+    // Try multiple possible locations for the .claude directory
+    const possiblePaths = [
+      // When installed via npm: package root is one level up from dist
+      path.resolve(__dirname, '..', '.claude'),
+      // When running from repo: repo root is two levels up from dist
+      path.resolve(__dirname, '../..', '.claude'),
+    ]
+
+    let sourceClaudeDir: string | null = null
+    for (const candidatePath of possiblePaths) {
+      if (fs.existsSync(candidatePath)) {
+        sourceClaudeDir = candidatePath
+        break
+      }
+    }
 
     // Verify source directory exists
-    if (!fs.existsSync(sourceClaudeDir)) {
-      p.log.error(`Source .claude directory not found at ${sourceClaudeDir}`)
+    if (!sourceClaudeDir) {
+      p.log.error('Source .claude directory not found in expected locations')
+      p.log.info('Searched paths:')
+      possiblePaths.forEach(candidatePath => {
+        p.log.info(`  - ${candidatePath}`)
+      })
       p.log.info('Are you running from the humanlayer repository or npm package?')
       process.exit(1)
     }
