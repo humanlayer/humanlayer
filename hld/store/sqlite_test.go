@@ -720,3 +720,144 @@ func TestFileSnapshots(t *testing.T) {
 		require.True(t, found, "Special character snapshot not found")
 	})
 }
+
+func TestSearchSessionsByTitle(t *testing.T) {
+	// Create temp database
+	dbPath := testutil.DatabasePath(t, "sqlite-search")
+	store, err := NewSQLiteStore(dbPath)
+	require.NoError(t, err)
+	defer func() { _ = store.Close() }()
+
+	ctx := context.Background()
+
+	// Create test sessions with various titles
+	sessions := []*Session{
+		{
+			ID:             "sess1",
+			RunID:          "run1",
+			Title:          "Implement authentication",
+			Query:          "Help with auth",
+			Status:         SessionStatusCompleted,
+			CreatedAt:      time.Now().Add(-2 * time.Hour),
+			LastActivityAt: time.Now().Add(-1 * time.Hour),
+		},
+		{
+			ID:             "sess2",
+			RunID:          "run2",
+			Title:          "Fix authentication bug",
+			Query:          "Debug auth issue",
+			Status:         SessionStatusCompleted,
+			CreatedAt:      time.Now().Add(-3 * time.Hour),
+			LastActivityAt: time.Now().Add(-2 * time.Hour),
+		},
+		{
+			ID:             "sess3",
+			RunID:          "run3",
+			Title:          "Add user profile",
+			Query:          "Create profile page",
+			Status:         SessionStatusCompleted,
+			CreatedAt:      time.Now().Add(-1 * time.Hour),
+			LastActivityAt: time.Now().Add(-100 * time.Millisecond),
+		},
+		{
+			ID:             "sess4",
+			RunID:          "run4",
+			Title:          "", // Empty title
+			Query:          "Some query",
+			Status:         SessionStatusCompleted,
+			CreatedAt:      time.Now(),
+			LastActivityAt: time.Now(),
+		},
+	}
+
+	for _, s := range sessions {
+		err := store.CreateSession(ctx, s)
+		require.NoError(t, err)
+	}
+
+	t.Run("search by partial title", func(t *testing.T) {
+		results, err := store.SearchSessionsByTitle(ctx, "auth", 10)
+		require.NoError(t, err)
+		require.Len(t, results, 2, "Should find both authentication sessions")
+
+		// Should be ordered by last_activity_at DESC
+		require.Equal(t, "sess1", results[0].ID)
+		require.Equal(t, "sess2", results[1].ID)
+	})
+
+	t.Run("case insensitive search", func(t *testing.T) {
+		// SQL LIKE is case-insensitive by default in SQLite
+		results, err := store.SearchSessionsByTitle(ctx, "AUTH", 10)
+		require.NoError(t, err)
+		require.Len(t, results, 2, "Should find sessions with case-insensitive search")
+	})
+
+	t.Run("empty query returns recent sessions", func(t *testing.T) {
+		results, err := store.SearchSessionsByTitle(ctx, "", 10)
+		require.NoError(t, err)
+		require.Len(t, results, 4, "Should return all sessions")
+
+		// Should be ordered by last_activity_at DESC
+		require.Equal(t, "sess4", results[0].ID, "Most recent session first")
+		require.Equal(t, "sess3", results[1].ID)
+		require.Equal(t, "sess1", results[2].ID)
+		require.Equal(t, "sess2", results[3].ID)
+	})
+
+	t.Run("respects limit", func(t *testing.T) {
+		results, err := store.SearchSessionsByTitle(ctx, "", 2)
+		require.NoError(t, err)
+		require.Len(t, results, 2, "Should respect the limit")
+
+		// Should get the 2 most recent sessions
+		require.Equal(t, "sess4", results[0].ID)
+		require.Equal(t, "sess3", results[1].ID)
+	})
+
+	t.Run("no results", func(t *testing.T) {
+		results, err := store.SearchSessionsByTitle(ctx, "nonexistent", 10)
+		require.NoError(t, err)
+		require.Empty(t, results, "Should return empty for non-matching query")
+	})
+
+	t.Run("special characters in search", func(t *testing.T) {
+		// Create a session with special characters in title
+		specialSession := &Session{
+			ID:             "sess-special",
+			RunID:          "run-special",
+			Title:          "Fix SQL injection' OR '1'='1",
+			Query:          "Security fix",
+			Status:         SessionStatusCompleted,
+			CreatedAt:      time.Now(),
+			LastActivityAt: time.Now(),
+		}
+		err := store.CreateSession(ctx, specialSession)
+		require.NoError(t, err)
+
+		// Search with special characters (they should be escaped by the LIKE query)
+		results, err := store.SearchSessionsByTitle(ctx, "SQL injection", 10)
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		require.Equal(t, "sess-special", results[0].ID)
+	})
+
+	t.Run("handles maximum limit", func(t *testing.T) {
+		results, err := store.SearchSessionsByTitle(ctx, "", 50)
+		require.NoError(t, err)
+		require.Len(t, results, 5, "Should return all 5 sessions when limit is 50")
+	})
+
+	t.Run("handles zero limit", func(t *testing.T) {
+		results, err := store.SearchSessionsByTitle(ctx, "auth", 0)
+		require.NoError(t, err)
+		// Zero limit should use default of 10
+		require.Len(t, results, 2, "Should return matching sessions with default limit")
+	})
+
+	t.Run("handles excessive limit", func(t *testing.T) {
+		results, err := store.SearchSessionsByTitle(ctx, "", 100)
+		require.NoError(t, err)
+		// Should be capped at 50 in the implementation
+		require.Len(t, results, 5, "Should return all sessions but respect max limit")
+	})
+}

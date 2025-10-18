@@ -238,8 +238,14 @@ export class HLDClient {
     }
 
     // Get slash commands
-    async getSlashCommands(params: { sessionId: string; query?: string }): Promise<{ data: Array<{ name: string }> }> {
+    async getSlashCommands(params: { workingDir: string; query?: string }): Promise<{ data: Array<{ name: string }> }> {
         const response = await this.sessionsApi.getSlashCommands(params);
+        return response;
+    }
+
+    // Search sessions
+    async searchSessions(params: { query?: string; limit?: number }): Promise<{ data: Session[] }> {
+        const response = await this.sessionsApi.searchSessions(params);
         return response;
     }
 

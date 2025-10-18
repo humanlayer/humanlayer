@@ -54,6 +54,14 @@ func (m *MockStore) ListSessions(ctx context.Context) ([]*store.Session, error) 
 	return args.Get(0).([]*store.Session), args.Error(1)
 }
 
+func (m *MockStore) SearchSessionsByTitle(ctx context.Context, query string, limit int) ([]*store.Session, error) {
+	args := m.Called(ctx, query, limit)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*store.Session), args.Error(1)
+}
+
 func (m *MockStore) GetExpiredDangerousPermissionsSessions(ctx context.Context) ([]*store.Session, error) {
 	args := m.Called(ctx)
 	return args.Get(0).([]*store.Session), args.Error(1)
@@ -235,13 +243,6 @@ func TestGetSlashCommands(t *testing.T) {
 		store: mockStore,
 	}
 
-	// Mock GetSession to return a session with our temp directory
-	mockSession := &store.Session{
-		ID:         "test-session",
-		WorkingDir: tempDir,
-	}
-	mockStore.On("GetSession", ctx, "test-session").Return(mockSession, nil)
-
 	tests := []struct {
 		name     string
 		query    string
@@ -308,8 +309,8 @@ func TestGetSlashCommands(t *testing.T) {
 
 			req := api.GetSlashCommandsRequestObject{
 				Params: api.GetSlashCommandsParams{
-					SessionId: "test-session",
-					Query:     queryPtr,
+					WorkingDir: tempDir,
+					Query:      queryPtr,
 				},
 			}
 
@@ -335,15 +336,10 @@ func TestGetSlashCommands(t *testing.T) {
 	// Test with non-existent commands directory
 	t.Run("no commands directory returns empty list", func(t *testing.T) {
 		emptyDir := t.TempDir()
-		mockEmptySession := &store.Session{
-			ID:         "empty-session",
-			WorkingDir: emptyDir,
-		}
-		mockStore.On("GetSession", ctx, "empty-session").Return(mockEmptySession, nil)
 
 		req := api.GetSlashCommandsRequestObject{
 			Params: api.GetSlashCommandsParams{
-				SessionId: "empty-session",
+				WorkingDir: emptyDir,
 			},
 		}
 
@@ -415,13 +411,6 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 		store: mockStore,
 	}
 
-	// Mock GetSession to return a session with our temp directory
-	mockSession := &store.Session{
-		ID:         "test-session",
-		WorkingDir: tempDir,
-	}
-	mockStore.On("GetSession", ctx, "test-session").Return(mockSession, nil)
-
 	tests := []struct {
 		name            string
 		query           string
@@ -490,8 +479,8 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 
 			req := api.GetSlashCommandsRequestObject{
 				Params: api.GetSlashCommandsParams{
-					SessionId: "test-session",
-					Query:     queryPtr,
+					WorkingDir: tempDir,
+					Query:      queryPtr,
 				},
 			}
 
@@ -567,15 +556,9 @@ func TestGetSlashCommandsGlobalOverridesLocal(t *testing.T) {
 		store: mockStore,
 	}
 
-	mockSession := &store.Session{
-		ID:         "test-session",
-		WorkingDir: tempDir,
-	}
-	mockStore.On("GetSession", ctx, "test-session").Return(mockSession, nil)
-
 	req := api.GetSlashCommandsRequestObject{
 		Params: api.GetSlashCommandsParams{
-			SessionId: "test-session",
+			WorkingDir: tempDir,
 		},
 	}
 

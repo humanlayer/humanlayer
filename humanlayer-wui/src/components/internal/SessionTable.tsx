@@ -6,7 +6,12 @@ import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, Pencil, ShieldOff } from 'lucide-react'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { getStatusTextClass } from '@/utils/component-utils'
-import { formatTimestamp, formatAbsoluteTimestamp } from '@/utils/formatting'
+import {
+  formatTimestamp,
+  formatAbsoluteTimestamp,
+  truncate,
+  extractTextFromEditorState,
+} from '@/utils/formatting'
 import { highlightMatches } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
 import { useStore } from '@/AppStore'
@@ -682,7 +687,13 @@ function SessionTableInner({
                     ) : (
                       <div className="flex items-center gap-2 group">
                         <span>
-                          {renderHighlightedText(session.title || session.summary || '', session.id)}
+                          {renderHighlightedText(
+                            session.title ||
+                              session.summary ||
+                              (session.query ? truncate(session.query, 80) : '') ||
+                              truncate(extractTextFromEditorState(session.editorState), 80),
+                            session.id,
+                          )}
                         </span>
                         <Button
                           size="sm"

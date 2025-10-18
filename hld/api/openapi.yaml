@@ -410,6 +410,45 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /sessions/search:
+    get:
+      operationId: searchSessions
+      summary: Search sessions by title
+      description: |
+        Search for sessions using SQL LIKE queries against the title field.
+        Returns top sessions ordered by last_activity_at descending.
+        Limited to 20 most recently modified sessions for performance.
+      tags:
+        - Sessions
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 100
+          description: Search query for title matching (uses SQL LIKE)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+          description: Maximum number of results to return
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionSearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /recent-paths:
     get:
       operationId: getRecentPaths
@@ -440,16 +479,16 @@ paths:
     get:
       operationId: getSlashCommands
       summary: Get available slash commands
-      description: Retrieve slash commands available in the session's working directory
+      description: Retrieve slash commands available in the specified working directory
       tags:
         - Sessions
       parameters:
-        - name: session_id
+        - name: working_dir
           in: query
           required: true
           schema:
             type: string
-          description: Session ID to get working directory
+          description: Working directory to search for commands
         - name: query
           in: query
           required: false
@@ -1309,6 +1348,16 @@ components:
             draft:
               type: integer
               description: Number of draft sessions
+
+    SessionSearchResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Session"
 
     UpdateSessionRequest:
       type: object

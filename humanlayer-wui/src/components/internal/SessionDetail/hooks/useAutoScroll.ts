@@ -29,7 +29,6 @@ export function useAutoScroll(
 
   // Reset state when component mounts (handles re-entering sessions)
   useEffect(() => {
-    console.log('[useAutoScroll] Component mounted - resetting state')
     wasAtBottomRef.current = null
     // Don't reset autoScrollEnabled here - let initialization handle it
   }, []) // Only on mount
@@ -37,7 +36,6 @@ export function useAutoScroll(
   // Initialize wasAtBottomRef when container has content
   useEffect(() => {
     if (!containerRef.current) {
-      console.log('[useAutoScroll] Init effect - no container')
       return
     }
 
@@ -53,19 +51,6 @@ export function useAutoScroll(
       const shouldAutoScroll = hasMinimalContent ? true : initiallyAtBottom
 
       wasAtBottomRef.current = shouldAutoScroll
-      console.log('[useAutoScroll] INITIALIZED', {
-        hasMinimalContent,
-        initiallyAtBottom,
-        shouldAutoScroll,
-        scrollHeight: containerRef.current.scrollHeight,
-        scrollTop: containerRef.current.scrollTop,
-        clientHeight: containerRef.current.clientHeight,
-        distanceFromBottom:
-          containerRef.current.scrollHeight -
-          containerRef.current.scrollTop -
-          containerRef.current.clientHeight,
-        threshold: containerRef.current.clientHeight * SCROLL_THRESHOLD,
-      })
       // Set initial auto-scroll state based on position
       setAutoScrollEnabled(shouldAutoScroll)
     } else if (wasAtBottomRef.current !== null) {
@@ -75,11 +60,6 @@ export function useAutoScroll(
 
   // Handle scroll events to detect user scrolling
   useEffect(() => {
-    console.log(
-      '[useAutoScroll] Scroll handler effect running, containerRef.current:',
-      containerRef.current,
-    )
-
     // Use a timer to retry if container isn't ready yet
     const setupScrollHandler = () => {
       const container = containerRef.current
@@ -88,8 +68,6 @@ export function useAutoScroll(
         const retryTimer = setTimeout(setupScrollHandler, 100)
         return () => clearTimeout(retryTimer)
       }
-
-      console.log('[useAutoScroll] Attaching scroll handler to container')
 
       const handleScroll = () => {
         // Calculate if at bottom directly in the handler to avoid dependency issues
@@ -100,34 +78,20 @@ export function useAutoScroll(
         const threshold = clientHeight * (SCROLL_THRESHOLD / 100)
         const atBottom = distanceFromBottom <= threshold
 
-        console.log('[useAutoScroll] Scroll event', {
-          atBottom,
-          wasAtBottomRef: wasAtBottomRef.current,
-          scrollTop,
-          scrollHeight,
-          clientHeight,
-          distanceFromBottom,
-          threshold,
-        })
-
         if (atBottom) {
           // User is at bottom - enable auto-scroll
           wasAtBottomRef.current = true
           setAutoScrollEnabled(true)
-          console.log('[useAutoScroll] Enabled auto-scroll (at bottom)')
         } else {
           // User scrolled up - disable auto-scroll
           wasAtBottomRef.current = false
           setAutoScrollEnabled(false)
-          console.log('[useAutoScroll] Disabled auto-scroll (scrolled up)')
         }
       }
 
       container.addEventListener('scroll', handleScroll, { passive: true })
-      console.log('[useAutoScroll] Scroll handler attached to container:', container)
 
       return () => {
-        console.log('[useAutoScroll] Removing scroll handler')
         container.removeEventListener('scroll', handleScroll)
       }
     }
@@ -138,34 +102,17 @@ export function useAutoScroll(
 
   // Auto-scroll when conditions are met
   useEffect(() => {
-    console.log('[useAutoScroll] Auto-scroll effect triggered', {
-      autoScrollEnabled,
-      hasNewContent,
-      contentChanged,
-      wasAtBottomRef: wasAtBottomRef.current,
-      willAutoScroll:
-        autoScrollEnabled && (hasNewContent || contentChanged) && wasAtBottomRef.current === true,
-    })
-
     // Only auto-scroll if enabled AND we were at the bottom before new content
     // Check wasAtBottomRef === true to avoid auto-scrolling when null (initial state)
     if (autoScrollEnabled && (hasNewContent || contentChanged) && wasAtBottomRef.current === true) {
-      console.log('[useAutoScroll] Scheduling auto-scroll in 50ms')
       // Use setTimeout to ensure DOM updates are complete
       setTimeout(() => {
-        console.log('[useAutoScroll] Executing auto-scroll')
         scrollToBottom()
         // Only update ref if we're actually at bottom after scrolling
         // This prevents overriding user's scroll-up action during the delay
         const nowAtBottom = isAtBottom()
-        console.log('[useAutoScroll] After auto-scroll - at bottom?', nowAtBottom)
         if (nowAtBottom) {
           wasAtBottomRef.current = true
-          console.log('[useAutoScroll] Kept wasAtBottomRef as true')
-        } else {
-          console.log(
-            '[useAutoScroll] User must have scrolled during delay - not updating wasAtBottomRef',
-          )
         }
       }, 50)
     }

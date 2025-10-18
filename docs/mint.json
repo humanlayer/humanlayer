@@ -1,6 +1,6 @@
 {
   "$schema": "https://mintlify.com/schema.json",
-  "name": "Humanlayer",
+  "name": "HumanLayer",
   "logo": {
     "dark": "/images/wordmark-dark.svg",
     "light": "/images/wordmark-light.svg"
@@ -19,28 +19,10 @@
     {
       "name": "Discord",
       "url": "https://humanlayer.dev/discord"
-    },
-    {
-      "name": "Talk to a Founder",
-      "url": "https://cal.com/humanlayer/15min"
     }
   ],
-  "topbarCtaButton": {
-    "name": "Dashboard",
-    "url": "https://app.humanlayer.dev"
-  },
-  "tabs": [
-    {
-      "name": "API Reference",
-      "url": "api-reference"
-    }
-  ],
+  "tabs": [],
   "anchors": [
-    {
-      "name": "Documentation",
-      "icon": "book-open-cover",
-      "url": "https://humanlayer.dev/docs"
-    },
     {
       "name": "Community",
       "icon": "discord",
@@ -54,63 +36,8 @@
   ],
   "navigation": [
     {
-      "group": "Get Started",
-      "pages": ["introduction", "quickstart-python", "quickstart-typescript"]
-    },
-    {
-      "group": "CLI",
-      "pages": [
-        "cli/introduction",
-        "cli/login",
-        "cli/config-show",
-        "cli/contact-human"
-      ]
-    },
-    {
-      "group": "Core Concepts",
-      "pages": [
-        "core/require-approval",
-        "core/human-as-tool",
-        "core/customize-response-options",
-        "core/llm-tool-calling",
-        "core/outer-loop-agents",
-        "core/run-ids-and-call-ids",
-        "core/email-escalation",
-        "core/agent-webhooks",
-        "core/response-webhooks",
-        "core/state-management",
-        "core/classifications"
-      ]
-    },
-    {
-      "group": "Contact Channels",
-      "pages": [
-        "channels/introduction",
-        "channels/slack",
-        "channels/email",
-        "channels/react-embed",
-        "channels/composite-channels"
-      ]
-    },
-    {
-      "group": "Frameworks",
-      "pages": [
-        "frameworks/open-ai",
-        "frameworks/langchain",
-        "frameworks/crewai",
-        "frameworks/controlflow",
-        "frameworks/chainlit",
-        "frameworks/vercel-ai-sdk",
-        "frameworks/mastra"
-      ]
-    },
-    {
-      "group": "API Documentation",
-      "pages": [
-        "api-reference/introduction",
-        "api-reference/function-calls",
-        "api-reference/human-contacts"
-      ]
+      "group": "Docs",
+      "pages": ["introduction"]
     }
   ],
   "footerSocials": {

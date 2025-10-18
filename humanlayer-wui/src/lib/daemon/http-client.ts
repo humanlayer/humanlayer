@@ -143,7 +143,7 @@ export class HTTPDaemonClient implements IDaemonClient {
   // Session Management Methods
 
   async getSlashCommands(params: {
-    sessionId: string
+    workingDir: string
     query?: string
   }): Promise<{ data: Array<{ name: string; source: 'local' | 'global' }> }> {
     await this.ensureConnected()
@@ -151,6 +151,19 @@ export class HTTPDaemonClient implements IDaemonClient {
     const response = await this.client!.getSlashCommands(params)
 
     return response as { data: Array<{ name: string; source: 'local' | 'global' }> }
+  }
+
+  async searchSessions(params: { query?: string; limit?: number } = {}): Promise<{ data: Session[] }> {
+    await this.ensureConnected()
+
+    const response = await this.client!.searchSessions({
+      query: params.query,
+      limit: params.limit || 10,
+    })
+
+    return {
+      data: response.data.map(transformSDKSession),
+    }
   }
 
   async launchSession(

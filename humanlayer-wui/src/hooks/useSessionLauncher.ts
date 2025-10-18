@@ -22,7 +22,6 @@ interface SessionConfig {
 interface LauncherState {
   isOpen: boolean
   mode: 'command'
-  view: 'menu' | 'input'
   query: string
   config: SessionConfig
   isLaunching: boolean
@@ -35,7 +34,6 @@ interface LauncherState {
   setQuery: (query: string) => void
   setConfig: (config: SessionConfig) => void
   setGPrefixMode: (enabled: boolean) => void
-  setView: (view: 'menu' | 'input') => void
   launchSession: () => Promise<void>
   createNewSession: () => Promise<void>
   openSessionById: (sessionId: string) => void
@@ -132,7 +130,6 @@ const getSavedAdditionalDirectories = (): string[] => {
 export const useSessionLauncher = create<LauncherState>((set, get) => ({
   isOpen: false,
   mode: 'command',
-  view: 'menu',
   query: getSavedQuery(),
   config: {
     workingDir: getDefaultWorkingDir(),
@@ -149,7 +146,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     set({
       isOpen: true,
       mode: 'command', // Always command mode
-      view: 'menu',
       error: undefined,
     }),
 
@@ -158,7 +154,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     const savedProvider = getSavedProvider()
     set({
       isOpen: false,
-      view: 'menu',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
@@ -245,8 +240,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
   },
 
   setGPrefixMode: enabled => set({ gPrefixMode: enabled }),
-
-  setView: view => set({ view }),
 
   launchSession: async () => {
     const { query, config } = get()
@@ -409,7 +402,6 @@ export const useSessionLauncher = create<LauncherState>((set, get) => ({
     return set({
       isOpen: false,
       mode: 'command',
-      view: 'menu',
       query: savedQuery,
       config: {
         workingDir: getDefaultWorkingDir(),
@@ -431,7 +423,6 @@ export { isViewingSessionDetail }
 
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
-  const refreshSessions = useStore(state => state.refreshSessions)
   const { open, close, isOpen, setGPrefixMode } = useSessionLauncher()
 
   // Helper to check if user is actively typing in a text input
@@ -463,26 +454,13 @@ export function useSessionLauncherHotkeys() {
     },
   )
 
-  // C - Create new session (root scope)
+  // C - Navigate to new draft session route (root scope)
   useHotkeys(
     'c',
-    async () => {
-      // Create draft session and navigate directly
-      try {
-        const response = await daemonClient.launchSession({
-          query: '', // Empty initial query for draft
-          working_dir: getLastWorkingDir() || '~/',
-          draft: true, // Create as draft
-        })
-
-        // Refresh sessions to include the new draft
-        await refreshSessions()
-
-        // Navigate directly to SessionDetail
-        window.location.hash = `#/sessions/${response.sessionId}`
-      } catch (error) {
-        logger.error('Failed to create draft session:', error)
-      }
+    () => {
+      // Navigate to draft route without creating a session
+      // The draft will be created lazily when user starts typing
+      window.location.hash = '/sessions/draft'
     },
     {
       scopes: [HOTKEY_SCOPES.ROOT],

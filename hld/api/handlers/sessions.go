@@ -281,6 +281,11 @@ func (h *SessionHandlers) ListSessions(ctx context.Context, req api.ListSessions
 			DangerouslySkipPermissions:          info.DangerouslySkipPermissions,
 			DangerouslySkipPermissionsExpiresAt: info.DangerouslySkipPermissionsExpiresAt,
 			Archived:                            info.Archived,
+			EditorState:                         info.EditorState,
+			ProxyEnabled:                        info.ProxyEnabled,
+			ProxyBaseURL:                        info.ProxyBaseURL,
+			ProxyModelOverride:                  info.ProxyModelOverride,
+			ProxyAPIKey:                         info.ProxyAPIKey,
 		}
 
 		// Copy result data if available
@@ -1420,28 +1425,26 @@ func (h *SessionHandlers) GetDebugInfo(ctx context.Context, req api.GetDebugInfo
 	return response, nil
 }
 
-// GetSlashCommands retrieves available slash commands for a session
+// GetSlashCommands retrieves available slash commands for a working directory
 func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlashCommandsRequestObject) (api.GetSlashCommandsResponseObject, error) {
-	// Get session to access working directory
-	session, err := h.store.GetSession(ctx, req.Params.SessionId)
-	if err != nil {
-		slog.Error("Failed to get session for slash commands",
-			"error", fmt.Sprintf("%v", err),
-			"session_id", req.Params.SessionId,
+	// Get working directory from parameters
+	workingDir := req.Params.WorkingDir
+	if workingDir == "" {
+		slog.Error("Working directory not provided",
 			"operation", "GetSlashCommands",
 		)
 		return api.GetSlashCommands400JSONResponse{
 			BadRequestJSONResponse: api.BadRequestJSONResponse{
 				Error: api.ErrorDetail{
 					Code:    "HLD-4001",
-					Message: "Invalid session ID",
+					Message: "Working directory is required",
 				},
 			},
 		}, nil
 	}
 
 	// Build command directory paths
-	localCommandsDir := filepath.Join(expandTilde(session.WorkingDir), ".claude", "commands")
+	localCommandsDir := filepath.Join(expandTilde(workingDir), ".claude", "commands")
 	homeDir, err := os.UserHomeDir()
 	globalCommandsDir := ""
 	if err == nil {
@@ -1574,5 +1577,50 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 
 	return api.GetSlashCommands200JSONResponse{
 		Data: results,
+	}, nil
+}
+
+// SearchSessions handles GET /sessions/search
+func (h *SessionHandlers) SearchSessions(ctx context.Context, req api.SearchSessionsRequestObject) (api.SearchSessionsResponseObject, error) {
+	// Extract query parameters
+	query := ""
+	if req.Params.Query != nil {
+		query = strings.TrimSpace(*req.Params.Query)
+	}
+
+	limit := 10
+	if req.Params.Limit != nil {
+		limit = *req.Params.Limit
+	}
+
+	// Search sessions in database
+	sessions, err := h.store.SearchSessionsByTitle(ctx, query, limit)
+	if err != nil {
+		slog.Error("Failed to search sessions",
+			"error", fmt.Sprintf("%v", err),
+			"query", query,
+			"limit", limit,
+			"operation", "SearchSessions",
+		)
+		return api.SearchSessions500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-500",
+					Message: fmt.Sprintf("Failed to search sessions: %v", err),
+				},
+			},
+		}, nil
+	}
+
+	// Convert to API response format
+	apiSessions := make([]api.Session, 0, len(sessions))
+	for _, s := range sessions {
+		apiSession := h.mapper.SessionToAPI(*s)
+		apiSessions = append(apiSessions, apiSession)
+	}
+
+	// Return response
+	return api.SearchSessions200JSONResponse{
+		Data: apiSessions,
 	}, nil
 }

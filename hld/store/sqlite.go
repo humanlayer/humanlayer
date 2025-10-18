@@ -1081,6 +1081,42 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 21 applied successfully")
 	}
 
+	// Migration 22: Add indexes for session search performance
+	if currentVersion < 22 {
+		slog.Info("Applying migration 22: Add indexes for session search performance")
+
+		// Add index on title for LIKE queries
+		// Using a regular B-tree index which helps with LIKE 'prefix%' patterns
+		_, err := s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_sessions_title
+			ON sessions(title)
+		`)
+		if err != nil {
+			return fmt.Errorf("migration 22 failed to create title index: %w", err)
+		}
+
+		// Also add index on last_activity_at if not exists
+		// This helps with ORDER BY performance
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_sessions_last_activity
+			ON sessions(last_activity_at DESC)
+		`)
+		if err != nil {
+			return fmt.Errorf("migration 22 failed to create last_activity index: %w", err)
+		}
+
+		// Record migration
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (22, 'Add indexes for session search performance')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 22: %w", err)
+		}
+
+		slog.Info("Migration 22 applied successfully")
+	}
+
 	return nil
 }
 
@@ -1742,6 +1778,178 @@ func (s *SQLiteStore) ListSessions(ctx context.Context) ([]*Session, error) {
 		}
 
 		sessions = append(sessions, &session)
+	}
+
+	return sessions, nil
+}
+
+// SearchSessionsByTitle searches for sessions by title using SQL LIKE
+func (s *SQLiteStore) SearchSessionsByTitle(ctx context.Context, query string, limit int) ([]*Session, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	// Build the SQL query with LIKE pattern
+	// Use % wildcards for substring matching anywhere in title
+	sqlQuery := `
+		SELECT id, run_id, claude_session_id, parent_session_id,
+			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
+			permission_prompt_tool, allowed_tools, disallowed_tools,
+			status, created_at, last_activity_at, completed_at,
+			cost_usd, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens, effective_context_tokens,
+			duration_ms, num_turns, result_content, error_message, auto_accept_edits, archived,
+			dangerously_skip_permissions, dangerously_skip_permissions_expires_at, dangerously_skip_permissions_timeout_ms,
+			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
+		FROM sessions
+		WHERE 1=1`
+
+	var args []interface{}
+
+	// Only add WHERE clause if query is not empty
+	if query != "" {
+		sqlQuery += " AND title LIKE ?"
+		args = append(args, "%"+query+"%")
+	}
+
+	// Order by last activity and limit
+	// Look at 20 most recent sessions for performance
+	sqlQuery += `
+		ORDER BY last_activity_at DESC
+		LIMIT 20`
+
+	// Then apply the user's limit in Go after fetching
+	rows, err := s.db.QueryContext(ctx, sqlQuery, args...)
+	if err != nil {
+		return nil, fmt.Errorf("search sessions query: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var sessions []*Session
+	for rows.Next() {
+		var session Session
+		var claudeSessionID, parentSessionID, summary, title, model, modelID, workingDir, systemPrompt, appendSystemPrompt, customInstructions sql.NullString
+		var permissionPromptTool, allowedTools, disallowedTools sql.NullString
+		var completedAt sql.NullTime
+		var costUSD sql.NullFloat64
+		var inputTokens, outputTokens, cacheCreationInputTokens, cacheReadInputTokens, effectiveContextTokens sql.NullInt64
+		var durationMS, numTurns sql.NullInt64
+		var resultContent, errorMessage sql.NullString
+		var archived sql.NullBool
+		var dangerouslySkipPermissionsExpiresAt sql.NullTime
+		var dangerouslySkipPermissionsTimeoutMs sql.NullInt64
+		var proxyEnabled sql.NullBool
+		var proxyBaseURL, proxyModelOverride, proxyAPIKey sql.NullString
+		var additionalDirectories sql.NullString
+		var editorState sql.NullString
+
+		err := rows.Scan(
+			&session.ID, &session.RunID, &claudeSessionID, &parentSessionID,
+			&session.Query, &summary, &title, &model, &modelID, &workingDir, &session.MaxTurns,
+			&systemPrompt, &appendSystemPrompt, &customInstructions,
+			&permissionPromptTool, &allowedTools, &disallowedTools,
+			&session.Status, &session.CreatedAt, &session.LastActivityAt, &completedAt,
+			&costUSD, &inputTokens, &outputTokens, &cacheCreationInputTokens, &cacheReadInputTokens, &effectiveContextTokens,
+			&durationMS, &numTurns, &resultContent, &errorMessage, &session.AutoAcceptEdits,
+			&archived, &session.DangerouslySkipPermissions, &dangerouslySkipPermissionsExpiresAt, &dangerouslySkipPermissionsTimeoutMs,
+			&proxyEnabled, &proxyBaseURL, &proxyModelOverride, &proxyAPIKey, &additionalDirectories, &editorState,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan session: %w", err)
+		}
+
+		// Handle nullable fields
+		session.ClaudeSessionID = claudeSessionID.String
+		session.ParentSessionID = parentSessionID.String
+		session.Summary = summary.String
+		session.Title = title.String
+		session.Model = model.String
+		session.ModelID = modelID.String
+		session.WorkingDir = workingDir.String
+		session.SystemPrompt = systemPrompt.String
+		session.AppendSystemPrompt = appendSystemPrompt.String
+		session.CustomInstructions = customInstructions.String
+		session.PermissionPromptTool = permissionPromptTool.String
+		session.AllowedTools = allowedTools.String
+		session.DisallowedTools = disallowedTools.String
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+		if completedAt.Valid {
+			session.CompletedAt = &completedAt.Time
+		}
+		if costUSD.Valid {
+			session.CostUSD = &costUSD.Float64
+		}
+		if inputTokens.Valid {
+			tokens := int(inputTokens.Int64)
+			session.InputTokens = &tokens
+		}
+		if outputTokens.Valid {
+			tokens := int(outputTokens.Int64)
+			session.OutputTokens = &tokens
+		}
+		if cacheCreationInputTokens.Valid {
+			tokens := int(cacheCreationInputTokens.Int64)
+			session.CacheCreationInputTokens = &tokens
+		}
+		if cacheReadInputTokens.Valid {
+			tokens := int(cacheReadInputTokens.Int64)
+			session.CacheReadInputTokens = &tokens
+		}
+		if effectiveContextTokens.Valid {
+			tokens := int(effectiveContextTokens.Int64)
+			session.EffectiveContextTokens = &tokens
+		}
+		if durationMS.Valid {
+			duration := int(durationMS.Int64)
+			session.DurationMS = &duration
+		}
+		if numTurns.Valid {
+			turns := int(numTurns.Int64)
+			session.NumTurns = &turns
+		}
+		session.ResultContent = resultContent.String
+		session.ErrorMessage = errorMessage.String
+
+		// Handle archived field - default to false if NULL
+		session.Archived = archived.Valid && archived.Bool
+
+		// Handle dangerously skip permissions expires at
+		if dangerouslySkipPermissionsExpiresAt.Valid {
+			session.DangerouslySkipPermissionsExpiresAt = &dangerouslySkipPermissionsExpiresAt.Time
+		}
+
+		// Handle dangerously skip permissions timeout ms
+		if dangerouslySkipPermissionsTimeoutMs.Valid {
+			session.DangerouslySkipPermissionsTimeoutMs = &dangerouslySkipPermissionsTimeoutMs.Int64
+		}
+
+		// Handle proxy fields
+		session.ProxyEnabled = proxyEnabled.Valid && proxyEnabled.Bool
+		session.ProxyBaseURL = proxyBaseURL.String
+		session.ProxyModelOverride = proxyModelOverride.String
+		session.ProxyAPIKey = proxyAPIKey.String
+
+		// Handle additional directories
+		session.AdditionalDirectories = additionalDirectories.String
+
+		// Handle editor state
+		if editorState.Valid {
+			session.EditorState = &editorState.String
+		}
+
+		sessions = append(sessions, &session)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration: %w", err)
+	}
+
+	// Apply the user's requested limit
+	if len(sessions) > limit {
+		sessions = sessions[:limit]
 	}
 
 	return sessions, nil

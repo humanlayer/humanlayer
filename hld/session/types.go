@@ -62,6 +62,11 @@ type Info struct {
 	DangerouslySkipPermissions          bool               `json:"dangerously_skip_permissions"`
 	DangerouslySkipPermissionsExpiresAt *time.Time         `json:"dangerously_skip_permissions_expires_at,omitempty"`
 	Archived                            bool               `json:"archived"`
+	EditorState                         *string            `json:"editor_state,omitempty"`
+	ProxyEnabled                        bool               `json:"proxy_enabled"`
+	ProxyBaseURL                        string             `json:"proxy_base_url,omitempty"`
+	ProxyModelOverride                  string             `json:"proxy_model_override,omitempty"`
+	ProxyAPIKey                         string             `json:"proxy_api_key,omitempty"`
 }
 
 // LaunchSessionConfig contains the configuration for launching a new session
@@ -175,6 +180,11 @@ func SessionToInfo(s store.Session) Info {
 		DangerouslySkipPermissions:          s.DangerouslySkipPermissions,
 		DangerouslySkipPermissionsExpiresAt: s.DangerouslySkipPermissionsExpiresAt,
 		Archived:                            s.Archived,
+		EditorState:                         s.EditorState,
+		ProxyEnabled:                        s.ProxyEnabled,
+		ProxyBaseURL:                        s.ProxyBaseURL,
+		ProxyModelOverride:                  s.ProxyModelOverride,
+		ProxyAPIKey:                         s.ProxyAPIKey,
 		// Note: CLICommand is not stored in database, it's a build-time constant
 	}
 

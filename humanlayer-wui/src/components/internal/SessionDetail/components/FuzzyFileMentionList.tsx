@@ -21,6 +21,7 @@ interface FileMentionListProps {
   query: string
   command: (item: { id: string; label: string; isDirectory?: boolean }) => void
   editor: Editor
+  workingDir?: string
 }
 
 interface FileMentionListRef {
@@ -46,7 +47,7 @@ interface AgentMatch {
 type MentionMatch = { type: 'file'; data: FileMatch } | { type: 'agent'; data: AgentMatch }
 
 export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionListProps>(
-  ({ query, command }, ref) => {
+  ({ query, command, workingDir }, ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0)
     const [results, setResults] = useState<MentionMatch[]>([])
     const [isLoading, setIsLoading] = useState(false)
@@ -78,7 +79,10 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
 
     // Fetch files and agents from daemon
     useEffect(() => {
-      if (!sessionWorkingDir) {
+      // Use passed workingDir prop first, then fall back to session from store
+      const effectiveWorkingDir = workingDir || sessionWorkingDir
+
+      if (!effectiveWorkingDir) {
         // No working directory - treat as empty state
         setResults([])
         setError(null)
@@ -97,7 +101,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
 
         try {
           // Fetch both files and agents in parallel
-          const searchPaths = [sessionWorkingDir, ...additionalDirectories]
+          const searchPaths = [effectiveWorkingDir, ...additionalDirectories]
 
           const [filesResponse, agents] = await Promise.all([
             // Fetch files
@@ -108,7 +112,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
               respectGitignore: true,
             }),
             // Fetch agents
-            daemonClient.discoverAgents(sessionWorkingDir),
+            daemonClient.discoverAgents(effectiveWorkingDir),
           ])
 
           // Process file results
@@ -159,7 +163,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
       }
 
       fetchMentions()
-    }, [query, sessionWorkingDir, additionalDirectories])
+    }, [query, workingDir, sessionWorkingDir, additionalDirectories])
 
     // Reset selection when results change
     useEffect(() => {
