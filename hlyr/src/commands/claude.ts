@@ -12,10 +12,8 @@ export function claudeCommand(program: Command): void {
     .option('--model <model>', 'Default model: haiku, sonnet, or opus (default: opus)')
     .option('--always-thinking', 'Enable always-on thinking mode (default: true)')
     .option('--no-always-thinking', 'Disable always-on thinking mode')
-    .option(
-      '--max-thinking-tokens <number>',
-      'Maximum thinking tokens (default: 32000)',
-      value => parseInt(value, 10),
+    .option('--max-thinking-tokens <number>', 'Maximum thinking tokens (default: 32000)', value =>
+      parseInt(value, 10),
     )
     .action(claudeInitCommand)
 }

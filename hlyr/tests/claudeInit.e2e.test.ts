@@ -361,10 +361,7 @@ describe('claude init e2e tests', () => {
     }, 15000)
 
     it('should reject invalid model values', async () => {
-      const result = await runCommand(
-        ['claude', 'init', '--all', '--model', 'invalid'],
-        testProjectDir,
-      )
+      const result = await runCommand(['claude', 'init', '--all', '--model', 'invalid'], testProjectDir)
 
       expect(result.exitCode).toBe(1)
       const output = result.stdout + result.stderr
