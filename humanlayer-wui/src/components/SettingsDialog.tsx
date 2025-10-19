@@ -347,7 +347,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
 
             <div className="space-y-2">
               <Label htmlFor="preferred-editor" className="text-sm font-medium">
-                Preferred Editor
+                Default Editor
               </Label>
               <Select value={preferredEditor} onValueChange={handleEditorChange}>
                 <SelectTrigger id="preferred-editor" className="w-full">
@@ -356,13 +356,18 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                 <SelectContent>
                   {EDITOR_OPTIONS.map(editor => (
                     <SelectItem key={editor.value} value={editor.value}>
-                      {editor.label}
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium">{editor.label}</span>
+                        {editor.description && (
+                          <span className="text-xs text-muted-foreground">{editor.description}</span>
+                        )}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Choose which editor to use when opening a session's working directory (⌘+Shift+E)
+                Set your default editor for opening session directories. You can also choose a different editor each time using the dropdown menu on the button (⌘+Shift+E for default).
               </p>
             </div>
 

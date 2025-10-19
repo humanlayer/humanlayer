@@ -27,8 +27,27 @@
     },
     "clipboard-manager:default",
     "clipboard-manager:allow-write-text",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "cursor",
+          "cmd": "cursor",
+          "args": true
+        },
+        {
+          "name": "code",
+          "cmd": "code",
+          "args": true
+        },
+        {
+          "name": "zed",
+          "cmd": "zed",
+          "args": true
+        }
+      ]
+    },
     "shell:allow-spawn",
-    "shell:allow-execute",
     "shell:allow-kill",
     "shell:allow-open",
     "store:default",

@@ -378,6 +378,60 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Open a directory in the specified editor
+/// 
+/// # Arguments
+/// * `path` - The directory path to open
+/// * `editor` - Optional editor command (cursor, code, zed). If None, uses system default.
+#[tauri::command]
+async fn open_in_editor(path: String, editor: Option<String>) -> Result<(), String> {
+    use std::process::Command;
+    
+    let path_expanded = shellexpand::tilde(&path).to_string();
+    
+    if let Some(editor_cmd) = editor {
+        // Open with specific editor
+        let result = match editor_cmd.as_str() {
+            "cursor" | "code" | "zed" => {
+                Command::new(&editor_cmd)
+                    .arg(&path_expanded)
+                    .spawn()
+                    .map_err(|e| format!("Failed to launch {}: {}", editor_cmd, e))?;
+                Ok(())
+            }
+            _ => Err(format!("Unsupported editor: {}", editor_cmd))
+        };
+        result
+    } else {
+        // Use system default
+        #[cfg(target_os = "macos")]
+        {
+            Command::new("open")
+                .arg(&path_expanded)
+                .spawn()
+                .map_err(|e| format!("Failed to open with system default: {}", e))?;
+        }
+        
+        #[cfg(target_os = "linux")]
+        {
+            Command::new("xdg-open")
+                .arg(&path_expanded)
+                .spawn()
+                .map_err(|e| format!("Failed to open with system default: {}", e))?;
+        }
+        
+        #[cfg(target_os = "windows")]
+        {
+            Command::new("explorer")
+                .arg(&path_expanded)
+                .spawn()
+                .map_err(|e| format!("Failed to open with system default: {}", e))?;
+        }
+        
+        Ok(())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Create daemon manager outside of builder
@@ -553,6 +607,7 @@ pub fn run() {
             is_daemon_running,
             get_log_directory,
             show_quick_launcher,
+            open_in_editor,
             set_window_background_color,
             set_window_theme_colors,
             save_window_state,
