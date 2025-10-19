@@ -215,54 +215,58 @@ export const ActiveSessionInput = forwardRef<
     }
 
     // Handler to open working directory in preferred editor
-    const handleOpenInEditor = useCallback(async (editorType?: EditorType) => {
-      if (!session.workingDir) {
-        toast.error('No working directory available')
-        return
-      }
+    const handleOpenInEditor = useCallback(
+      async (editorType?: EditorType) => {
+        if (!session.workingDir) {
+          toast.error('No working directory available')
+          return
+        }
 
-      // Use provided editor or fall back to user's preferred editor
-      const targetEditor = editorType || getPreferredEditor()
-      const editorConfig = EDITOR_OPTIONS.find(e => e.value === targetEditor)
+        // Use provided editor or fall back to user's preferred editor
+        const targetEditor = editorType || getPreferredEditor()
+        const editorConfig = EDITOR_OPTIONS.find(e => e.value === targetEditor)
 
-      if (!editorConfig) {
-        toast.error('Editor configuration not found')
-        return
-      }
+        if (!editorConfig) {
+          toast.error('Editor configuration not found')
+          return
+        }
 
-      try {
-        // Use our custom Tauri command that handles cross-platform editor opening
-        if (targetEditor === 'default') {
-          // Pass null/undefined for editor to use system default
-          await invoke('open_in_editor', { 
-            path: session.workingDir,
-            editor: null 
-          })
-          logger.log(`Opened ${session.workingDir} with system default`)
-          toast.success('Opened in system default', {
-            description: session.workingDir,
-          })
-        } else {
-          // Pass the editor command
-          await invoke('open_in_editor', { 
-            path: session.workingDir,
-            editor: editorConfig.command 
-          })
-          logger.log(`Opened ${session.workingDir} in ${editorConfig.label}`)
-          toast.success(`Opened in ${editorConfig.label}`, {
-            description: session.workingDir,
+        try {
+          // Use our custom Tauri command that handles cross-platform editor opening
+          if (targetEditor === 'default') {
+            // Pass null/undefined for editor to use system default
+            await invoke('open_in_editor', {
+              path: session.workingDir,
+              editor: null,
+            })
+            logger.log(`Opened ${session.workingDir} with system default`)
+            toast.success('Opened in system default', {
+              description: session.workingDir,
+            })
+          } else {
+            // Pass the editor command
+            await invoke('open_in_editor', {
+              path: session.workingDir,
+              editor: editorConfig.command,
+            })
+            logger.log(`Opened ${session.workingDir} in ${editorConfig.label}`)
+            toast.success(`Opened in ${editorConfig.label}`, {
+              description: session.workingDir,
+            })
+          }
+        } catch (error) {
+          logger.error('Failed to open in editor:', error)
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          toast.error(`Failed to open directory`, {
+            description:
+              targetEditor === 'default'
+                ? 'Could not open with system default application'
+                : `Make sure ${editorConfig.label} is installed and available in your PATH. Error: ${errorMessage}`,
           })
         }
-      } catch (error) {
-        logger.error('Failed to open in editor:', error)
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        toast.error(`Failed to open directory`, {
-          description: targetEditor === 'default' 
-            ? 'Could not open with system default application'
-            : `Make sure ${editorConfig.label} is installed and available in your PATH. Error: ${errorMessage}`,
-        })
-      }
-    }, [session.workingDir])
+      },
+      [session.workingDir],
+    )
 
     // Forward ref handling
     useImperativeHandle(ref, () => {

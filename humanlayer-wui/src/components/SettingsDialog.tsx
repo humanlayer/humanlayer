@@ -367,7 +367,8 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Set your default editor for opening session directories. You can also choose a different editor each time using the dropdown menu on the button (⌘+Shift+E for default).
+                Set your default editor for opening session directories. You can also choose a different
+                editor each time using the dropdown menu on the button (⌘+Shift+E for default).
               </p>
             </div>
 

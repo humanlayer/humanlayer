@@ -11,19 +11,19 @@ export const DRAFT_LAUNCHER_PREFS = {
 // Editor options
 export type EditorType = 'default' | 'cursor' | 'code' | 'zed'
 
-export const EDITOR_OPTIONS: { 
+export const EDITOR_OPTIONS: {
   value: EditorType
   label: string
   command?: string
-  description?: string 
+  description?: string
 }[] = [
   { value: 'cursor', label: 'Cursor', command: 'cursor', description: 'Open in Cursor editor' },
   { value: 'code', label: 'VS Code', command: 'code', description: 'Open in Visual Studio Code' },
   { value: 'zed', label: 'Zed', command: 'zed', description: 'Open in Zed editor' },
-  { 
-    value: 'default', 
-    label: 'System Default', 
-    description: 'Use your system\'s default file manager or IDE'
+  {
+    value: 'default',
+    label: 'System Default',
+    description: "Use your system's default file manager or IDE",
   },
 ]
 
