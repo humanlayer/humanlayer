@@ -41,6 +41,7 @@
     "@tauri-apps/plugin-log": "^2.6.0",
     "@tauri-apps/plugin-notification": "^2.3.0",
     "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-shell": "^2.3.1",
     "@tiptap/extension-code-block-lowlight": "^3.0.9",
     "@tiptap/extension-mention": "^3.3.1",
     "@tiptap/pm": "^3.0.9",

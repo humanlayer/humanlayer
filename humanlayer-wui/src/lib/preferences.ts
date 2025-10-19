@@ -9,12 +9,22 @@ export const DRAFT_LAUNCHER_PREFS = {
 } as const
 
 // Editor options
-export type EditorType = 'cursor' | 'code' | 'zed'
+export type EditorType = 'default' | 'cursor' | 'code' | 'zed'
 
-export const EDITOR_OPTIONS: { value: EditorType; label: string; command: string }[] = [
-  { value: 'cursor', label: 'Cursor', command: 'cursor' },
-  { value: 'code', label: 'VS Code', command: 'code' },
-  { value: 'zed', label: 'Zed', command: 'zed' },
+export const EDITOR_OPTIONS: { 
+  value: EditorType
+  label: string
+  command?: string
+  description?: string 
+}[] = [
+  { value: 'cursor', label: 'Cursor', command: 'cursor', description: 'Open in Cursor editor' },
+  { value: 'code', label: 'VS Code', command: 'code', description: 'Open in Visual Studio Code' },
+  { value: 'zed', label: 'Zed', command: 'zed', description: 'Open in Zed editor' },
+  { 
+    value: 'default', 
+    label: 'System Default', 
+    description: 'Use your system\'s default file manager or IDE'
+  },
 ]
 
 // Helper functions
@@ -29,7 +39,7 @@ export const setArchiveOnForkPreference = (value: boolean): void => {
 
 export const getPreferredEditor = (): EditorType => {
   const stored = localStorage.getItem(PREFERRED_EDITOR_KEY)
-  return (stored as EditorType) || 'cursor' // Default to cursor
+  return (stored as EditorType) || 'cursor' // Default to Cursor
 }
 
 export const setPreferredEditor = (editor: EditorType): void => {
