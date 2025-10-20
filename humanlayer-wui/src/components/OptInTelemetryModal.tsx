@@ -98,6 +98,9 @@ export function OptInTelemetryModal({ open, onOpenChange }: OptInTelemetryModalP
               <ul className="text-sm text-muted-foreground space-y-1 ml-6">
                 <li>• JavaScript errors and crash reports</li>
                 <li>• Performance metrics (load times, memory usage)</li>
+                <li>• App launch events</li>
+                <li>• Session usage metadata</li>
+                <li>• Navigation metadata</li>
               </ul>
             </div>
 

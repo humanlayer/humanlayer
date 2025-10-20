@@ -426,8 +426,6 @@ export function Layout() {
 
       const toolInputJson = approval.toolInputJson
 
-      console.log('approval', approval)
-
       const notificationId = `approval_required:${sessionId}:${approvalId}`
       if (isItemNotified(notificationId)) {
         return
@@ -437,9 +435,9 @@ export function Layout() {
       // This handles auto-approved cases where both events fire in quick succession
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // // Check if this approval was already resolved (auto-approved)
+      // Check if this approval was already resolved (auto-approved)
       if (isRecentResolvedApproval(approvalId)) {
-        console.log('Skipping notification for auto-approved item', { sessionId, approvalId })
+        logger.debug('Skipping notification for auto-approved item', { sessionId, approvalId })
         return
       }
 
@@ -576,7 +574,6 @@ export function Layout() {
   useHotkeys(
     'g>s',
     e => {
-      console.log('[Layout] g>s fired')
       e.stopPropagation()
       // Navigate to sessions (normal view)
       if (useStore.getState().getViewMode() !== ViewMode.Normal) {
@@ -595,7 +592,6 @@ export function Layout() {
   useHotkeys(
     'g>e',
     e => {
-      console.log('[Layout] g>e fired')
       e.stopPropagation()
       // Navigate to archived sessions
       if (useStore.getState().getViewMode() !== ViewMode.Archived) {
@@ -614,7 +610,6 @@ export function Layout() {
   useHotkeys(
     'g>i',
     e => {
-      console.log('[Layout] g>i fired (alias for g>s)')
       e.stopPropagation()
       // Navigate to sessions (normal view)
       if (useStore.getState().getViewMode() !== ViewMode.Normal) {
@@ -633,7 +628,6 @@ export function Layout() {
   useHotkeys(
     'g>d',
     e => {
-      console.log('[Layout] g>d fired')
       e.stopPropagation()
       // Navigate to drafts view
       if (useStore.getState().getViewMode() !== ViewMode.Drafts) {
