@@ -319,7 +319,7 @@ wui-ticket:
 		vite_port="$(VITE_PORT)"; \
 	fi && \
 	echo "Starting WUI for $(TICKET) connecting to daemon port $$port, Vite port $$vite_port" && \
-	$(if $(POSTHOG),echo "PostHog analytics enabled (nightly key)",) && \
+	$(if $(POSTHOG),echo "PostHog analytics enabled (nightly key)",:) && \
 	echo "{\"build\":{\"devUrl\":\"http://localhost:$$vite_port\"}}" > /tmp/tauri-config-$(TICKET).json && \
 	cd humanlayer-wui && \
 	$(if $(POSTHOG),VITE_PUBLIC_POSTHOG_KEY=phc_de6RVF0G7CkTzv2UvxHddSk7nfFnE5QWD7KmZV5KfSo \
