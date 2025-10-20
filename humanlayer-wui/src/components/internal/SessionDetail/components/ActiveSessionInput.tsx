@@ -317,6 +317,112 @@ export const ActiveSessionInput = forwardRef<
       }
     }, [responseEditor])
 
+    // Track previous session ID for defensive saving
+    const prevSessionIdRef = useRef(session.id)
+
+    // Reset editor content when session changes
+    useEffect(() => {
+      if (!responseEditor) {
+        logger.log('ActiveSessionInput - No editor instance yet, skipping session change handling')
+        return
+      }
+
+      logger.log('ActiveSessionInput - Session change detected', {
+        sessionId: session.id,
+        previousSessionId: prevSessionIdRef.current,
+        editorIsEmpty: responseEditor.isEmpty,
+      })
+
+      // Check if we're actually switching sessions
+      if (prevSessionIdRef.current !== session.id) {
+        // Save current content before switching (defensive, should already be saved)
+        const currentContent = responseEditor.getJSON()
+        if (currentContent && !responseEditor.isEmpty) {
+          const contentStr = JSON.stringify(currentContent)
+
+          // Save to the PREVIOUS session's storage
+          const prevSessionId = prevSessionIdRef.current
+          if (prevSessionId) {
+            // Note: We can't determine if the previous session was a draft,
+            // so we'll save to localStorage as a safe default
+            // The handleChange callback should have already saved correctly
+            try {
+              localStorage.setItem(`${ResponseInputLocalStorageKey}.${prevSessionId}`, contentStr)
+              logger.log('ActiveSessionInput - Defensively saved draft to previous session', {
+                prevSessionId,
+                contentLength: contentStr.length,
+              })
+            } catch (e) {
+              logger.error('ActiveSessionInput - Failed to save draft to localStorage', {
+                prevSessionId,
+                error: e,
+              })
+            }
+          }
+        }
+
+        // Update the ref for next time
+        prevSessionIdRef.current = session.id
+      }
+
+      // Load content for the new session
+      let newContent = null
+      let contentSource = 'none'
+
+      const hasValidSessionData = session.status && (session.status as any) !== 'unknown'
+
+      if (hasValidSessionData) {
+        // For active sessions, load from localStorage
+        const localStorageKey = `${ResponseInputLocalStorageKey}.${session.id}`
+        const localStorageValue = localStorage.getItem(localStorageKey)
+        if (localStorageValue && localStorageValue.length > 0) {
+          try {
+            newContent = JSON.parse(localStorageValue)
+            contentSource = 'localStorage'
+            logger.log('ActiveSessionInput - Loaded draft from localStorage', {
+              sessionId: session.id,
+              key: localStorageKey,
+              contentLength: localStorageValue.length,
+            })
+          } catch (e) {
+            logger.error('ActiveSessionInput - Failed to parse localStorage', {
+              sessionId: session.id,
+              key: localStorageKey,
+              error: e,
+              value: localStorageValue,
+            })
+          }
+        }
+      } else {
+        logger.log('ActiveSessionInput - Skipping content load, session data not ready', {
+          sessionId: session.id,
+          status: session.status,
+          fromStore: (session as any).fromStore,
+        })
+      }
+
+      // Update editor content with error handling
+      try {
+        if (newContent) {
+          responseEditor.commands.setContent(newContent)
+          logger.log('ActiveSessionInput - Set editor content from', contentSource, {
+            sessionId: session.id,
+          })
+        } else {
+          responseEditor.commands.clearContent()
+          logger.log('ActiveSessionInput - Cleared editor content', {
+            sessionId: session.id,
+          })
+        }
+      } catch (e) {
+        logger.error('ActiveSessionInput - Failed to update editor content', {
+          sessionId: session.id,
+          error: e,
+          newContent,
+        })
+      }
+    }, [session.id, responseEditor])
+
     // Escape key to cancel deny mode
     useHotkeys(
       'escape',
