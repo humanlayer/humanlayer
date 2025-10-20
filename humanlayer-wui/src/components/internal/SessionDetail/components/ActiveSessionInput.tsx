@@ -369,7 +369,7 @@ export const ActiveSessionInput = forwardRef<
       let newContent = null
       let contentSource = 'none'
 
-      const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
+      const hasValidSessionData = session.status && (session.status as any) !== 'unknown'
 
       if (hasValidSessionData) {
         // For active sessions, load from localStorage
