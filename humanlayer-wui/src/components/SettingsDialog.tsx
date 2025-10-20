@@ -3,14 +3,18 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
 import { toast } from 'sonner'
-import { CheckCircle2, XCircle, RefreshCw, Pencil } from 'lucide-react'
+import { CheckCircle2, XCircle, RefreshCw, Pencil, Copy } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { clearSavedModelPreferences } from '@/hooks/useSessionLauncher'
+import { invoke } from '@tauri-apps/api/core'
+import { appLogDir } from '@tauri-apps/api/path'
+import { writeText } from '@tauri-apps/plugin-clipboard-manager'
+import { copyToClipboard } from '@/utils/clipboard'
 
 interface SettingsDialogProps {
   open: boolean
@@ -29,6 +33,11 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const [isUpdatingPath, setIsUpdatingPath] = useState(false)
   const [showClaudePathInput, setShowClaudePathInput] = useState(false)
 
+  // Log-related state
+  const [logPath, setLogPath] = useState<string>('')
+  const [logLineCount, setLogLineCount] = useState<string>('500')
+  const [copyingLogs, setCopyingLogs] = useState(false)
+
   // Fetch Claude config when dialog opens
   useEffect(() => {
     if (open) {
@@ -44,6 +53,29 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       setClaudePath(pathToUse)
     }
   }, [claudeConfig])
+
+  // Fetch log path when dialog opens
+  useEffect(() => {
+    if (open) {
+      loadLogPath()
+    }
+  }, [open])
+
+  async function loadLogPath() {
+    try {
+      const path = await invoke<string>('get_log_directory')
+      setLogPath(path + '/codelayer.log')
+    } catch {
+      // In production, use appLogDir
+      try {
+        const appLog = await appLogDir()
+        setLogPath(appLog + '/codelayer.log')
+      } catch (e) {
+        console.error('Failed to get log directory:', e)
+        setLogPath('')
+      }
+    }
+  }
 
   const handleProvidersToggle = async (checked: boolean) => {
     try {
@@ -151,6 +183,48 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       })
     } finally {
       setIsUpdatingPath(false)
+    }
+  }
+
+  const handleLogLineCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    // Only allow positive integers
+    if (value === '' || /^[1-9][0-9]*$/.test(value)) {
+      setLogLineCount(value)
+    }
+  }
+
+  const handleCopyLogPath = async () => {
+    if (!logPath) return
+    await copyToClipboard(logPath)
+    // The copyToClipboard utility already shows "Copied to clipboard" toast
+  }
+
+  const handleCopyLogLines = async () => {
+    const lineCount = parseInt(logLineCount) || 500
+    setCopyingLogs(true)
+
+    try {
+      const logContent = await invoke<string>('read_last_log_lines', {
+        n: lineCount,
+        logPath: logPath || undefined,
+      })
+
+      if (!logContent) {
+        toast.info('Log file is empty')
+        return
+      }
+
+      // Use writeText directly to show custom toast message
+      await writeText(logContent)
+      toast.success(`Copied last ${lineCount} lines to clipboard`)
+    } catch (error) {
+      console.error('Failed to read log file:', error)
+      toast.error('Failed to copy log lines', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } finally {
+      setCopyingLogs(false)
     }
   }
 
@@ -347,6 +421,49 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                 onCheckedChange={handleTelemetryToggle}
                 disabled={!userSettings || saving}
               />
+            </div>
+
+            {/* Logs Section */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Logs</Label>
+
+              {/* Log Path Display */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-sm text-muted-foreground">Logs are stored at:</span>
+                  <code className="text-xs bg-muted px-1 py-0.5 rounded flex-1 truncate">
+                    {logPath || 'Loading...'}
+                  </code>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 p-0"
+                  onClick={handleCopyLogPath}
+                  disabled={!logPath}
+                  title="Copy log path"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
+              </div>
+
+              {/* Copy Last N Lines */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Copy last</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={logLineCount}
+                  onChange={handleLogLineCountChange}
+                  className="w-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder="500"
+                />
+                <span className="text-sm text-muted-foreground">lines:</span>
+                <Button size="sm" onClick={handleCopyLogLines} disabled={!logPath || copyingLogs}>
+                  {copyingLogs ? 'Copying...' : 'Copy'}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
