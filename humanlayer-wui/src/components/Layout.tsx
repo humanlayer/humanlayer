@@ -272,6 +272,79 @@ export function Layout() {
     [navigate],
   )
 
+  // Undo hotkey handler
+  useHotkeys(
+    'z',
+    async () => {
+      try {
+        // Get all visible toasts
+        // @ts-ignore - getToasts might not be in type definitions
+        const visibleToasts = toast.getToasts ? toast.getToasts() : []
+        const undoableToasts = visibleToasts.filter(
+          t =>
+            typeof t.id === 'string' &&
+            (t.id.includes('archive_undo') ||
+              t.id.includes('draft_delete_undo') ||
+              t.id.includes('unarchive_undo')),
+        )
+
+        if (undoableToasts.length === 0) {
+          // No undoable operations - do nothing (no error toast per requirements)
+          return
+        }
+
+        // Pick the most recent undoable toast (last in array)
+        const mostRecentToast = undoableToasts[undoableToasts.length - 1]
+        const toastId = mostRecentToast.id as string
+
+        // Find the undo button using the toastId data attribute
+        const escapedToastId = CSS.escape(toastId)
+        const buttonElement = document.querySelector(
+          `[data-toast-id="${escapedToastId}"][data-button][data-action]`,
+        ) as HTMLElement
+
+        if (buttonElement) {
+          // Apply flash effect (100ms)
+          buttonElement.classList.add('!bg-[var(--terminal-accent)]', '!text-background')
+
+          // Flash all child elements for proper contrast
+          const childElements = buttonElement.querySelectorAll('*')
+          childElements.forEach(child => {
+            ;(child as HTMLElement).classList.add('!text-background')
+          })
+
+          // Remove flash after 100ms
+          setTimeout(() => {
+            buttonElement.classList.remove('!bg-[var(--terminal-accent)]', '!text-background')
+            childElements.forEach(child => {
+              ;(child as HTMLElement).classList.remove('!text-background')
+            })
+
+            // Wait another 100ms then trigger the click
+            setTimeout(() => {
+              // Trigger the button's onClick handler
+              buttonElement.click()
+              // Toast will be dismissed by the onClick handler
+            }, 100)
+          }, 100)
+        } else {
+          // Fallback: toast exists but button not found, try to trigger anyway
+          // This shouldn't happen but provides resilience
+          console.warn('Undo toast found but button element not located:', toastId)
+        }
+      } catch (error) {
+        console.error('Failed to trigger undo:', error)
+        // No error toast per requirements - fail silently
+      }
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      enableOnFormTags: false,
+      preventDefault: true,
+    },
+    [],
+  )
+
   // Get store actions
   const updateSession = useStore(state => state.updateSession)
   const updateSessionStatus = useStore(state => state.updateSessionStatus)
