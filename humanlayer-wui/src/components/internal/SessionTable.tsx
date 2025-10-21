@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
-import { DiscardDraftDialog } from './SessionDetail/components/DiscardDraftDialog'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 import { SessionsEmptyState } from './SessionsEmptyState'
@@ -77,10 +76,6 @@ function SessionTableInner({
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
-  // State for discard dialog
-  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
-  const [draftsToDiscard, setDraftsToDiscard] = useState<string[]>([])
-
   // Helper functions for inline editing
   const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
     setEditingSessionId(sessionId)
@@ -110,60 +105,61 @@ function SessionTableInner({
     setEditValue('')
   }
 
-  // Handle confirmed discard
-  const handleConfirmDiscard = async () => {
+  // Direct discard handlers (no confirmation modal)
+  const handleSingleDiscardDraft = async (sessionId: string) => {
     try {
-      if (draftsToDiscard.length === 1) {
-        // Single draft discard
-        const sessionId = draftsToDiscard[0]
-        const currentSession = sessions.find(s => s.id === sessionId)
+      const currentSession = sessions.find(s => s.id === sessionId)
 
-        await daemonClient.deleteDraftSession(sessionId)
-        useStore.getState().removeSession(sessionId)
-
-        // Find next session to focus
-        const currentIndex = sessions.findIndex(s => s.id === sessionId)
-        let nextFocusSession = null
-
-        if (currentIndex > 0) {
-          nextFocusSession = sessions[currentIndex - 1]
-        } else if (currentIndex < sessions.length - 1) {
-          nextFocusSession = sessions[currentIndex + 1]
-        }
-
-        if (nextFocusSession && handleFocusSession) {
-          handleFocusSession(nextFocusSession)
-        }
-
-        toast.success('Draft discarded', {
-          description: currentSession?.summary || 'Untitled draft',
-          duration: 3000,
-        })
-      } else {
-        // Bulk discard
-        const nonSelectedSessions = sessions.filter(s => !draftsToDiscard.includes(s.id))
-        const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
-
-        await bulkDiscardDrafts(draftsToDiscard)
-
-        if (nextFocusSession && handleFocusSession) {
-          handleFocusSession(nextFocusSession)
-        }
-
-        toast.success(`Discarded ${draftsToDiscard.length} drafts`, {
-          duration: 3000,
-        })
+      // Find next session to focus
+      const currentIndex = sessions.findIndex(s => s.id === sessionId)
+      let nextSession = null
+      if (currentIndex > 0) {
+        nextSession = sessions[currentIndex - 1]
+      } else if (currentIndex < sessions.length - 1) {
+        nextSession = sessions[currentIndex + 1]
       }
 
-      // Refresh sessions to update counts
+      await daemonClient.deleteDraftSession(sessionId)
+      useStore.getState().removeSession(sessionId)
+
+      if (nextSession && handleFocusSession) {
+        handleFocusSession(nextSession)
+      }
+
+      // Note: Toast will be handled in Phase 5
+      toast.success('Draft discarded', {
+        description: currentSession?.summary || 'Untitled draft',
+        duration: 3000,
+      })
+
       await useStore.getState().refreshSessions()
     } catch (error) {
-      toast.error('Failed to discard draft(s)', {
+      toast.error('Failed to discard draft', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
-    } finally {
-      setDiscardDialogOpen(false)
-      setDraftsToDiscard([])
+    }
+  }
+
+  const handleBulkDiscardDrafts = async (draftIds: string[]) => {
+    try {
+      const nonSelectedSessions = sessions.filter(s => !draftIds.includes(s.id))
+
+      await bulkDiscardDrafts(draftIds)
+
+      if (nonSelectedSessions.length > 0 && handleFocusSession) {
+        handleFocusSession(nonSelectedSessions[0])
+      }
+
+      // Note: Toast will be handled in Phase 6
+      toast.success(`Discarded ${draftIds.length} drafts`, {
+        duration: 3000,
+      })
+
+      await useStore.getState().refreshSessions()
+    } catch (error) {
+      toast.error('Failed to discard drafts', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
     }
   }
 
@@ -363,10 +359,8 @@ function SessionTableInner({
           }
 
           if (draftSessions.length > 0) {
-            // All selected are drafts, discard them
-            const draftIds = draftSessions.map(s => s!.id)
-            setDraftsToDiscard(draftIds)
-            setDiscardDialogOpen(true)
+            // Immediately discard drafts without confirmation
+            await handleBulkDiscardDrafts(draftSessions.map(s => s!.id))
             return
           }
 
@@ -412,8 +406,8 @@ function SessionTableInner({
 
           // Handle drafts - discard instead of archive
           if (currentSession.status === SessionStatus.Draft) {
-            setDraftsToDiscard([currentSession.id])
-            setDiscardDialogOpen(true)
+            // Immediately discard draft without confirmation
+            await handleSingleDiscardDraft(currentSession.id)
             return
           }
 
@@ -736,17 +730,6 @@ function SessionTableInner({
       ) : (
         <SessionsEmptyState />
       )}
-
-      {/* Discard Drafts Confirmation Dialog */}
-      <DiscardDraftDialog
-        open={discardDialogOpen}
-        draftCount={draftsToDiscard.length}
-        onConfirm={handleConfirmDiscard}
-        onCancel={() => {
-          setDiscardDialogOpen(false)
-          setDraftsToDiscard([])
-        }}
-      />
     </HotkeyScopeBoundary>
   )
 }
