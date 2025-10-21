@@ -5,6 +5,8 @@ import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLa
 import { useStore } from '@/AppStore'
 import { KeyboardShortcut } from './HotkeyPanel'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import {
   Command,
   CommandInput,
@@ -29,6 +31,7 @@ interface MenuOption {
 
 export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElement> }) {
   const { createNewSession, close } = useSessionLauncher()
+  const { trackEvent } = usePostHogTracking()
 
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const [selectedValue, setSelectedValue] = useState<string>('')
@@ -79,12 +82,22 @@ export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElem
     return 'Archive' // Default
   }
 
+  // Wrapper for createNewSession with tracking
+  const handleCreateNewSession = useCallback(async () => {
+    // Track draft creation event
+    trackEvent(POSTHOG_EVENTS.DRAFT_CREATED, {
+      // No additional properties needed for draft creation
+      // Model and provider will be selected later
+    })
+    await createNewSession()
+  }, [createNewSession, trackEvent])
+
   // Build base menu options
   const baseOptions: MenuOption[] = [
     {
       id: 'create-session',
       label: 'Create Session',
-      action: createNewSession,
+      action: handleCreateNewSession,
       hotkey: 'C',
     },
     {

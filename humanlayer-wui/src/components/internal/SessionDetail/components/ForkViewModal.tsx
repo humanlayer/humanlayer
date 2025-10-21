@@ -18,6 +18,8 @@ import { getArchiveOnForkPreference, setArchiveOnForkPreference } from '@/lib/pr
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { daemonClient } from '@/lib/daemon/client'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 interface ForkViewModalProps {
   events: ConversationEvent[]
@@ -542,6 +544,15 @@ export function ForkViewModal({
   onForkPreview,
   onForkCancel,
 }: ForkViewModalProps) {
+  const { trackEvent } = usePostHogTracking()
+
+  // Track when the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      trackEvent(POSTHOG_EVENTS.FORK_MODAL_OPENED, {})
+    }
+  }, [isOpen, trackEvent])
+
   return (
     <HotkeyScopeBoundary
       scope={HOTKEY_SCOPES.FORK_MODAL}

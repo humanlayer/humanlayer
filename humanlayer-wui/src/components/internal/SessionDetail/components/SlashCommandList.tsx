@@ -1,7 +1,9 @@
 import { useStore } from '@/AppStore'
 import { Button } from '@/components/ui/button'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
 import { daemonClient } from '@/lib/daemon/client'
 import { logger } from '@/lib/logging'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { Editor } from '@tiptap/react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
@@ -31,6 +33,7 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
     const activeSessionDetail = useStore(state => state.activeSessionDetail)
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
     const mouseEnabledRef = useRef(true)
+    const { trackEvent } = usePostHogTracking()
 
     // Scroll selected item into view
     useEffect(() => {
@@ -83,6 +86,19 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
       setSelectedIndex(0)
     }, [commands])
 
+    // Track and execute command selection
+    const selectCommand = useCallback(
+      (cmd: SlashCommand) => {
+        // Track the event with just the generic command name
+        trackEvent(POSTHOG_EVENTS.SLASH_COMMAND_USED, {
+          command_name: cmd.name,
+        })
+        // Pass the full command with slash - Tiptap will replace the trigger /
+        command({ id: cmd.name, label: cmd.name })
+      },
+      [command, trackEvent],
+    )
+
     // Keyboard navigation
     const onKeyDown = useCallback(
       ({ event }: { event: KeyboardEvent }) => {
@@ -115,8 +131,7 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
           event.preventDefault()
           if (commands.length > 0) {
             const selected = commands[selectedIndex]
-            // Pass the full command with slash - Tiptap will replace the trigger /
-            command({ id: selected.name, label: selected.name })
+            selectCommand(selected)
           }
           return true
         }
@@ -132,7 +147,7 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
 
         return false
       },
-      [commands, selectedIndex, command],
+      [commands, selectedIndex, selectCommand],
     )
 
     // Expose keyboard handler via ref
@@ -190,8 +205,7 @@ export const SlashCommandList = forwardRef<SlashCommandListRef, SlashCommandList
                 mouseEnabledRef.current = true
               }}
               onClick={() => {
-                // Pass the full command with slash - Tiptap will replace the trigger /
-                command({ id: cmd.name, label: cmd.name })
+                selectCommand(cmd)
               }}
             >
               <span className="flex-1 text-left">{cmd.name}</span>

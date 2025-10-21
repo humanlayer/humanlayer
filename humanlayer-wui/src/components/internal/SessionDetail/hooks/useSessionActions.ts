@@ -143,6 +143,13 @@ export function useSessionActions({
       // Clear fork state
       setForkFromSessionId(null)
 
+      // Track fork event if this was a fork operation
+      if (forkFromSessionId) {
+        trackEvent(POSTHOG_EVENTS.SESSION_FORKED, {
+          archive_on_fork: archiveOnFork,
+        })
+      }
+
       // Notify parent of fork commit
       if (forkFromSessionId && onForkCommit) {
         onForkCommit()

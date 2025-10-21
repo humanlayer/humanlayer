@@ -2,13 +2,16 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '@/AppStore'
 import { DraftLauncherForm } from '@/components/internal/SessionDetail/components/DraftLauncherForm'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
 import { daemonClient } from '@/lib/daemon'
 import { type Session, SessionStatus } from '@/lib/daemon/types'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 export function DraftSessionPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const draftId = searchParams.get('id')
+  const { trackEvent } = usePostHogTracking()
 
   const [draftSession, setDraftSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(!!draftId)
@@ -55,6 +58,8 @@ export function DraftSessionPage() {
         }
       } else {
         // No draft ID provided, we'll create one lazily when user starts typing
+        // Track draft launcher opened event for new drafts
+        trackEvent(POSTHOG_EVENTS.DRAFT_LAUNCHER_OPENED, {})
         setLoading(false)
       }
     }
@@ -65,7 +70,7 @@ export function DraftSessionPage() {
     return () => {
       clearActiveSessionDetail()
     }
-  }, [draftId, navigate, refreshSessions, setActiveSessionDetail, clearActiveSessionDetail]) // Include deps but loadDraft only runs when draftId changes
+  }, [draftId, navigate, refreshSessions, setActiveSessionDetail, clearActiveSessionDetail, trackEvent]) // Include deps but loadDraft only runs when draftId changes
 
   const handleSessionUpdated = useCallback(async () => {
     // Refresh sessions to get the latest data
