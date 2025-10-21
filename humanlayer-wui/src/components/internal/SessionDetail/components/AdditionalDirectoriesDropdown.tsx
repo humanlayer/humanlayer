@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronUp, FolderOpen, Plus, X, Lock } from 'lucide-react'
+import { ChevronDown, ChevronUp, FolderOpen, Plus, X, Lock, Copy } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { cn } from '@/lib/utils'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { copyToClipboard } from '@/utils/clipboard'
 
 interface AdditionalDirectoriesDropdownProps {
   workingDir: string
@@ -294,19 +295,33 @@ export function AdditionalDirectoriesDropdown({
   const directoryCount = directories?.length || 0
 
   const buttonContent = (
-    <button
-      className={`inline-flex items-center text-xs font-mono transition-colors focus:outline-none ${
-        canEdit
-          ? 'text-muted-foreground hover:text-foreground cursor-pointer'
-          : 'text-muted-foreground/50 cursor-not-allowed'
-      }`}
-      disabled={!canEdit || isUpdating}
-    >
-      <span>{workingDir}</span>
-      {directoryCount > 0 && <span className="ml-1.5">+{directoryCount} more</span>}
-      {!canEdit && <Lock className="h-3 w-3 ml-1" />}
-      {isOpen ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
-    </button>
+    <div className="group inline-flex items-center">
+      <button
+        className={`inline-flex items-center text-sm font-mono transition-colors focus:outline-none ${
+          canEdit
+            ? 'text-foreground hover:text-foreground/80 cursor-pointer'
+            : 'text-foreground/50 cursor-not-allowed'
+        }`}
+        disabled={!canEdit || isUpdating}
+      >
+        <span>{workingDir}</span>
+        {directoryCount > 0 && <span className="ml-1.5">+{directoryCount} more</span>}
+        {!canEdit && <Lock className="h-3 w-3 ml-1" />}
+        {isOpen ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+      </button>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="w-5 h-5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        onClick={e => {
+          e.stopPropagation()
+          copyToClipboard(workingDir)
+        }}
+        title="Copy working directory"
+      >
+        <Copy className="w-3 h-3" />
+      </Button>
+    </div>
   )
 
   if (!canEdit) {
