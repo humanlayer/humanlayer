@@ -554,19 +554,6 @@ pub fn run() {
                     // Show quick launcher window
                     let _ = show_quick_launcher(app_handle.clone());
                 })?;
-
-                // Register refresh shortcut (cmd+r / ctrl+r)
-                let app_handle_refresh = app.handle().clone();
-                shortcut.on_shortcut("CommandOrControl+r", move |_app, _shortcut, _event| {
-                    // Refresh the main window
-                    if let Some(window) = app_handle_refresh.get_webview_window("main") {
-                        let _ = window.reload();
-                    }
-                    // Also refresh quick launcher if it's open
-                    if let Some(window) = app_handle_refresh.get_webview_window("quick-launcher") {
-                        let _ = window.reload();
-                    }
-                })?;
             }
 
             // Check if auto-launch is disabled

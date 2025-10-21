@@ -135,6 +135,34 @@ export function Layout() {
     },
   )
 
+  // Refresh window hotkey (app-scoped, not global)
+  useHotkeys(
+    'meta+r, ctrl+r',
+    () => {
+      window.location.reload()
+    },
+    {
+      enableOnContentEditable: true,
+      enableOnFormTags: true,
+      preventDefault: true,
+    },
+  )
+
+  // Force refresh window hotkey (cmd+shift+r)
+  useHotkeys(
+    'meta+shift+r, ctrl+shift+r',
+    () => {
+      // @ts-ignore - reload(true) is non-standard but works in Tauri's WebKit
+      window.location.reload(true)
+    },
+    {
+      
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+      preventDefault: true,
+    },
+  )
+
   // Jump to most recent approval hotkey
   useHotkeys(
     'meta+shift+j, ctrl+shift+j',
