@@ -27,6 +27,7 @@ const ALLOWED_KEYS = [
   // Command and agent properties
   'command_name',
   'subagent_type',
+  'agent_name',
   'command_type',
   'command_category',
 
