@@ -1,12 +1,20 @@
 import { MarkdownRenderer } from '@/components/internal/SessionDetail/MarkdownRenderer'
+import { HighlightableText } from '../../SessionDetail/components/HighlightableText'
+import { useSearch } from '../../SessionDetail/contexts/SearchContext'
+
+interface AssistantMessageContentProps {
+  eventContent: string
+  isThinking: boolean
+  eventId?: string
+}
 
 export function AssistantMessageContent({
   eventContent,
   isThinking,
-}: {
-  eventContent: string
-  isThinking: boolean
-}) {
+  eventId,
+}: AssistantMessageContentProps) {
+  const { searchQuery } = useSearch()
+
   if (isThinking && !eventContent) {
     return (
       <div>
@@ -15,6 +23,24 @@ export function AssistantMessageContent({
     )
   }
 
+  // If searching, render with highlighting
+  if (searchQuery && eventId) {
+    return (
+      <div>
+        <div
+          className={`whitespace-pre-wrap text-foreground break-words hyphens-auto ${isThinking ? 'text-muted-foreground italic' : ''}`}
+        >
+          <HighlightableText
+            text={eventContent}
+            elementId={`assistant-${eventId}`}
+            className={isThinking ? 'text-muted-foreground italic' : ''}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // Otherwise render normally with MarkdownRenderer
   return (
     <div>
       <div

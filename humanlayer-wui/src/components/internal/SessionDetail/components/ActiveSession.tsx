@@ -31,17 +31,21 @@ import { useTaskGrouping } from '../hooks/useTaskGrouping'
 import { useSessionClipboard } from '../hooks/useSessionClipboard'
 import { logger } from '@/lib/logging'
 
+// Import search components
+import { SearchProvider, useSearch } from '../contexts/SearchContext'
+import { SearchBar } from './SearchBar'
+
 interface ActiveSessionProps {
   session: Session
   onClose: () => void
 }
 
 /**
- * ActiveSession - Orchestrator component for active and archived sessions
+ * ActiveSessionInner - Core implementation of active session handling
  * This component handles all the complex logic for active sessions.
  * It does NOT handle draft sessions - those use the /sessions/draft route.
  */
-export function ActiveSession({ session, onClose }: ActiveSessionProps) {
+function ActiveSessionInner({ session, onClose }: ActiveSessionProps) {
   // Determine the appropriate scope based on session state
   const detailScope = session?.archived
     ? HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED
@@ -760,6 +764,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       scope={detailScope}
       componentName={`ActiveSession-${session?.archived ? 'archived' : 'normal'}`}
     >
+      <SearchBar />
       <section className="flex flex-col h-full gap-3">
         {/* Header with working directory dropdown */}
         <div className="flex items-center justify-between gap-2">
@@ -946,5 +951,37 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         />
       </section>
     </HotkeyScopeBoundary>
+  )
+}
+
+/**
+ * ActiveSessionWithSearch - Wrapper that adds search functionality
+ */
+function ActiveSessionWithSearch(props: ActiveSessionProps) {
+  const { openSearch } = useSearch()
+
+  // Global keyboard shortcut to open search
+  useHotkeys(
+    'ctrl+f, meta+f',
+    () => {
+      openSearch()
+    },
+    {
+      preventDefault: true,
+      scopes: [HOTKEY_SCOPES.ROOT],
+    },
+  )
+
+  return <ActiveSessionInner {...props} />
+}
+
+/**
+ * ActiveSession - Main export with SearchProvider
+ */
+export function ActiveSession(props: ActiveSessionProps) {
+  return (
+    <SearchProvider>
+      <ActiveSessionWithSearch {...props} />
+    </SearchProvider>
   )
 }

@@ -1,0 +1,35 @@
+/* Search match highlighting */
+.search-match {
+  background-color: var(--terminal-warning);
+  color: var(--terminal-bg);
+  padding: 0 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Current/active search match */
+.search-match-current {
+  background-color: var(--terminal-accent);
+  color: var(--terminal-bg);
+  box-shadow: 0 0 0 2px var(--terminal-accent);
+  animation: pulse-current-match 0.5s ease-in-out;
+}
+
+/* Pulse animation for current match */
+@keyframes pulse-current-match {
+  0% {
+    box-shadow: 0 0 0 0 var(--terminal-accent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px var(--terminal-accent-dim);
+  }
+  100% {
+    box-shadow: 0 0 0 2px var(--terminal-accent);
+  }
+}
+
+/* Smooth scroll margin for search results */
+[data-search-match] {
+  scroll-margin-top: 100px;
+  scroll-margin-bottom: 100px;
+}

@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useTaskGrouping } from '../SessionDetail/hooks/useTaskGrouping'
 import { useStore } from '@/AppStore'
 import { useAutoScroll } from '../SessionDetail/hooks/useAutoScroll'
+import { useSearchMatching } from '../SessionDetail/hooks/useSearchMatching'
 import { ConversationEventRow } from './ConversationEventRow'
 import { TaskGroupEventRow } from './TaskGroupEventRow'
 
@@ -61,6 +62,9 @@ export function ConversationStream({
   const { refetch } = useSessionSnapshots(sessionId)
   const responseEditor = useStore(state => state.responseEditor)
   const [showSkeleton, setShowSkeleton] = useState(false)
+
+  // Add search matching
+  useSearchMatching()
 
   // Filter events based on maxEventIndex (exclude the event at maxEventIndex)
   const filteredEvents = maxEventIndex !== undefined ? events.slice(0, maxEventIndex) : events
@@ -237,6 +241,7 @@ export function ConversationStream({
           <ConversationEventRow
             key={event.id}
             event={event}
+            eventId={event.id.toString()}
             toolResult={event.toolId ? toolResultsByKey[event.toolId] : undefined}
             setFocusedEventId={setFocusedEventId}
             setFocusSource={setFocusSource || (() => {})}

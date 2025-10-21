@@ -156,7 +156,6 @@ export function Layout() {
       window.location.reload(true)
     },
     {
-      
       enableOnFormTags: true,
       enableOnContentEditable: true,
       preventDefault: true,

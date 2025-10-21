@@ -325,6 +325,7 @@ function ConversationEventRowShell({
 export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivElement> {
   ref?: React.Ref<HTMLDivElement>
   event: ConversationEvent
+  eventId?: string
   toolResult?: ConversationEvent
   setFocusedEventId: (eventId: number | null) => void
   setFocusSource: (source: 'mouse' | 'keyboard' | null) => void
@@ -348,6 +349,7 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
 
 function ConversationEventRowInner({
   event,
+  eventId,
   toolResult,
   ref,
   setFocusedEventId,
@@ -645,10 +647,14 @@ function ConversationEventRowInner({
       )
     }
   } else if (event.role === ConversationRole.User) {
-    messageContent = <UserMessageContent eventContent={event.content || ''} />
+    messageContent = <UserMessageContent eventContent={event.content || ''} eventId={eventId} />
   } else if (event.role === ConversationRole.Assistant) {
     messageContent = (
-      <AssistantMessageContent eventContent={event.content || ''} isThinking={isThinking} />
+      <AssistantMessageContent
+        eventContent={event.content || ''}
+        isThinking={isThinking}
+        eventId={eventId}
+      />
     )
   }
 
