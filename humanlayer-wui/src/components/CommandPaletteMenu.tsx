@@ -326,7 +326,14 @@ export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElem
                   key={option.id}
                   value={option.id}
                   keywords={[option.label]}
-                  onSelect={option.action}
+                  onSelect={() => {
+                    // Track command launcher selection event
+                    trackEvent(POSTHOG_EVENTS.COMMAND_LAUNCHER_SELECTION, {
+                      command_type: 'action',
+                      command_category: option.label,
+                    })
+                    option.action()
+                  }}
                   className={cn(
                     'flex items-center justify-between px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
                     selectedValue === option.id && 'bg-accent',
@@ -349,7 +356,14 @@ export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElem
                   key={option.id}
                   value={option.id}
                   keywords={[option.label, option.workingDir].filter(Boolean) as string[]}
-                  onSelect={option.action}
+                  onSelect={() => {
+                    // Track command launcher selection event
+                    trackEvent(POSTHOG_EVENTS.COMMAND_LAUNCHER_SELECTION, {
+                      command_type: 'session',
+                      command_category: 'open_session',
+                    })
+                    option.action()
+                  }}
                   className={cn(
                     'flex flex-col items-start px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
                     selectedValue === option.id && 'bg-accent',
