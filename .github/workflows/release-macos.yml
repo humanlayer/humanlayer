@@ -397,6 +397,7 @@ jobs:
             app "CodeLayer.app"
 
             binary "#{appdir}/CodeLayer.app/Contents/Resources/bin/humanlayer"
+            binary "#{appdir}/CodeLayer.app/Contents/Resources/bin/humanlayer", target: "codelayer"
             binary "#{appdir}/CodeLayer.app/Contents/Resources/bin/hld"
 
             zap trash: [
@@ -433,6 +434,7 @@ jobs:
             app "CodeLayer-Nightly.app"
 
             binary "#{appdir}/CodeLayer-Nightly.app/Contents/Resources/bin/humanlayer", target: "humanlayer-nightly"
+            binary "#{appdir}/CodeLayer-Nightly.app/Contents/Resources/bin/humanlayer", target: "codelayer-nightly"
             binary "#{appdir}/CodeLayer-Nightly.app/Contents/Resources/bin/hld", target: "hld-nightly"
 
             zap trash: [
