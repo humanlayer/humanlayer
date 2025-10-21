@@ -137,7 +137,7 @@ export function Layout() {
       window.location.reload()
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
+      enableOnContentEditable: true,
       enableOnFormTags: true,
       preventDefault: true,
     },
@@ -151,8 +151,9 @@ export function Layout() {
       window.location.reload(true)
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
+      
       enableOnFormTags: true,
+      enableOnContentEditable: true,
       preventDefault: true,
     },
   )
