@@ -130,20 +130,20 @@ export function Layout() {
     },
   )
 
-  // Refresh window hotkey (app-scoped, not global)
+  // Refresh window hotkey (works globally, even in modals)
   useHotkeys(
     'meta+r, ctrl+r',
     () => {
       window.location.reload()
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: true,
+      enableOnContentEditable: true,
       preventDefault: true,
     },
   )
 
-  // Force refresh window hotkey (cmd+shift+r)
+  // Force refresh window hotkey (works globally, even in modals)
   useHotkeys(
     'meta+shift+r, ctrl+shift+r',
     () => {
@@ -151,8 +151,8 @@ export function Layout() {
       window.location.reload(true)
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: true,
+      enableOnContentEditable: true,
       preventDefault: true,
     },
   )
