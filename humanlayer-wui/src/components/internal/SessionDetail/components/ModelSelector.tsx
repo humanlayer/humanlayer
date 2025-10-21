@@ -14,8 +14,10 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
 import { daemonClient } from '@/lib/daemon'
 import { ConfigStatus, Session } from '@/lib/daemon/types'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { AlertCircle, CheckCircle, Eye, EyeOff, GitBranch, Pencil } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
@@ -42,6 +44,7 @@ function ModelSelectorContent({
 }: Omit<ModelSelectorProps, 'className'> & { onClose: () => void }) {
   const fetchActiveSessionDetail = useStore(state => state.fetchActiveSessionDetail)
   const userSettings = useStore(state => state.userSettings)
+  const { trackEvent } = usePostHogTracking()
 
   const isAdvancedProvidersEnabled = userSettings?.advancedProviders ?? false
 
@@ -189,6 +192,10 @@ function ModelSelectorContent({
 
     setIsUpdating(true)
     try {
+      // Capture previous values for tracking
+      const previousProvider = initial.provider
+      const previousModel = initial.model
+
       // Determine provider and model
       let modelValue = ''
       let proxyConfig: any = {}
@@ -249,6 +256,15 @@ function ModelSelectorContent({
           provider: provider,
         })
       }
+
+      // Track model selection event
+      const newModel = provider === 'anthropic' ? modelValue || 'default' : customModel
+      trackEvent(POSTHOG_EVENTS.MODEL_SELECTED, {
+        model: newModel,
+        provider: provider,
+        previous_model: previousModel,
+        previous_provider: previousProvider,
+      })
 
       // Show appropriate message based on session status and existence
       if (!session.id) {

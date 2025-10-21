@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import React, { useState, useEffect } from 'react'
 import { useStore } from '@/AppStore'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { logger } from '@/lib/logging'
 import { toast } from 'sonner'
 import { CheckCircle2, XCircle, RefreshCw, Pencil, Copy } from 'lucide-react'
@@ -28,6 +30,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const claudeConfig = useStore(state => state.claudeConfig)
   const fetchClaudeConfig = useStore(state => state.fetchClaudeConfig)
   const updateClaudePath = useStore(state => state.updateClaudePath)
+  const { trackEvent } = usePostHogTracking()
   const [saving, setSaving] = useState(false)
   const [claudePath, setClaudePath] = useState('')
   const [isUpdatingPath, setIsUpdatingPath] = useState(false)
@@ -42,8 +45,10 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   useEffect(() => {
     if (open) {
       fetchClaudeConfig()
+      // Track settings opened event
+      trackEvent(POSTHOG_EVENTS.SETTINGS_OPENED, {})
     }
-  }, [open, fetchClaudeConfig])
+  }, [open, fetchClaudeConfig, trackEvent])
 
   // Update local state when Claude config changes
   useEffect(() => {
@@ -88,6 +93,12 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
 
       await updateUserSettings({ advancedProviders: checked })
       logger.log('Advanced providers setting updated:', checked)
+
+      // Track settings change
+      trackEvent(POSTHOG_EVENTS.SETTINGS_CHANGED, {
+        setting_name: 'advanced_providers',
+      })
+
       toast.success(checked ? 'Advanced providers enabled' : 'Advanced providers disabled')
     } catch (error) {
       logger.error('Failed to update settings:', error)
@@ -104,6 +115,10 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       setSaving(true)
       await updateUserSettings({ optInTelemetry: checked })
       logger.log('Telemetry opt-in setting updated:', checked)
+
+      // Track telemetry opt-in/out events
+      trackEvent(checked ? POSTHOG_EVENTS.TELEMETRY_OPT_IN : POSTHOG_EVENTS.TELEMETRY_OPT_OUT, {})
+
       if (checked) {
         toast.success('Error reporting enabled', {
           description: 'Thank you for helping us improve CodeLayer!',

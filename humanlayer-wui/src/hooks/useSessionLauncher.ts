@@ -7,6 +7,8 @@ import { homeDir } from '@tauri-apps/api/path'
 import { logger } from '@/lib/logging'
 import { useStore } from '@/AppStore'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 interface SessionConfig {
   title?: string
@@ -424,6 +426,7 @@ export { isViewingSessionDetail }
 // Helper hook for global hotkey management
 export function useSessionLauncherHotkeys() {
   const { open, close, isOpen, setGPrefixMode } = useSessionLauncher()
+  const { trackEvent } = usePostHogTracking()
 
   // Helper to check if user is actively typing in a text input
   const isTypingInInput = () => {
@@ -443,6 +446,10 @@ export function useSessionLauncherHotkeys() {
     'meta+k, ctrl+k',
     () => {
       if (!isOpen) {
+        // Track command launcher opened event
+        trackEvent(POSTHOG_EVENTS.COMMAND_LAUNCHER_OPENED, {
+          trigger_method: 'hotkey',
+        })
         open()
       } else {
         close()

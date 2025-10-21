@@ -10,29 +10,47 @@ export function usePostHogTracking() {
 
   const trackEvent = useCallback(
     (eventName: PostHogEvent, properties?: Partial<Record<AllowedPostHogKey, any>>) => {
-      // Only track if user has opted in and PostHog is initialized
-      if (!userSettings?.optInTelemetry || !posthog) {
-        return
+      try {
+        // Only track if user has opted in and PostHog is initialized
+        if (!userSettings?.optInTelemetry || !posthog) {
+          return
+        }
+
+        // Sanitize properties before sending
+        const sanitizedProperties = properties ? sanitizeEventProperties(properties) : undefined
+
+        // Track the event
+        posthog.capture(eventName, sanitizedProperties)
+      } catch (error) {
+        // Log error but never throw to caller - tracking failures should not break the app
+        console.error('[PostHog] Failed to track event:', {
+          eventName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        })
       }
-
-      // Sanitize properties before sending
-      const sanitizedProperties = properties ? sanitizeEventProperties(properties) : undefined
-
-      // Track the event
-      posthog.capture(eventName, sanitizedProperties)
     },
     [posthog, userSettings?.optInTelemetry],
   )
 
   const trackPageView = useCallback(
     (pageName?: string) => {
-      if (!userSettings?.optInTelemetry || !posthog) {
-        return
-      }
+      try {
+        if (!userSettings?.optInTelemetry || !posthog) {
+          return
+        }
 
-      // PostHog automatically captures $current_url, $host, $pathname, etc.
-      // We just add optional custom properties (these are whitelisted)
-      posthog.capture('$pageview', pageName ? { page_name: pageName } : undefined)
+        // PostHog automatically captures $current_url, $host, $pathname, etc.
+        // We just add optional custom properties (these are whitelisted)
+        posthog.capture('$pageview', pageName ? { page_name: pageName } : undefined)
+      } catch (error) {
+        // Log error but never throw to caller - tracking failures should not break the app
+        console.error('[PostHog] Failed to track pageview:', {
+          pageName,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        })
+      }
     },
     [posthog, userSettings?.optInTelemetry],
   )
