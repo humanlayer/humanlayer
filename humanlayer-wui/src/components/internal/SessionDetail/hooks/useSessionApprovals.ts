@@ -55,23 +55,26 @@ export function useSessionApprovals({
   }, [])
 
   // Approval handlers
-  const handleApprove = useCallback(async (approvalId: string) => {
-    const startTime = Date.now()
-    try {
-      setApprovingApprovalId(approvalId)
-      await daemonClient.approveFunctionCall(approvalId)
+  const handleApprove = useCallback(
+    async (approvalId: string) => {
+      const startTime = Date.now()
+      try {
+        setApprovingApprovalId(approvalId)
+        await daemonClient.approveFunctionCall(approvalId)
 
-      // Track approval responded event
-      trackEvent(POSTHOG_EVENTS.APPROVAL_RESPONDED, {
-        response: 'approve',
-        response_time_ms: Date.now() - startTime,
-      })
-    } catch (error) {
-      notificationService.notifyError(error, 'Failed to approve')
-    } finally {
-      setApprovingApprovalId(null)
-    }
-  }, [trackEvent])
+        // Track approval responded event
+        trackEvent(POSTHOG_EVENTS.APPROVAL_RESPONDED, {
+          response: 'approve',
+          response_time_ms: Date.now() - startTime,
+        })
+      } catch (error) {
+        notificationService.notifyError(error, 'Failed to approve')
+      } finally {
+        setApprovingApprovalId(null)
+      }
+    },
+    [trackEvent],
+  )
 
   const handleDeny = useCallback(
     async (approvalId: string, reason: string, sessionId: string) => {
