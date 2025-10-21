@@ -27,7 +27,7 @@ export function useAsyncState<T>(
       const result = await asyncFn()
       setData(result)
     } catch (err) {
-      setError(formatError(err))
+      setError(await formatError(err))
     } finally {
       setLoading(false)
     }

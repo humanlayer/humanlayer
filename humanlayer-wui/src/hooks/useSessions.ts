@@ -42,7 +42,7 @@ export function useSessions(): UseSessionsReturn {
 
       setSessions(summaries)
     } catch (err) {
-      setError(formatError(err))
+      setError(await formatError(err))
     } finally {
       setLoading(false)
     }
@@ -62,7 +62,7 @@ export function useSessions(): UseSessionsReturn {
         await fetchSessions()
         return response
       } catch (err) {
-        throw new Error(formatError(err))
+        throw new Error(await formatError(err))
       }
     },
     [fetchSessions],

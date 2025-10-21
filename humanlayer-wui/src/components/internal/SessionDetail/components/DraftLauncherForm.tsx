@@ -17,6 +17,7 @@ import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { daemonClient } from '@/lib/daemon'
 import { type Session, ViewMode } from '@/lib/daemon/types'
 import { logger } from '@/lib/logging'
+import { formatError } from '@/utils/errors'
 import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
 import { DiscardDraftDialog } from './DiscardDraftDialog'
 import { DraftLauncherInput } from './DraftLauncherInput'
@@ -522,7 +523,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         navigate(`/sessions/${sessionId}`)
       } catch (error) {
         toast.error('Failed to launch draft session', {
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: await formatError(error),
         })
       } finally {
         setIsLaunchingDraft(false)

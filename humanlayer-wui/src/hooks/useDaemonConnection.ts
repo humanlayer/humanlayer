@@ -33,7 +33,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
       setConnected(false) // Only false if we can't reach daemon
       setHealthStatus(null)
       setVersion(null)
-      setError(formatError(err))
+      setError(await formatError(err))
     }
   }, [])
 
@@ -60,14 +60,14 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
         const isManaged = await daemonService.isDaemonRunning()
         if (!isManaged) {
           // Let DaemonManager handle it
-          setError(formatError(err))
+          setError(await formatError(err))
         } else {
           // Managed daemon might be starting, retry
           retryCount.current++
           setTimeout(() => connect(), 2000)
         }
       } else {
-        setError(formatError(err))
+        setError(await formatError(err))
       }
     } finally {
       setConnecting(false)
@@ -83,7 +83,7 @@ export function useDaemonConnection(): UseDaemonConnectionReturn {
       await daemonClient.reconnect()
       await checkHealth()
     } catch (err) {
-      setError(formatError(err))
+      setError(await formatError(err))
     } finally {
       setConnecting(false)
     }
