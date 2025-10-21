@@ -58,6 +58,7 @@ export function Layout() {
   const navigate = useNavigate()
   const isSettingsDialogOpen = useStore(state => state.isSettingsDialogOpen)
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
+  const clearActiveSessionDetail = useStore(state => state.clearActiveSessionDetail)
   const [showTelemetryModal, setShowTelemetryModal] = useState(false)
 
   // Use the daemon connection hook for all connection management
@@ -249,6 +250,8 @@ export function Layout() {
               // Wait another 100ms before dismissing toast
               setTimeout(() => {
                 toast.dismiss(toastId)
+                // Clear stale session detail before navigating to ensure clean state
+                clearActiveSessionDetail()
                 // Navigate to the session with approval parameter
                 navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
               }, 100)
@@ -259,9 +262,13 @@ export function Layout() {
 
           // Fallback: if button not found, just dismiss immediately and navigate
           toast.dismiss(toastId)
+          // Clear stale session detail before navigating to ensure clean state
+          clearActiveSessionDetail()
           navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
         } else {
           // Navigate immediately since there's no toast
+          // Clear stale session detail before navigating to ensure clean state
+          clearActiveSessionDetail()
           navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
         }
       } catch (error) {
@@ -747,6 +754,8 @@ export function Layout() {
     const handleSessionCreated = async (payload: { sessionId: string }) => {
       const { sessionId } = payload
       if (sessionId) {
+        // Clear stale session detail before navigating to ensure clean state
+        clearActiveSessionDetail()
         // Navigate to the new session silently
         navigate(`/sessions/${sessionId}`)
 

@@ -75,7 +75,8 @@ jobs:
 
               if (inputVersion) {
                 // Manual dispatch with explicit version
-                buildVersion = inputVersion;
+                // Strip leading 'v' if present for normalization
+                buildVersion = inputVersion.replace(/^v/, '');
               } else {
                 // Manual dispatch without version - auto-increment patch
                 // Fetch tags from GitHub API

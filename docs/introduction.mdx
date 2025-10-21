@@ -3,20 +3,16 @@ title: Introduction
 description: "CodeLayer is the best way to get AI to solve hard problems in complex codebases."
 ---
 
-## Table of Contents
+<iframe
+  className="w-full aspect-video rounded-xl"
+  src="https://www.youtube.com/embed/GV5KxrhUi3s"
+  title="YouTube video player"
+  frameBorder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowFullScreen
+></iframe>
 
-- [Installation](#installation)
-    - [Custom Environment Variables](#custom-environment-variables)
-    - [Loading Prompts](#loading-prompts)
-- [Troubleshooting / Known Issues](#troubleshooting--known-issues)
-- [FAQ](#faq)
-    - [Where can I learn more?](#where-can-i-learn-more)
-    - [How do I get all those fancy prompts I've heard about?](#how-do-i-get-all-those-fancy-prompts-ive-heard-about)
-    - [How do I use custom claude config / bedrock / env vars?](#how-do-i-use-custom-claude-config--bedrock--env-vars)
-    - [Do you support git worktrees?](#do-you-support-git-worktrees)
-    - [How do I manage all the markdown docs](#how-do-i-manage-all-the-markdown-docs)
-    - [Can I use CodeLayer from my Phone? Can I run claude sessions in the cloud?](#can-i-use-codelayer-from-my-phone-can-i-run-claude-sessions-in-the-cloud)
-    - [How much does CodeLayer cost?](#how-much-does-codelayer-cost)
+[Installation](#installation) | [Custom Environment Variables](#custom-environment-variables) | [Loading Prompts](#loading-prompts) | [Troubleshooting](#troubleshooting) | [FAQ](#faq)
 
 ## Installation
 
@@ -58,7 +54,7 @@ you can set them in the `env` block of the built-in [Claude Code Settings File](
 
 If you want to load the generic version of the HumanLayer prompts, check out [this workshop gist](https://gist.github.com/dexhorthy/c5d2113621d17178b29ae4c31028bdc2)
 
-## Troubleshooting / Known Issues
+## Troubleshooting
 
 * Logs can be found at `~/Library/Logs/dev.humanlayer.wui/CodeLayer.log`
 * If you see errors about missing `mcp__codelayer__approvals` tool, you're missing the `humanlayer` CLI - you need to install with brew, copying the app from a DMG won't work
@@ -94,7 +90,7 @@ you can set them in the `env` block of the built-in [Claude Code Settings File](
 
 #### Do you support git worktrees?
 
-There's no built-in worktree management, but you can launch CodeLayer from any directory including worktrees.
+There's no built-in worktree management YET, but you can launch CodeLayer from any directory including worktrees.
 
 Claude is very good at making and configuring worktrees for you as well, so you can ask it to do that.
 
