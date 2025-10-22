@@ -18,6 +18,37 @@ const ALLOWED_KEYS = [
   // Model/provider (generic identifiers only)
   'model',
   'provider',
+  'previous_model',
+  'previous_provider',
+
+  // Session properties
+  'from_draft',
+
+  // Command and agent properties
+  'command_name',
+  'subagent_type',
+  'agent_name',
+  'command_type',
+  'command_category',
+
+  // Draft properties
+  'had_content',
+  'lifetime_seconds',
+
+  // Fork properties
+  'archive_on_fork',
+
+  // Settings properties
+  'setting_name',
+
+  // Approval properties
+  'response',
+  'response_time_ms',
+  'tool_type',
+  'timeout_seconds',
+
+  // UI interaction properties
+  'trigger_method',
 
   // Feature flags and settings (boolean values only)
   'feature_enabled',

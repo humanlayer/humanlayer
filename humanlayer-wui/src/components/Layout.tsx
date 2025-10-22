@@ -45,6 +45,8 @@ import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 import { useDebugStore } from '@/stores/useDebugStore'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -64,6 +66,9 @@ export function Layout() {
 
   // Hotkey panel state from store
   const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
+
+  // PostHog tracking
+  const { trackEvent } = usePostHogTracking()
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
@@ -127,6 +132,34 @@ export function Layout() {
     {
       scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: true,
+    },
+  )
+
+  // Refresh window hotkey (app-scoped, not global)
+  useHotkeys(
+    'meta+r, ctrl+r',
+    () => {
+      window.location.reload()
+    },
+    {
+      enableOnContentEditable: true,
+      enableOnFormTags: true,
+      preventDefault: true,
+    },
+  )
+
+  // Force refresh window hotkey (cmd+shift+r)
+  useHotkeys(
+    'meta+shift+r, ctrl+shift+r',
+    () => {
+      // @ts-ignore - reload(true) is non-standard but works in Tauri's WebKit
+      window.location.reload(true)
+    },
+    {
+      
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+      preventDefault: true,
     },
   )
 
@@ -422,6 +455,13 @@ export function Layout() {
         return
       }
 
+      // Track approval received event
+      // Extract generic tool type from tool name (e.g., "bash", "edit", "write")
+      const toolType = toolName?.split('_')[0] || 'unknown'
+      trackEvent(POSTHOG_EVENTS.APPROVAL_RECEIVED, {
+        tool_type: toolType,
+      })
+
       const conversation = await daemonClient.getConversation({ session_id: sessionId })
       const approval = conversation.find(
         event => event.approvalStatus === ApprovalStatus.Pending && event.approvalId === approvalId,
@@ -565,7 +605,12 @@ export function Layout() {
   useHotkeys(
     '?',
     () => {
-      setHotkeyPanelOpen(!isHotkeyPanelOpen)
+      const newState = !isHotkeyPanelOpen
+      if (newState) {
+        // Track hotkey helper viewed event when opening
+        trackEvent(POSTHOG_EVENTS.HOTKEY_HELPER_VIEWED, {})
+      }
+      setHotkeyPanelOpen(newState)
     },
     {
       scopes: [HOTKEY_SCOPES.ROOT],
@@ -908,7 +953,11 @@ export function Layout() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => setHotkeyPanelOpen(true)}
+                onClick={() => {
+                  // Track hotkey helper viewed event when opening
+                  trackEvent(POSTHOG_EVENTS.HOTKEY_HELPER_VIEWED, {})
+                  setHotkeyPanelOpen(true)
+                }}
                 className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
               >
                 <HelpCircle className="w-3 h-3" />
