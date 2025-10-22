@@ -139,9 +139,14 @@ function SessionTableInner({
           try {
             console.log('[UNDO-DEBUG] Starting draft restoration for:', sessionId)
 
-            // Restore the draft by changing status back to "draft"
-            await daemonClient.updateSession(sessionId, { status: 'draft' })
-            console.log('[UNDO-DEBUG] Draft status updated to "draft"')
+            // Use the bulk restore endpoint for single draft restoration
+            // The regular updateSession can't restore discarded drafts
+            const response = await daemonClient.bulkRestoreDrafts({ session_ids: [sessionId] })
+            console.log('[UNDO-DEBUG] Draft restoration response:', response)
+
+            if (!response.success) {
+              throw new Error('Failed to restore draft')
+            }
 
             // Refresh to show restored draft - this should re-fetch all sessions/drafts
             await useStore.getState().refreshSessions()
@@ -528,8 +533,10 @@ function SessionTableInner({
               toastId: TOAST_IDS.archiveUndo(currentSession.id),
               onUndo: async () => {
                 await archiveSession(currentSession.id, false)
+                // Refresh sessions to update the UI
+                await useStore.getState().refreshSessions()
                 // Focus the unarchived session
-                const sessions = await daemonClient.listSessions()
+                const sessions = useStore.getState().sessions
                 const restoredSession = sessions.find(s => s.id === currentSession.id)
                 if (restoredSession && handleFocusSession) {
                   handleFocusSession(restoredSession)
@@ -543,6 +550,8 @@ function SessionTableInner({
               toastId: TOAST_IDS.unarchiveUndo(currentSession.id),
               onUndo: async () => {
                 await archiveSession(currentSession.id, true)
+                // Refresh sessions to update the UI
+                await useStore.getState().refreshSessions()
               },
             })
           }
