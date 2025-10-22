@@ -496,7 +496,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         // Launch the draft session with the prompt
         await daemonClient.launchDraftSession(sessionId, currentPrompt)
 
-        // Track session creation event
+        // Track session creation event (from draft)
         trackEvent(POSTHOG_EVENTS.SESSION_CREATED, {
           model: model || proxyModelOverride || undefined,
           provider: proxyEnabled
@@ -504,6 +504,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
               ? 'baseten'
               : 'openrouter'
             : 'anthropic',
+          from_draft: true,
         })
 
         // Store working directory in localStorage
@@ -551,16 +552,30 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     if (hasContent) {
       setShowDiscardDraftDialog(true)
     } else {
+      // Track draft launcher exited event (no content to save)
+      trackEvent(POSTHOG_EVENTS.DRAFT_LAUNCHER_EXITED, {})
       // Refresh sessions before navigating back
       await refreshSessions()
       navigate(-1)
     }
-  }, [navigate, title, refreshSessions])
+  }, [navigate, title, refreshSessions, trackEvent])
 
   const confirmDiscardDraft = useCallback(async () => {
     try {
       if (sessionId) {
         await daemonClient.deleteDraftSession(sessionId)
+
+        // Track draft deletion event
+        trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
+          had_content: true, // We know there was content if this confirmation was triggered
+          lifetime_seconds: session?.createdAt
+            ? Math.floor((Date.now() - new Date(session.createdAt).getTime()) / 1000)
+            : undefined,
+        })
+
+        // Also track draft launcher exited (user chose to discard and exit)
+        trackEvent(POSTHOG_EVENTS.DRAFT_LAUNCHER_EXITED, {})
+
         localStorage.removeItem(`response-input.${sessionId}`)
         await refreshSessions()
       }
@@ -570,7 +585,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [sessionId, navigate, refreshSessions])
+  }, [sessionId, navigate, refreshSessions, trackEvent, session?.createdAt])
 
   // Handle toggling auto-accept
   const handleToggleAutoAccept = useCallback(() => {

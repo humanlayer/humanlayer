@@ -5,6 +5,8 @@ import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLa
 import { useStore } from '@/AppStore'
 import { KeyboardShortcut } from './HotkeyPanel'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import {
   Command,
   CommandInput,
@@ -29,6 +31,7 @@ interface MenuOption {
 
 export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElement> }) {
   const { createNewSession, close } = useSessionLauncher()
+  const { trackEvent } = usePostHogTracking()
 
   const [internalSearchValue, setInternalSearchValue] = useState('')
   const [selectedValue, setSelectedValue] = useState<string>('')
@@ -79,12 +82,22 @@ export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElem
     return 'Archive' // Default
   }
 
+  // Wrapper for createNewSession with tracking
+  const handleCreateNewSession = useCallback(async () => {
+    // Track draft creation event
+    trackEvent(POSTHOG_EVENTS.DRAFT_CREATED, {
+      // No additional properties needed for draft creation
+      // Model and provider will be selected later
+    })
+    await createNewSession()
+  }, [createNewSession, trackEvent])
+
   // Build base menu options
   const baseOptions: MenuOption[] = [
     {
       id: 'create-session',
       label: 'Create Session',
-      action: createNewSession,
+      action: handleCreateNewSession,
       hotkey: 'C',
     },
     {
@@ -313,7 +326,14 @@ export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElem
                   key={option.id}
                   value={option.id}
                   keywords={[option.label]}
-                  onSelect={option.action}
+                  onSelect={() => {
+                    // Track command launcher selection event
+                    trackEvent(POSTHOG_EVENTS.COMMAND_LAUNCHER_SELECTION, {
+                      command_type: 'action',
+                      command_category: option.label,
+                    })
+                    option.action()
+                  }}
                   className={cn(
                     'flex items-center justify-between px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
                     selectedValue === option.id && 'bg-accent',
@@ -336,7 +356,14 @@ export default function CommandPaletteMenu({ ref }: { ref: RefObject<HTMLDivElem
                   key={option.id}
                   value={option.id}
                   keywords={[option.label, option.workingDir].filter(Boolean) as string[]}
-                  onSelect={option.action}
+                  onSelect={() => {
+                    // Track command launcher selection event
+                    trackEvent(POSTHOG_EVENTS.COMMAND_LAUNCHER_SELECTION, {
+                      command_type: 'session',
+                      command_category: 'open_session',
+                    })
+                    option.action()
+                  }}
                   className={cn(
                     'flex flex-col items-start px-3 py-3 transition-all duration-150 cursor-pointer data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground hover:bg-muted/60',
                     selectedValue === option.id && 'bg-accent',
