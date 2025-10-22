@@ -403,11 +403,21 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
   }
 
+  async bulkRestoreDrafts(params: { session_ids: string[] }): Promise<{
+    success: boolean
+    failed_sessions?: string[]
+  }> {
+    await this.ensureConnected()
+    const response = await this.client!.bulkRestoreDrafts(params)
+    return response
+  }
+
   async updateSession(
     sessionId: string,
     updates: {
       model?: string
       title?: string
+      status?: string
       archived?: boolean
       autoAcceptEdits?: boolean
       dangerouslySkipPermissions?: boolean
@@ -431,6 +441,9 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     if (updates.title !== undefined) {
       sdkUpdates.title = updates.title
+    }
+    if (updates.status !== undefined) {
+      sdkUpdates.status = updates.status
     }
     if (updates.archived !== undefined) {
       sdkUpdates.archived = updates.archived

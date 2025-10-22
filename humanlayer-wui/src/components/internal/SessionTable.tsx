@@ -24,11 +24,12 @@ import { Button } from '@/components/ui/button'
 import { daemonClient } from '@/lib/daemon/client'
 import { renderSessionStatus } from '@/utils/sessionStatus'
 import { logger } from '@/lib/logging'
-import { DiscardDraftDialog } from './SessionDetail/components/DiscardDraftDialog'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 import { SessionsEmptyState } from './SessionsEmptyState'
 import { ArchivedSessionsEmptyState } from './ArchivedSessionsEmptyState'
+import { showUndoToast } from '@/utils/undoToast'
+import { TOAST_IDS } from '@/constants/toastIds'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -80,10 +81,6 @@ function SessionTableInner({
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
 
-  // State for discard dialog
-  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
-  const [draftsToDiscard, setDraftsToDiscard] = useState<string[]>([])
-
   // Helper functions for inline editing
   const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
     setEditingSessionId(sessionId)
@@ -113,79 +110,128 @@ function SessionTableInner({
     setEditValue('')
   }
 
-  // Handle confirmed discard
-  const handleConfirmDiscard = async () => {
+  // Direct discard handlers (no confirmation modal)
+  const handleSingleDiscardDraft = async (sessionId: string) => {
     try {
-      if (draftsToDiscard.length === 1) {
-        // Single draft discard
-        const sessionId = draftsToDiscard[0]
-        const currentSession = sessions.find(s => s.id === sessionId)
+      const currentSession = sessions.find(s => s.id === sessionId)
 
-        await daemonClient.deleteDraftSession(sessionId)
-        useStore.getState().removeSession(sessionId)
-
-        // Track draft deletion event with metadata
-        trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
-          had_content: currentSession?.query?.trim() !== '',
-          lifetime_seconds: currentSession?.createdAt
-            ? Math.floor((Date.now() - new Date(currentSession.createdAt).getTime()) / 1000)
-            : undefined,
-        })
-
-        // Find next session to focus
-        const currentIndex = sessions.findIndex(s => s.id === sessionId)
-        let nextFocusSession = null
-
-        if (currentIndex > 0) {
-          nextFocusSession = sessions[currentIndex - 1]
-        } else if (currentIndex < sessions.length - 1) {
-          nextFocusSession = sessions[currentIndex + 1]
-        }
-
-        if (nextFocusSession && handleFocusSession) {
-          handleFocusSession(nextFocusSession)
-        }
-
-        toast.success('Draft discarded', {
-          description: currentSession?.summary || 'Untitled draft',
-          duration: 3000,
-        })
-      } else {
-        // Bulk discard
-        const nonSelectedSessions = sessions.filter(s => !draftsToDiscard.includes(s.id))
-        const nextFocusSession = nonSelectedSessions.length > 0 ? nonSelectedSessions[0] : null
-
-        await bulkDiscardDrafts(draftsToDiscard)
-
-        // Track draft deletion events
-        draftsToDiscard.forEach(draftId => {
-          const draftSession = sessions.find(s => s.id === draftId)
-          trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
-            had_content: draftSession?.query?.trim() !== '',
-            lifetime_seconds: draftSession?.createdAt
-              ? Math.floor((Date.now() - new Date(draftSession.createdAt).getTime()) / 1000)
-              : undefined,
-          })
-        })
-
-        if (nextFocusSession && handleFocusSession) {
-          handleFocusSession(nextFocusSession)
-        }
-
-        toast.success(`Discarded ${draftsToDiscard.length} drafts`, {
-          duration: 3000,
-        })
+      // Find next session to focus
+      const currentIndex = sessions.findIndex(s => s.id === sessionId)
+      let nextSession = null
+      if (currentIndex > 0) {
+        nextSession = sessions[currentIndex - 1]
+      } else if (currentIndex < sessions.length - 1) {
+        nextSession = sessions[currentIndex + 1]
       }
 
-      // Refresh sessions to update counts
+      await daemonClient.deleteDraftSession(sessionId)
+
+      // Track draft deletion event with metadata (from main branch)
+      trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
+        had_content: currentSession?.query?.trim() !== '',
+        lifetime_seconds: currentSession?.createdAt
+          ? Math.floor((Date.now() - new Date(currentSession.createdAt).getTime()) / 1000)
+          : undefined,
+      })
+
+      // Update status to 'discarded' instead of removing from state
+      // This allows undo functionality to work properly
+      useStore.getState().updateSessionStatus(sessionId, 'discarded')
+
+      if (nextSession && handleFocusSession) {
+        handleFocusSession(nextSession)
+      }
+
+      // Show undo toast for draft deletion
+      showUndoToast({
+        title: 'Draft discarded',
+        description: currentSession?.title || currentSession?.summary || 'Untitled draft',
+        toastId: TOAST_IDS.draftDeleteUndo(sessionId),
+        onUndo: async () => {
+          // Use the bulk restore endpoint for single draft restoration
+          // The regular updateSession can't restore discarded drafts
+          const response = await daemonClient.bulkRestoreDrafts({ session_ids: [sessionId] })
+
+          if (!response.success) {
+            throw new Error('Failed to restore draft')
+          }
+
+          // Refresh to show restored draft - this should re-fetch all sessions/drafts
+          await useStore.getState().refreshSessions()
+
+          // Get the updated sessions from the store after refresh
+          const updatedSessions = useStore.getState().sessions
+          const restoredDraft = updatedSessions.find(s => s.id === sessionId)
+          if (restoredDraft) {
+            handleFocusSession?.(restoredDraft)
+          } else {
+            // Try fetching directly as a fallback
+            const sessions = await daemonClient.listSessions()
+            const directRestoredDraft = sessions.find(s => s.id === sessionId)
+            if (directRestoredDraft) {
+              handleFocusSession?.(directRestoredDraft)
+            }
+          }
+        },
+      })
+
       await useStore.getState().refreshSessions()
     } catch (error) {
-      toast.error('Failed to discard draft(s)', {
+      toast.error('Failed to discard draft', {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
-    } finally {
-      setDiscardDialogOpen(false)
-      setDraftsToDiscard([])
+    }
+  }
+
+  const handleBulkDiscardDrafts = async (draftIds: string[]) => {
+    try {
+      const nonSelectedSessions = sessions.filter(s => !draftIds.includes(s.id))
+
+      await bulkDiscardDrafts(draftIds)
+
+      // Track draft deletion events (from main branch)
+      draftIds.forEach(draftId => {
+        const draftSession = sessions.find(s => s.id === draftId)
+        trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
+          had_content: draftSession?.query?.trim() !== '',
+          lifetime_seconds: draftSession?.createdAt
+            ? Math.floor((Date.now() - new Date(draftSession.createdAt).getTime()) / 1000)
+            : undefined,
+        })
+      })
+
+      if (nonSelectedSessions.length > 0 && handleFocusSession) {
+        handleFocusSession(nonSelectedSessions[0])
+      }
+
+      // Show undo toast for bulk draft deletion
+      const timestamp = Date.now()
+      showUndoToast({
+        title: `Discarded ${draftIds.length} drafts`,
+        toastId: TOAST_IDS.bulkDraftDeleteUndo(timestamp),
+        onUndo: async () => {
+          // Use the new bulk restore endpoint
+          const response = await daemonClient.bulkRestoreDrafts({ session_ids: draftIds })
+
+          if (!response.success && response.failed_sessions?.length) {
+            const successCount = draftIds.length - response.failed_sessions.length
+            toast.warning(`Restored ${successCount} of ${draftIds.length} drafts`, {
+              description: `${response.failed_sessions.length} drafts could not be restored`,
+              duration: 5000,
+            })
+          }
+          // No success toast when undo is successful - just silently restore
+
+          // Refresh sessions to show restored drafts
+          await useStore.getState().refreshSessions()
+        },
+      })
+
+      await useStore.getState().refreshSessions()
+    } catch (error) {
+      toast.error('Failed to discard drafts', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
     }
   }
 
@@ -385,10 +431,8 @@ function SessionTableInner({
           }
 
           if (draftSessions.length > 0) {
-            // All selected are drafts, discard them
-            const draftIds = draftSessions.map(s => s!.id)
-            setDraftsToDiscard(draftIds)
-            setDiscardDialogOpen(true)
+            // Immediately discard drafts without confirmation
+            await handleBulkDiscardDrafts(draftSessions.map(s => s!.id))
             return
           }
 
@@ -424,14 +468,29 @@ function SessionTableInner({
             handleFocusSession(nextFocusSession)
           }
 
-          toast.success(
-            isArchiving
-              ? `Archived ${selectedSessions.size} sessions`
-              : `Unarchived ${selectedSessions.size} sessions`,
-            {
-              duration: 3000,
-            },
-          )
+          // Show undo toast for bulk archive
+          const timestamp = Date.now()
+          const sessionIds = Array.from(selectedSessions)
+
+          if (isArchiving) {
+            showUndoToast({
+              title: `Archived ${selectedSessions.size} sessions`,
+              toastId: TOAST_IDS.bulkArchiveUndo(timestamp),
+              onUndo: async () => {
+                await bulkArchiveSessions(sessionIds, false)
+                await useStore.getState().refreshSessions()
+              },
+            })
+          } else {
+            showUndoToast({
+              title: `Unarchived ${selectedSessions.size} sessions`,
+              toastId: TOAST_IDS.bulkUnarchiveUndo(timestamp),
+              onUndo: async () => {
+                await bulkArchiveSessions(sessionIds, true)
+                await useStore.getState().refreshSessions()
+              },
+            })
+          }
         } else {
           // Single session archive
           const currentSession = sessions.find(s => s.id === focusedSession?.id)
@@ -442,8 +501,8 @@ function SessionTableInner({
 
           // Handle drafts - discard instead of archive
           if (currentSession.status === SessionStatus.Draft) {
-            setDraftsToDiscard([currentSession.id])
-            setDiscardDialogOpen(true)
+            // Immediately discard draft without confirmation
+            await handleSingleDiscardDraft(currentSession.id)
             return
           }
 
@@ -477,11 +536,36 @@ function SessionTableInner({
             handleFocusSession(nextFocusSession)
           }
 
-          // Show success notification
-          toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-            description: currentSession.summary || 'Untitled session',
-            duration: 3000,
-          })
+          // Show undo toast for archive operation
+          if (isArchiving) {
+            showUndoToast({
+              title: 'Session archived',
+              description: currentSession.title || currentSession.summary || 'Untitled session',
+              toastId: TOAST_IDS.archiveUndo(currentSession.id),
+              onUndo: async () => {
+                await archiveSession(currentSession.id, false)
+                // Refresh sessions to update the UI
+                await useStore.getState().refreshSessions()
+                // Focus the unarchived session
+                const sessions = useStore.getState().sessions
+                const restoredSession = sessions.find(s => s.id === currentSession.id)
+                if (restoredSession && handleFocusSession) {
+                  handleFocusSession(restoredSession)
+                }
+              },
+            })
+          } else {
+            showUndoToast({
+              title: 'Session unarchived',
+              description: currentSession.title || currentSession.summary || 'Untitled session',
+              toastId: TOAST_IDS.unarchiveUndo(currentSession.id),
+              onUndo: async () => {
+                await archiveSession(currentSession.id, true)
+                // Refresh sessions to update the UI
+                await useStore.getState().refreshSessions()
+              },
+            })
+          }
         }
       } catch (error) {
         toast.error('Failed to archive session', {
@@ -775,17 +859,6 @@ function SessionTableInner({
       ) : (
         <SessionsEmptyState />
       )}
-
-      {/* Discard Drafts Confirmation Dialog */}
-      <DiscardDraftDialog
-        open={discardDialogOpen}
-        draftCount={draftsToDiscard.length}
-        onConfirm={handleConfirmDiscard}
-        onCancel={() => {
-          setDiscardDialogOpen(false)
-          setDraftsToDiscard([])
-        }}
-      />
     </HotkeyScopeBoundary>
   )
 }

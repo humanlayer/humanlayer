@@ -17,6 +17,8 @@ import * as runtime from '../runtime';
 import type {
   BulkArchiveRequest,
   BulkArchiveResponse,
+  BulkRestoreDraftsRequest,
+  BulkRestoreDraftsResponse,
   ContinueSessionRequest,
   ContinueSessionResponse,
   ConversationResponse,
@@ -38,6 +40,10 @@ import {
     BulkArchiveRequestToJSON,
     BulkArchiveResponseFromJSON,
     BulkArchiveResponseToJSON,
+    BulkRestoreDraftsRequestFromJSON,
+    BulkRestoreDraftsRequestToJSON,
+    BulkRestoreDraftsResponseFromJSON,
+    BulkRestoreDraftsResponseToJSON,
     ContinueSessionRequestFromJSON,
     ContinueSessionRequestToJSON,
     ContinueSessionResponseFromJSON,
@@ -72,6 +78,10 @@ import {
 
 export interface BulkArchiveSessionsRequest {
     bulkArchiveRequest: BulkArchiveRequest;
+}
+
+export interface BulkRestoreDraftsOperationRequest {
+    bulkRestoreDraftsRequest: BulkRestoreDraftsRequest;
 }
 
 export interface ContinueSessionOperationRequest {
@@ -158,6 +168,22 @@ export interface SessionsApiInterface {
      * Bulk archive/unarchive sessions
      */
     bulkArchiveSessions(requestParameters: BulkArchiveSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkArchiveResponse>;
+
+    /**
+     * Restore multiple discarded draft sessions back to draft status
+     * @summary Restore multiple discarded draft sessions
+     * @param {BulkRestoreDraftsRequest} bulkRestoreDraftsRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof SessionsApiInterface
+     */
+    bulkRestoreDraftsRaw(requestParameters: BulkRestoreDraftsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkRestoreDraftsResponse>>;
+
+    /**
+     * Restore multiple discarded draft sessions back to draft status
+     * Restore multiple discarded draft sessions
+     */
+    bulkRestoreDrafts(requestParameters: BulkRestoreDraftsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkRestoreDraftsResponse>;
 
     /**
      * Create a new session that continues from an existing session, inheriting its conversation history. 
@@ -434,6 +460,47 @@ export class SessionsApi extends runtime.BaseAPI implements SessionsApiInterface
      */
     async bulkArchiveSessions(requestParameters: BulkArchiveSessionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkArchiveResponse> {
         const response = await this.bulkArchiveSessionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Restore multiple discarded draft sessions back to draft status
+     * Restore multiple discarded draft sessions
+     */
+    async bulkRestoreDraftsRaw(requestParameters: BulkRestoreDraftsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BulkRestoreDraftsResponse>> {
+        if (requestParameters['bulkRestoreDraftsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'bulkRestoreDraftsRequest',
+                'Required parameter "bulkRestoreDraftsRequest" was null or undefined when calling bulkRestoreDrafts().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/sessions/restore`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BulkRestoreDraftsRequestToJSON(requestParameters['bulkRestoreDraftsRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BulkRestoreDraftsResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Restore multiple discarded draft sessions back to draft status
+     * Restore multiple discarded draft sessions
+     */
+    async bulkRestoreDrafts(requestParameters: BulkRestoreDraftsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BulkRestoreDraftsResponse> {
+        const response = await this.bulkRestoreDraftsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

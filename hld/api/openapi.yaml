@@ -410,6 +410,37 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /sessions/restore:
+    post:
+      operationId: bulkRestoreDrafts
+      summary: Restore multiple discarded draft sessions
+      description: Restore multiple discarded draft sessions back to draft status
+      tags:
+        - Sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkRestoreDraftsRequest'
+      responses:
+        '200':
+          description: All drafts restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkRestoreDraftsResponse'
+        '207':
+          description: Partial success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkRestoreDraftsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /sessions/search:
     get:
       operationId: searchSessions
@@ -1661,6 +1692,39 @@ components:
               items:
                 type: string
               description: Sessions that failed to update
+              example: ["sess_789"]
+
+    BulkRestoreDraftsRequest:
+      type: object
+      required:
+        - session_ids
+      properties:
+        session_ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Draft sessions to restore from discarded status
+          example: ["sess_123", "sess_456"]
+
+    BulkRestoreDraftsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - success
+          properties:
+            success:
+              type: boolean
+              example: true
+            failed_sessions:
+              type: array
+              items:
+                type: string
+              description: Sessions that failed to restore
               example: ["sess_789"]
 
     # Path Types

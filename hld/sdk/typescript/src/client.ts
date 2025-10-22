@@ -157,6 +157,17 @@ export class HLDClient {
         return { archived: sessionIds.filter(id => !response.data.failedSessions?.includes(id)) };
     }
 
+    // Bulk restore drafts
+    async bulkRestoreDrafts(params: { session_ids: string[] }): Promise<{ success: boolean; failed_sessions?: string[] }> {
+        const response = await this.sessionsApi.bulkRestoreDrafts({
+            bulkRestoreDraftsRequest: { sessionIds: params.session_ids }
+        });
+        return {
+            success: response.data.success,
+            failed_sessions: response.data.failedSessions
+        };
+    }
+
     // Update session settings
     async updateSession(id: string, updates: {
         auto_accept_edits?: boolean,

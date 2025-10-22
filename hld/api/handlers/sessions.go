@@ -1213,6 +1213,64 @@ func (h *SessionHandlers) BulkArchiveSessions(ctx context.Context, req api.BulkA
 	}, nil
 }
 
+// BulkRestoreDrafts restores multiple discarded draft sessions back to draft status
+func (h *SessionHandlers) BulkRestoreDrafts(ctx context.Context, req api.BulkRestoreDraftsRequestObject) (api.BulkRestoreDraftsResponseObject, error) {
+	if req.Body == nil || len(req.Body.SessionIds) == 0 {
+		return api.BulkRestoreDrafts400JSONResponse{
+			BadRequestJSONResponse: api.BadRequestJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-3002",
+					Message: "session_ids is required and must not be empty",
+				},
+			},
+		}, nil
+	}
+
+	var failedSessions []string
+	for _, sessionID := range req.Body.SessionIds {
+		// First check if session exists and is in discarded state
+		sess, err := h.store.GetSession(ctx, sessionID)
+		if err != nil {
+			failedSessions = append(failedSessions, sessionID)
+			continue
+		}
+
+		if sess.Status != store.SessionStatusDiscarded {
+			failedSessions = append(failedSessions, sessionID)
+			continue
+		}
+
+		draftStatus := string(store.SessionStatusDraft)
+		update := store.SessionUpdate{
+			Status: &draftStatus,
+		}
+		if err := h.store.UpdateSession(ctx, sessionID, update); err != nil {
+			failedSessions = append(failedSessions, sessionID)
+		}
+	}
+
+	if len(failedSessions) > 0 {
+		return api.BulkRestoreDrafts207JSONResponse{
+			Data: struct {
+				FailedSessions *[]string `json:"failed_sessions,omitempty"`
+				Success        bool      `json:"success"`
+			}{
+				Success:        false,
+				FailedSessions: &failedSessions,
+			},
+		}, nil
+	}
+
+	return api.BulkRestoreDrafts200JSONResponse{
+		Data: struct {
+			FailedSessions *[]string `json:"failed_sessions,omitempty"`
+			Success        bool      `json:"success"`
+		}{
+			Success: true,
+		},
+	}, nil
+}
+
 // GetRecentPaths retrieves recently used working directories
 func (h *SessionHandlers) GetRecentPaths(ctx context.Context, req api.GetRecentPathsRequestObject) (api.GetRecentPathsResponseObject, error) {
 	limit := 20
