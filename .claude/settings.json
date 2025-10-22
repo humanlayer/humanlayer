@@ -1,12 +1,13 @@
 {
   "permissions": {
     "allow": [
+      "Bash(bash hack/spec_metadata.sh)",
       "Bash(./hack/spec_metadata.sh)",
-      "Bash(hack/spec_metadata.sh)",
-      "Bash(bash hack/spec_metadata.sh)"
+      "Bash(hack/spec_metadata.sh)"
     ]
   },
   "enableAllProjectMcpServers": false,
+  "includeCoAuthoredBy": false
   "env": {
     "MAX_THINKING_TOKENS": "32000"
   }
