@@ -137,12 +137,9 @@ function SessionTableInner({
         toastId: TOAST_IDS.draftDeleteUndo(sessionId),
         onUndo: async () => {
           try {
-            console.log('[UNDO-DEBUG] Starting draft restoration for:', sessionId)
-
             // Use the bulk restore endpoint for single draft restoration
             // The regular updateSession can't restore discarded drafts
             const response = await daemonClient.bulkRestoreDrafts({ session_ids: [sessionId] })
-            console.log('[UNDO-DEBUG] Draft restoration response:', response)
 
             if (!response.success) {
               throw new Error('Failed to restore draft')
@@ -150,29 +147,21 @@ function SessionTableInner({
 
             // Refresh to show restored draft - this should re-fetch all sessions/drafts
             await useStore.getState().refreshSessions()
-            console.log('[UNDO-DEBUG] Sessions refreshed')
 
             // Get the updated sessions from the store after refresh
             const updatedSessions = useStore.getState().sessions
-            console.log('[UNDO-DEBUG] Updated sessions after refresh:', updatedSessions.map(s => ({ id: s.id, status: s.status, title: s.title })))
-
             const restoredDraft = updatedSessions.find(s => s.id === sessionId)
             if (restoredDraft) {
-              console.log('[UNDO-DEBUG] Restored draft found:', restoredDraft)
               handleFocusSession?.(restoredDraft)
             } else {
-              console.warn('[UNDO-DEBUG] Restored draft not found in updated sessions')
               // Try fetching directly as a fallback
               const sessions = await daemonClient.listSessions()
-              console.log('[UNDO-DEBUG] Direct fetch sessions:', sessions.map(s => ({ id: s.id, status: s.status, title: s.title })))
               const directRestoredDraft = sessions.find(s => s.id === sessionId)
               if (directRestoredDraft) {
-                console.log('[UNDO-DEBUG] Found draft via direct fetch:', directRestoredDraft)
                 handleFocusSession?.(directRestoredDraft)
               }
             }
           } catch (error) {
-            console.error('[UNDO-DEBUG] Failed to restore draft:', error)
             throw error
           }
         },
@@ -203,11 +192,8 @@ function SessionTableInner({
         toastId: TOAST_IDS.bulkDraftDeleteUndo(timestamp),
         onUndo: async () => {
           try {
-            console.log('[UNDO-DEBUG] Starting bulk draft restoration for:', draftIds)
-
             // Use the new bulk restore endpoint
             const response = await daemonClient.bulkRestoreDrafts({ session_ids: draftIds })
-            console.log('[UNDO-DEBUG] Bulk restore response:', response)
 
             if (!response.success && response.failed_sessions?.length) {
               const successCount = draftIds.length - response.failed_sessions.length
@@ -220,13 +206,7 @@ function SessionTableInner({
 
             // Refresh sessions to show restored drafts
             await useStore.getState().refreshSessions()
-            console.log('[UNDO-DEBUG] Sessions refreshed after bulk restore')
-
-            // Log the updated sessions to see if drafts are back
-            const updatedSessions = useStore.getState().sessions
-            console.log('[UNDO-DEBUG] Updated sessions after bulk restore:', updatedSessions.map(s => ({ id: s.id, status: s.status, title: s.title })))
           } catch (error) {
-            console.error('[UNDO-DEBUG] Failed to bulk restore drafts:', error)
             throw error
           }
         },
