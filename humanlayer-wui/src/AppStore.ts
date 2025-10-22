@@ -547,7 +547,7 @@ export const useStore = create<StoreState>((set, get) => {
           sessions: state.sessions.map(session =>
             sessionIds.includes(session.id)
               ? { ...session, status: 'discarded' as SessionStatus }
-              : session
+              : session,
           ),
           // Clear focused session if it was in the deleted list
           focusedSession: sessionIds.includes(state.focusedSession?.id ?? '')
