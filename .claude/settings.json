@@ -7,7 +7,7 @@
     ]
   },
   "enableAllProjectMcpServers": false,
-  "includeCoAuthoredBy": false
+  "includeCoAuthoredBy": false,
   "env": {
     "MAX_THINKING_TOKENS": "32000"
   }
