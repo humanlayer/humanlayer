@@ -5,7 +5,9 @@
   "type": "module",
   "bin": {
     "humanlayer": "dist/index.js",
-    "hlyr": "dist/index.js"
+    "hlyr": "dist/index.js",
+    "codelayer": "dist/index.js",
+    "codelayer-nightly": "dist/index.js"
   },
   "files": [
     "dist/**/*",
