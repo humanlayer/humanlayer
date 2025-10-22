@@ -26,6 +26,8 @@ import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { HotkeyScopeBoundary } from '../HotkeyScopeBoundary'
 import { SessionsEmptyState } from './SessionsEmptyState'
 import { ArchivedSessionsEmptyState } from './ArchivedSessionsEmptyState'
+import { showUndoToast } from '@/utils/undoToast'
+import { TOAST_IDS } from '@/constants/toastIds'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -126,10 +128,25 @@ function SessionTableInner({
         handleFocusSession(nextSession)
       }
 
-      // Note: Toast will be handled in Phase 5
-      toast.success('Draft discarded', {
-        description: currentSession?.summary || 'Untitled draft',
-        duration: 3000,
+      // Show undo toast for draft deletion
+      showUndoToast({
+        title: 'Draft discarded',
+        description: currentSession?.title || currentSession?.summary || 'Untitled draft',
+        toastId: TOAST_IDS.draftDeleteUndo(sessionId),
+        onUndo: async () => {
+          // Restore the draft by changing status back to "draft"
+          await daemonClient.updateSession(sessionId, { status: 'draft' })
+
+          // Refresh to show restored draft
+          await useStore.getState().refreshSessions()
+
+          // Try to focus the restored draft
+          const sessions = await daemonClient.listSessions()
+          const restoredDraft = sessions.find(s => s.id === sessionId)
+          if (restoredDraft) {
+            handleFocusSession?.(restoredDraft)
+          }
+        },
       })
 
       await useStore.getState().refreshSessions()
@@ -150,9 +167,26 @@ function SessionTableInner({
         handleFocusSession(nonSelectedSessions[0])
       }
 
-      // Note: Toast will be handled in Phase 6
-      toast.success(`Discarded ${draftIds.length} drafts`, {
-        duration: 3000,
+      // Show undo toast for bulk draft deletion
+      const timestamp = Date.now()
+      showUndoToast({
+        title: `Discarded ${draftIds.length} drafts`,
+        toastId: TOAST_IDS.bulkDraftDeleteUndo(timestamp),
+        onUndo: async () => {
+          // Use the new bulk restore endpoint
+          const response = await daemonClient.bulkRestoreDrafts({ session_ids: draftIds })
+
+          if (!response.success && response.failed_sessions?.length) {
+            const successCount = draftIds.length - response.failed_sessions.length
+            toast.warning(`Restored ${successCount} of ${draftIds.length} drafts`, {
+              description: `${response.failed_sessions.length} drafts could not be restored`,
+              duration: 5000,
+            })
+          }
+          // No success toast when undo is successful - just silently restore
+
+          await useStore.getState().refreshSessions()
+        },
       })
 
       await useStore.getState().refreshSessions()
@@ -388,14 +422,29 @@ function SessionTableInner({
             handleFocusSession(nextFocusSession)
           }
 
-          toast.success(
-            isArchiving
-              ? `Archived ${selectedSessions.size} sessions`
-              : `Unarchived ${selectedSessions.size} sessions`,
-            {
-              duration: 3000,
-            },
-          )
+          // Show undo toast for bulk archive
+          const timestamp = Date.now()
+          const sessionIds = Array.from(selectedSessions)
+
+          if (isArchiving) {
+            showUndoToast({
+              title: `Archived ${selectedSessions.size} sessions`,
+              toastId: TOAST_IDS.bulkArchiveUndo(timestamp),
+              onUndo: async () => {
+                await bulkArchiveSessions(sessionIds, false)
+                await useStore.getState().refreshSessions()
+              },
+            })
+          } else {
+            showUndoToast({
+              title: `Unarchived ${selectedSessions.size} sessions`,
+              toastId: TOAST_IDS.bulkUnarchiveUndo(timestamp),
+              onUndo: async () => {
+                await bulkArchiveSessions(sessionIds, true)
+                await useStore.getState().refreshSessions()
+              },
+            })
+          }
         } else {
           // Single session archive
           const currentSession = sessions.find(s => s.id === focusedSession?.id)
@@ -433,11 +482,32 @@ function SessionTableInner({
             handleFocusSession(nextFocusSession)
           }
 
-          // Show success notification
-          toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-            description: currentSession.summary || 'Untitled session',
-            duration: 3000,
-          })
+          // Show undo toast for archive operation
+          if (isArchiving) {
+            showUndoToast({
+              title: 'Session archived',
+              description: currentSession.title || currentSession.summary || 'Untitled session',
+              toastId: TOAST_IDS.archiveUndo(currentSession.id),
+              onUndo: async () => {
+                await archiveSession(currentSession.id, false)
+                // Focus the unarchived session
+                const sessions = await daemonClient.listSessions()
+                const restoredSession = sessions.find(s => s.id === currentSession.id)
+                if (restoredSession && handleFocusSession) {
+                  handleFocusSession(restoredSession)
+                }
+              },
+            })
+          } else {
+            showUndoToast({
+              title: 'Session unarchived',
+              description: currentSession.title || currentSession.summary || 'Untitled session',
+              toastId: TOAST_IDS.unarchiveUndo(currentSession.id),
+              onUndo: async () => {
+                await archiveSession(currentSession.id, true)
+              },
+            })
+          }
         }
       } catch (error) {
         toast.error('Failed to archive session', {

@@ -11,6 +11,8 @@ import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { showUndoToast } from '@/utils/undoToast'
+import { TOAST_IDS } from '@/constants/toastIds'
 
 // Import extracted components
 import { ConversationStream } from '../../ConversationStream/ConversationStream'
@@ -536,10 +538,32 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         await useStore.getState().archiveSession(session.id, isArchiving)
         setConfirmingArchive(false)
 
-        toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-          description: session.summary || 'Untitled session',
-          duration: 3000,
-        })
+        // Show undo toast for archive operation
+        if (isArchiving) {
+          showUndoToast({
+            title: 'Session archived',
+            description: session.title || session.summary || 'Untitled session',
+            toastId: TOAST_IDS.archiveUndo(session.id),
+            onUndo: async () => {
+              await useStore.getState().archiveSession(session.id, false)
+              // Focus the unarchived session
+              const sessions = await daemonClient.listSessions()
+              const restoredSession = sessions.find(s => s.id === session.id)
+              if (restoredSession) {
+                // Session already focused in detail view
+              }
+            },
+          })
+        } else {
+          showUndoToast({
+            title: 'Session unarchived',
+            description: session.title || session.summary || 'Untitled session',
+            toastId: TOAST_IDS.unarchiveUndo(session.id),
+            onUndo: async () => {
+              await useStore.getState().archiveSession(session.id, true)
+            },
+          })
+        }
 
         onClose()
       } catch (error) {
@@ -553,7 +577,15 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       preventDefault: true,
       scopes: [detailScope],
     },
-    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
+    [
+      session.id,
+      session.archived,
+      session.title,
+      session.summary,
+      session.status,
+      onClose,
+      confirmingArchive,
+    ],
   )
 
   // Fork view hotkey (Meta+Y)
@@ -599,10 +631,32 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       await useStore.getState().archiveSession(session.id, isArchiving)
       setConfirmingArchive(false)
 
-      toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-        description: session.summary || 'Untitled session',
-        duration: 3000,
-      })
+      // Show undo toast for archive operation
+      if (isArchiving) {
+        showUndoToast({
+          title: 'Session archived',
+          description: session.title || session.summary || 'Untitled session',
+          toastId: TOAST_IDS.archiveUndo(session.id),
+          onUndo: async () => {
+            await useStore.getState().archiveSession(session.id, false)
+            // Focus the unarchived session
+            const sessions = await daemonClient.listSessions()
+            const restoredSession = sessions.find(s => s.id === session.id)
+            if (restoredSession) {
+              // Session already focused in detail view
+            }
+          },
+        })
+      } else {
+        showUndoToast({
+          title: 'Session unarchived',
+          description: session.title || session.summary || 'Untitled session',
+          toastId: TOAST_IDS.unarchiveUndo(session.id),
+          onUndo: async () => {
+            await useStore.getState().archiveSession(session.id, true)
+          },
+        })
+      }
 
       onClose()
     } catch (error) {
@@ -611,7 +665,15 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       })
       setConfirmingArchive(false)
     }
-  }, [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive])
+  }, [
+    session.id,
+    session.archived,
+    session.title,
+    session.summary,
+    session.status,
+    onClose,
+    confirmingArchive,
+  ])
 
   // Vim navigation hotkeys
   useHotkeys(

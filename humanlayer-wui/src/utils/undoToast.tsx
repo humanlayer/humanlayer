@@ -1,3 +1,4 @@
+import React from 'react'
 import { toast } from 'sonner'
 import { CodeLayerToastButtons } from '@/components/internal/CodeLayerToastButtons'
 
@@ -22,10 +23,12 @@ export function showUndoToast(options: UndoToastOptions) {
   })
 
   // Show the undo toast with sticky duration
-  return toast.success(title, {
+  // Use default toast (not success) for archiving/discarding operations
+  return toast(title, {
     id: toastId,
     description,
     duration: 30000, // 30 seconds before auto-dismiss
+    position: 'top-right', // Match CMD+SHIFT+J positioning
     action: (
       <CodeLayerToastButtons
         action={{
@@ -37,14 +40,52 @@ export function showUndoToast(options: UndoToastOptions) {
               </kbd>
             </span>
           ),
-          onClick: async () => {
-            try {
-              await onUndo()
-            } catch (error) {
-              toast.error('Failed to undo operation', {
-                description: error instanceof Error ? error.message : 'Unknown error',
-              })
+          onClick: async (event?: React.MouseEvent<HTMLButtonElement>) => {
+            if (!event) {
+              // If no event, just execute the undo without flash
+              try {
+                await onUndo()
+                toast.dismiss(toastId)
+              } catch (error) {
+                toast.error('Failed to undo operation', {
+                  description: error instanceof Error ? error.message : 'Unknown error',
+                })
+              }
+              return
             }
+
+            // Get the button element
+            const buttonElement = event.currentTarget as HTMLElement
+
+            // Apply flash effect (100ms)
+            buttonElement.classList.add('!bg-[var(--terminal-accent)]', '!text-background')
+
+            // Flash all child elements for proper contrast
+            const childElements = buttonElement.querySelectorAll('*')
+            childElements.forEach(child => {
+              ;(child as HTMLElement).classList.add('!text-background')
+            })
+
+            // Remove flash after 100ms
+            setTimeout(() => {
+              buttonElement.classList.remove('!bg-[var(--terminal-accent)]', '!text-background')
+              childElements.forEach(child => {
+                ;(child as HTMLElement).classList.remove('!text-background')
+              })
+
+              // Wait another 100ms then execute the undo and dismiss
+              setTimeout(async () => {
+                try {
+                  await onUndo()
+                  // Dismiss the toast after successful undo
+                  toast.dismiss(toastId)
+                } catch (error) {
+                  toast.error('Failed to undo operation', {
+                    description: error instanceof Error ? error.message : 'Unknown error',
+                  })
+                }
+              }, 100)
+            }, 100)
           },
         }}
         variant={variant}
@@ -58,6 +99,12 @@ export function getUndoableToasts() {
   const visibleToasts = toast.getToasts ? toast.getToasts() : []
   return visibleToasts.filter(
     t =>
-      typeof t.id === 'string' && (t.id.includes('archive_undo') || t.id.includes('draft_delete_undo')),
+      typeof t.id === 'string' &&
+      (t.id.includes('archive_undo') ||
+        t.id.includes('draft_delete_undo') ||
+        t.id.includes('unarchive_undo') ||
+        t.id.includes('bulk_archive_undo') ||
+        t.id.includes('bulk_draft_delete_undo') ||
+        t.id.includes('bulk_unarchive_undo')),
   )
 }

@@ -285,7 +285,10 @@ export function Layout() {
             typeof t.id === 'string' &&
             (t.id.includes('archive_undo') ||
               t.id.includes('draft_delete_undo') ||
-              t.id.includes('unarchive_undo')),
+              t.id.includes('unarchive_undo') ||
+              t.id.includes('bulk_archive_undo') ||
+              t.id.includes('bulk_draft_delete_undo') ||
+              t.id.includes('bulk_unarchive_undo')),
         )
 
         if (undoableToasts.length === 0) {
@@ -324,7 +327,8 @@ export function Layout() {
             setTimeout(() => {
               // Trigger the button's onClick handler
               buttonElement.click()
-              // Toast will be dismissed by the onClick handler
+              // Dismiss the toast after triggering the action
+              toast.dismiss(toastId)
             }, 100)
           }, 100)
         } else {
