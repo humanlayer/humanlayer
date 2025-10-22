@@ -5,6 +5,8 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { SearchInput } from '@/components/FuzzySearchInput'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { Input } from '@/components/ui/input'
@@ -29,6 +31,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const { trackEvent } = usePostHogTracking()
 
   // Core Form State
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -493,6 +496,17 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         // Launch the draft session with the prompt
         await daemonClient.launchDraftSession(sessionId, currentPrompt)
 
+        // Track session creation event (from draft)
+        trackEvent(POSTHOG_EVENTS.SESSION_CREATED, {
+          model: model || proxyModelOverride || undefined,
+          provider: proxyEnabled
+            ? proxyBaseUrl?.includes('baseten')
+              ? 'baseten'
+              : 'openrouter'
+            : 'anthropic',
+          from_draft: true,
+        })
+
         // Store working directory in localStorage
         localStorage.setItem('humanlayer-last-working-dir', workingDir)
 
@@ -514,7 +528,18 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         setIsLaunchingDraft(false)
       }
     },
-    [sessionId, workingDirectory, isLaunchingDraft, navigate, savedBypassTimeout],
+    [
+      sessionId,
+      workingDirectory,
+      isLaunchingDraft,
+      navigate,
+      savedBypassTimeout,
+      trackEvent,
+      model,
+      proxyModelOverride,
+      proxyEnabled,
+      proxyBaseUrl,
+    ],
   )
 
   // Handle discard draft
@@ -527,16 +552,30 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     if (hasContent) {
       setShowDiscardDraftDialog(true)
     } else {
+      // Track draft launcher exited event (no content to save)
+      trackEvent(POSTHOG_EVENTS.DRAFT_LAUNCHER_EXITED, {})
       // Refresh sessions before navigating back
       await refreshSessions()
       navigate(-1)
     }
-  }, [navigate, title, refreshSessions])
+  }, [navigate, title, refreshSessions, trackEvent])
 
   const confirmDiscardDraft = useCallback(async () => {
     try {
       if (sessionId) {
         await daemonClient.deleteDraftSession(sessionId)
+
+        // Track draft deletion event
+        trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
+          had_content: true, // We know there was content if this confirmation was triggered
+          lifetime_seconds: session?.createdAt
+            ? Math.floor((Date.now() - new Date(session.createdAt).getTime()) / 1000)
+            : undefined,
+        })
+
+        // Also track draft launcher exited (user chose to discard and exit)
+        trackEvent(POSTHOG_EVENTS.DRAFT_LAUNCHER_EXITED, {})
+
         localStorage.removeItem(`response-input.${sessionId}`)
         await refreshSessions()
       }
@@ -546,7 +585,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [sessionId, navigate, refreshSessions])
+  }, [sessionId, navigate, refreshSessions, trackEvent, session?.createdAt])
 
   // Handle toggling auto-accept
   const handleToggleAutoAccept = useCallback(() => {

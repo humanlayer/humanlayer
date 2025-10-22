@@ -2,101 +2,31 @@
 
 import { Command } from 'commander'
 import { spawn } from 'child_process'
-import { loginCommand } from './commands/login.js'
-import { contactHumanCommand } from './commands/contactHuman.js'
 import { configShowCommand } from './commands/configShow.js'
-import { pingCommand } from './commands/ping.js'
 import { launchCommand } from './commands/launch.js'
-import { alertCommand } from './commands/alert.js'
 import { thoughtsCommand } from './commands/thoughts.js'
 import { claudeCommand } from './commands/claude.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
 import { startClaudeApprovalsMCPServer } from './mcp.js'
-import {
-  getDefaultConfigPath,
-  resolveFullConfig,
-  resolveConfigWithSources,
-  maskSensitiveValue,
-} from './config.js'
-import { getProject } from './hlClient.js'
-import chalk from 'chalk'
+import { getDefaultConfigPath } from './config.js'
+import { getInvocationName, shouldLaunchApp, getAppPath, launchApp } from './utils/invocation.js'
 
 // Version is injected at build time by tsup
 const VERSION = process.env.PACKAGE_VERSION || '0.11.0'
 
-function showAbbreviatedConfig() {
-  const configWithSources = resolveConfigWithSources({})
-  console.log(`\n${chalk.yellow('Current configuration:')}`)
-  console.log(
-    `  API Base URL: ${chalk.cyan(configWithSources.api_base_url.value)} ${chalk.gray(
-      `(${configWithSources.api_base_url.sourceName})`,
-    )}`,
-  )
-  console.log(
-    `  App Base URL: ${chalk.cyan(configWithSources.app_base_url.value)} ${chalk.gray(
-      `(${configWithSources.app_base_url.sourceName})`,
-    )}`,
-  )
-  const apiKeyDisplay = configWithSources.api_key?.value
-    ? chalk.green(maskSensitiveValue(configWithSources.api_key.value))
-    : chalk.red(maskSensitiveValue(undefined))
-  console.log(`  API Key: ${apiKeyDisplay} ${chalk.gray(`(${configWithSources.api_key?.sourceName})`)}`)
-}
-
 const program = new Command()
 
-async function authenticate(printSelectedProject: boolean = false) {
-  const config = resolveFullConfig({})
-
-  if (!config.api_key) {
-    console.error('Error: No HumanLayer API token found.')
-    showAbbreviatedConfig()
-    process.exit(1)
-  }
-
-  try {
-    await getProject(config.api_base_url, config.api_key)
-    if (printSelectedProject) {
-      // Project authenticated successfully
-    }
-  } catch (error) {
-    console.error(chalk.red('Authentication failed:'), error)
-    showAbbreviatedConfig()
-    process.exit(1)
-  }
-}
-
-program.name('humanlayer').description('HumanLayer, but on your command-line.').version(VERSION)
-
-const UNPROTECTED_COMMANDS = ['config', 'login', 'thoughts', 'claude', 'join-waitlist', 'launch', 'mcp']
-
-program.hook('preAction', async (thisCmd, actionCmd) => {
-  // Get the full command path by traversing up the command hierarchy
-  const getCommandPath = (cmd: Command): string[] => {
-    const path: string[] = [cmd.name()]
-    let parent = cmd.parent
-    while (parent && parent.name() !== 'humanlayer') {
-      path.unshift(parent.name())
-      parent = parent.parent
-    }
-    return path
-  }
-
-  const commandPath = getCommandPath(actionCmd)
-  const isUnprotected = commandPath.some(cmd => UNPROTECTED_COMMANDS.includes(cmd))
-
-  if (!isUnprotected) {
-    await authenticate(true)
-  }
-})
+// Determine the invocation name for dynamic behavior
+const invocationName = getInvocationName()
 
 program
-  .command('login')
-  .description('Login to HumanLayer and save API token')
-  .option('--api-base <url>', 'API base URL')
-  .option('--app-base <url>', 'App base URL')
-  .option('--config-file <path>', 'Path to config file')
-  .action(loginCommand)
+  .name(
+    invocationName === 'codelayer' || invocationName === 'codelayer-nightly'
+      ? invocationName
+      : 'humanlayer',
+  )
+  .description('HumanLayer, but on your command-line.')
+  .version(VERSION)
 
 const mcpCommand = program.command('mcp').description('MCP server functionality')
 
@@ -152,35 +82,6 @@ configCommand
   .option('--json', 'Output as JSON with masked keys')
   .action(configShowCommand)
 
-program
-  .command('contact_human')
-  .description('Contact a human with a message')
-  .requiredOption('-m, --message <text>', 'The message to send (use "-" to read from stdin)')
-  .option('--slack-channel <id>', 'Slack channel or user ID')
-  .option('--slack-bot-token <token>', 'Slack bot token')
-  .option('--slack-context <context>', 'Context about the Slack channel or user')
-  .option('--slack-thread-ts <ts>', 'Slack thread timestamp')
-  .option('--slack-blocks [boolean]', 'Use experimental Slack blocks', true)
-  .option('--email-address <email>', 'Email address to contact')
-  .option('--email-context <context>', 'Context about the email recipient')
-  .action(contactHumanCommand)
-
-program
-  .command('ping')
-  .description('Check authentication and display current project')
-  .action(pingCommand)
-
-program
-  .command('alert')
-  .description('Monitor daemon for new approval alerts with audio notifications')
-  .option('--event-types <types...>', 'Event types to watch (default: new_approval)')
-  .option('--session-id <id>', 'Filter by session ID')
-  .option('--run-id <id>', 'Filter by run ID')
-  .option('--sound-file <path>', 'Custom sound file to play on alerts')
-  .option('--quiet', 'Disable sound notifications')
-  .option('--daemon-socket <path>', 'Path to daemon socket')
-  .action(alertCommand)
-
 // Add thoughts command
 thoughtsCommand(program)
 
@@ -213,5 +114,23 @@ program.configureOutput({
     }
   },
 })
+
+// Check if we should launch the app instead of running CLI
+const hasArgs = process.argv.length > 2 // More than just node/script name
+
+if (shouldLaunchApp(invocationName, hasArgs)) {
+  const appPath = getAppPath(invocationName)
+  if (appPath) {
+    launchApp(appPath)
+    process.exit(0)
+  } else {
+    const appName = invocationName === 'codelayer-nightly' ? 'CodeLayer-Nightly' : 'CodeLayer'
+    console.error(`${appName} app not found. Please install it first:`)
+    console.error(
+      `    brew install --cask humanlayer/humanlayer/${invocationName === 'codelayer-nightly' ? 'codelayer-nightly' : 'codelayer'}`,
+    )
+    process.exit(1)
+  }
+}
 
 program.parse(process.argv)

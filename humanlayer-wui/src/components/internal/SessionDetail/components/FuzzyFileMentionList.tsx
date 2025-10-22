@@ -16,6 +16,8 @@ import { daemonClient } from '@/lib/daemon/client'
 import { highlightMatches } from '@/lib/fuzzy-search'
 import { cn } from '@/lib/utils'
 import fuzzy from 'fuzzy'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 interface FileMentionListProps {
   query: string
@@ -56,6 +58,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
     const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
     const activeSessionDetail = useStore(state => state.activeSessionDetail)
     const sessionWorkingDir = activeSessionDetail?.session?.workingDir
+    const { trackEvent } = usePostHogTracking()
 
     // Memoize additionalDirectories to prevent infinite loop from creating new array on every render
     const additionalDirectories = useMemo(
@@ -216,6 +219,10 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
             const selected = results[selectedIndex]
             if (selected.type === 'agent') {
               const agent = selected.data as AgentMatch
+              // Track subagent invoked event
+              trackEvent(POSTHOG_EVENTS.SUBAGENT_INVOKED, {
+                agent_name: agent.name,
+              })
               command({
                 id: agent.mentionText, // Keep the full @agent-<name> for the text insertion
                 label: agent.mentionText.substring(1), // Remove @ from label since FileMentionNode adds it for display
@@ -239,7 +246,7 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
 
         return false
       },
-      [results, selectedIndex, command],
+      [results, selectedIndex, command, trackEvent],
     )
 
     // Expose keyboard handler via ref
@@ -292,6 +299,10 @@ export const FuzzyFileMentionList = forwardRef<FileMentionListRef, FileMentionLi
                 }`}
                 onMouseEnter={() => setSelectedIndex(index)}
                 onClick={() => {
+                  // Track subagent invoked event
+                  trackEvent(POSTHOG_EVENTS.SUBAGENT_INVOKED, {
+                    agent_name: agent.name,
+                  })
                   command({
                     id: agent.mentionText, // Keep the full @agent-<name> for the text insertion
                     label: agent.mentionText.substring(1), // Remove @ from label since FileMentionNode adds it for display

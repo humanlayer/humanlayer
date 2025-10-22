@@ -13,10 +13,9 @@ interface TestCase {
     path?: string
   }
   expected: {
-    api_key?: string
-    api_base_url: string
-    app_base_url: string
-    contact_channel: Record<string, unknown>
+    www_base_url: string
+    daemon_socket: string
+    run_id?: string
   }
 }
 
@@ -60,135 +59,50 @@ describe('config show e2e tests', () => {
     {
       name: 'default config with no env or flags',
       expected: {
-        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
-        app_base_url: 'https://app.humanlayer.dev',
-        contact_channel: {},
+        www_base_url: 'https://www.humanlayer.dev',
+        daemon_socket: '~/.humanlayer/daemon.sock',
       },
     },
     {
-      name: 'slack channel flag override',
-      flags: ['--slack-channel', 'C123456'],
-      expected: {
-        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
-        app_base_url: 'https://app.humanlayer.dev',
-        contact_channel: {
-          slack: {
-            channel_or_user_id: 'C123456',
-            experimental_slack_blocks: true,
-          },
-        },
-      },
-    },
-    {
-      name: 'environment variables',
+      name: 'environment variables override defaults',
       env: {
-        HUMANLAYER_API_KEY: 'test-token-123456',
-        HUMANLAYER_API_BASE: 'https://api.example.com',
-        HUMANLAYER_APP_URL: 'https://app.example.com',
-        HUMANLAYER_SLACK_CHANNEL: 'C789012',
-        HUMANLAYER_SLACK_BOT_TOKEN: 'xoxb-test-bot-token',
+        HUMANLAYER_WWW_BASE_URL: 'https://www.example.com',
+        HUMANLAYER_DAEMON_SOCKET: '~/.humanlayer/custom.sock',
+        HUMANLAYER_RUN_ID: 'test-run-123',
       },
       expected: {
-        api_key: 'test-t...',
-        api_base_url: 'https://api.example.com',
-        app_base_url: 'https://app.example.com',
-        contact_channel: {
-          slack: {
-            channel_or_user_id: 'C789012',
-            experimental_slack_blocks: true,
-            bot_token: 'xoxb-t...',
-          },
-        },
+        www_base_url: 'https://www.example.com',
+        daemon_socket: '~/.humanlayer/custom.sock',
+        run_id: 'test-run-123',
       },
     },
     {
-      name: 'email configuration via env',
-      env: {
-        HUMANLAYER_EMAIL_ADDRESS: 'test@example.com',
-        HUMANLAYER_EMAIL_CONTEXT: 'Support team',
-      },
-      expected: {
-        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
-        app_base_url: 'https://app.humanlayer.dev',
-        contact_channel: {
-          email: {
-            address: 'test@example.com',
-            context_about_user: 'Support team',
-          },
-        },
-      },
-    },
-    {
-      name: 'flags override environment variables',
-      env: {
-        HUMANLAYER_SLACK_CHANNEL: 'C111111',
-        HUMANLAYER_EMAIL_ADDRESS: 'env@example.com',
-      },
-      flags: ['--slack-channel', 'C222222', '--email-address', 'flag@example.com'],
-      expected: {
-        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
-        app_base_url: 'https://app.humanlayer.dev',
-        contact_channel: {
-          slack: {
-            channel_or_user_id: 'C222222',
-            experimental_slack_blocks: true,
-          },
-          email: {
-            address: 'flag@example.com',
-          },
-        },
-      },
-    },
-    {
-      name: 'config file with API settings',
+      name: 'config file overrides defaults',
       configFile: {
         content: {
-          api_key: 'config-token-123456',
-          api_base_url: 'https://config-api.example.com',
-          app_base_url: 'https://config-app.example.com',
-          channel: {
-            slack: {
-              channel_or_user_id: 'C333333',
-              bot_token: 'config-bot-token-123456',
-              context_about_channel_or_user: 'Config team',
-              experimental_slack_blocks: false,
-            },
-          },
+          www_base_url: 'https://config.example.com',
+          daemon_socket: '~/.humanlayer/config.sock',
         },
       },
       expected: {
-        api_key: 'config...',
-        api_base_url: 'https://config-api.example.com',
-        app_base_url: 'https://config-app.example.com',
-        contact_channel: {
-          slack: {
-            channel_or_user_id: 'C333333',
-            bot_token: 'config...',
-            context_about_channel_or_user: 'Config team',
-            experimental_slack_blocks: true,
-          },
-        },
+        www_base_url: 'https://config.example.com',
+        daemon_socket: '~/.humanlayer/config.sock',
       },
     },
     {
-      name: 'mixed channels from different sources',
+      name: 'environment variables override config file',
       env: {
-        HUMANLAYER_EMAIL_ADDRESS: 'env@example.com',
+        HUMANLAYER_WWW_BASE_URL: 'https://env.example.com',
       },
-      flags: ['--slack-channel', 'C444444', '--slack-context', 'Flag context'],
-      expected: {
-        api_base_url: 'https://api.humanlayer.dev/humanlayer/v1',
-        app_base_url: 'https://app.humanlayer.dev',
-        contact_channel: {
-          slack: {
-            channel_or_user_id: 'C444444',
-            context_about_channel_or_user: 'Flag context',
-            experimental_slack_blocks: true,
-          },
-          email: {
-            address: 'env@example.com',
-          },
+      configFile: {
+        content: {
+          www_base_url: 'https://config.example.com',
+          daemon_socket: '~/.humanlayer/config.sock',
         },
+      },
+      expected: {
+        www_base_url: 'https://env.example.com',
+        daemon_socket: '~/.humanlayer/config.sock',
       },
     },
   ]
@@ -210,9 +124,6 @@ describe('config show e2e tests', () => {
 
       // Build command args
       const args = ['config', 'show', '--json']
-      if (testCase.flags) {
-        args.push(...testCase.flags)
-      }
       if (configFilePath) {
         args.push('--config-file', configFilePath)
       }
@@ -234,7 +145,7 @@ describe('config show e2e tests', () => {
     const result = await runCommand(
       ['config', 'show'],
       {
-        HUMANLAYER_SLACK_CHANNEL: 'C123456',
+        HUMANLAYER_WWW_BASE_URL: 'https://www.example.com',
       },
       tempDir,
     )
@@ -242,9 +153,9 @@ describe('config show e2e tests', () => {
     expect(result.exitCode).toBe(0)
     expect(result.stdout).toContain('HumanLayer Configuration')
     expect(result.stdout).toContain('Config File Sources:')
-    expect(result.stdout).toContain('API Configuration:')
-    expect(result.stdout).toContain('Contact Channel Configuration:')
-    expect(result.stdout).toContain('C123456')
+    expect(result.stdout).toContain('Configuration:')
+    expect(result.stdout).toContain('WWW Base URL')
+    expect(result.stdout).toContain('Daemon Socket')
   })
 })
 

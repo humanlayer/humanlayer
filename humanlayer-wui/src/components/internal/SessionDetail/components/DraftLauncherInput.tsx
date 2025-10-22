@@ -222,6 +222,99 @@ export const DraftLauncherInput = forwardRef<
       }
     }, [responseEditor])
 
+    // Track previous session ID for defensive saving
+    const prevSessionIdRef = useRef(session.id)
+
+    // Reset editor content when session changes
+    useEffect(() => {
+      if (!responseEditor) {
+        logger.log('DraftLauncherInput - No editor instance yet, skipping session change handling')
+        return
+      }
+
+      logger.log('DraftLauncherInput - Session change detected', {
+        sessionId: session.id,
+        previousSessionId: prevSessionIdRef.current,
+        hasEditorState: !!session.editorState,
+        editorIsEmpty: responseEditor.isEmpty,
+      })
+
+      // Check if we're actually switching sessions
+      if (prevSessionIdRef.current !== session.id) {
+        // Save current content before switching (defensive, should already be saved)
+        const currentContent = responseEditor.getJSON()
+        if (currentContent && !responseEditor.isEmpty) {
+          // Save to the PREVIOUS session's storage
+          const prevSessionId = prevSessionIdRef.current
+          if (prevSessionId) {
+            // For draft sessions, we should save to database but we don't have the previous
+            // session object. The handleChange callback should have already saved correctly.
+            // As a fallback, we can log this for debugging.
+            logger.log('DraftLauncherInput - Content would be saved for previous session', {
+              prevSessionId,
+              contentLength: JSON.stringify(currentContent).length,
+            })
+          }
+        }
+
+        // Update the ref for next time
+        prevSessionIdRef.current = session.id
+      }
+
+      // Load content for the new session
+      let newContent = null
+      let contentSource = 'none'
+
+      const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
+
+      if (hasValidSessionData) {
+        // For draft sessions, load from database
+        if (session.editorState) {
+          try {
+            newContent = JSON.parse(session.editorState)
+            contentSource = 'database'
+            logger.log('DraftLauncherInput - Loaded draft from database', {
+              sessionId: session.id,
+              contentLength: JSON.stringify(newContent).length,
+            })
+          } catch (e) {
+            logger.error('DraftLauncherInput - Failed to parse editorState', {
+              sessionId: session.id,
+              error: e,
+              editorState: session.editorState,
+            })
+          }
+        }
+      } else {
+        logger.log('DraftLauncherInput - Skipping content load, session data not ready', {
+          sessionId: session.id,
+          status: session.status,
+          fromStore: (session as any).fromStore,
+        })
+      }
+
+      // Update editor content with error handling
+      try {
+        if (newContent) {
+          responseEditor.commands.setContent(newContent)
+          logger.log('DraftLauncherInput - Set editor content from', contentSource, {
+            sessionId: session.id,
+          })
+        } else {
+          responseEditor.commands.clearContent()
+          logger.log('DraftLauncherInput - Cleared editor content', {
+            sessionId: session.id,
+          })
+        }
+      } catch (e) {
+        logger.error('DraftLauncherInput - Failed to update editor content', {
+          sessionId: session.id,
+          error: e,
+          newContent,
+        })
+      }
+    }, [session.id, session.editorState, responseEditor])
+
     // Shift+M to open model selector
     useHotkeys(
       'shift+m',

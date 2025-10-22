@@ -96,3 +96,6 @@ mcp-config.json
 
 # git ignore the build version for specific compiled platforms
 humanlayer-darwin-arm64
+
+# Claude Code local settings
+.claude/settings.local.json

@@ -62,7 +62,9 @@ export function MCPToolCallContent({
   return (
     <div>
       <ToolHeader name={displayName} nameColor={approvalStatus ? statusColor : undefined} />
-      {toolInput && <MCPToolCallParamPreview toolInput={toolInput} isDim={isCompleted && !isFocused} />}
+      {toolInput && Object.keys(toolInput).length > 0 && (
+        <MCPToolCallParamPreview toolInput={toolInput} isDim={isCompleted && !isFocused} />
+      )}
       {isCompleted && resultPreview && (
         <div className="text-sm text-muted-foreground mt-1">{resultPreview}</div>
       )}

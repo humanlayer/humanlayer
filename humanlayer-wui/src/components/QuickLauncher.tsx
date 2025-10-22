@@ -13,6 +13,8 @@ import { homeDir } from '@tauri-apps/api/path'
 import { syncWindowBackgroundWithTheme } from '@/lib/windowTheme'
 import { cn } from '@/lib/utils'
 import { ShieldOff } from 'lucide-react'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 const LAST_WORKING_DIR_KEY = 'last-working-dir'
 
@@ -24,6 +26,7 @@ export function QuickLauncher() {
   const [autoAccept, setAutoAccept] = useState(false)
   const [bypassPermissions, setBypassPermissions] = useState(false)
   const promptRef = useRef<HTMLTextAreaElement>(null)
+  const { trackEvent } = usePostHogTracking()
 
   // Get recent directories from hook for fuzzy search
   const { paths: recentDirectories } = useRecentPaths()
@@ -101,6 +104,13 @@ export function QuickLauncher() {
         provider: 'anthropic',
         autoAcceptEdits: autoAccept,
         dangerouslySkipPermissions: bypassPermissions,
+      })
+
+      // Track session creation event (not from draft)
+      trackEvent(POSTHOG_EVENTS.SESSION_CREATED, {
+        model: undefined, // Using default model
+        provider: 'anthropic',
+        from_draft: false,
       })
 
       // Try to notify the main window about the new session

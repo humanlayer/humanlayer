@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, Pencil, ShieldOff } from 'lucide-react'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { getStatusTextClass } from '@/utils/component-utils'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import {
   formatTimestamp,
   formatAbsoluteTimestamp,
@@ -62,6 +64,7 @@ function SessionTableInner({
 }: SessionTableProps) {
   const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
   const tableRef = useRef<HTMLTableElement>(null)
+  const { trackEvent } = usePostHogTracking()
   const {
     archiveSession,
     selectedSessions,
@@ -122,6 +125,15 @@ function SessionTableInner({
       }
 
       await daemonClient.deleteDraftSession(sessionId)
+
+      // Track draft deletion event with metadata (from main branch)
+      trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
+        had_content: currentSession?.query?.trim() !== '',
+        lifetime_seconds: currentSession?.createdAt
+          ? Math.floor((Date.now() - new Date(currentSession.createdAt).getTime()) / 1000)
+          : undefined,
+      })
+
       // Update status to 'discarded' instead of removing from state
       // This allows undo functionality to work properly
       useStore.getState().updateSessionStatus(sessionId, 'discarded')
@@ -176,6 +188,17 @@ function SessionTableInner({
       const nonSelectedSessions = sessions.filter(s => !draftIds.includes(s.id))
 
       await bulkDiscardDrafts(draftIds)
+
+      // Track draft deletion events (from main branch)
+      draftIds.forEach(draftId => {
+        const draftSession = sessions.find(s => s.id === draftId)
+        trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
+          had_content: draftSession?.query?.trim() !== '',
+          lifetime_seconds: draftSession?.createdAt
+            ? Math.floor((Date.now() - new Date(draftSession.createdAt).getTime()) / 1000)
+            : undefined,
+        })
+      })
 
       if (nonSelectedSessions.length > 0 && handleFocusSession) {
         handleFocusSession(nonSelectedSessions[0])
@@ -432,6 +455,14 @@ function SessionTableInner({
 
           await bulkArchiveSessions(Array.from(selectedSessions), isArchiving)
 
+          // Track the bulk archive/unarchive event
+          trackEvent(
+            isArchiving ? POSTHOG_EVENTS.SESSION_ARCHIVED : POSTHOG_EVENTS.SESSION_UNARCHIVED,
+            {
+              count: selectedSessions.size,
+            },
+          )
+
           // Focus next available session
           if (nextFocusSession && handleFocusSession) {
             handleFocusSession(nextFocusSession)
@@ -492,6 +523,14 @@ function SessionTableInner({
 
           await archiveSession(currentSession.id, isArchiving)
 
+          // Track the archive/unarchive event
+          trackEvent(
+            isArchiving ? POSTHOG_EVENTS.SESSION_ARCHIVED : POSTHOG_EVENTS.SESSION_UNARCHIVED,
+            {
+              count: 1,
+            },
+          )
+
           // Set focus to the determined session
           if (nextFocusSession && handleFocusSession) {
             handleFocusSession(nextFocusSession)
@@ -548,6 +587,7 @@ function SessionTableInner({
       bulkArchiveSessions,
       bulkDiscardDrafts,
       handleFocusSession,
+      trackEvent,
     ],
   )
 

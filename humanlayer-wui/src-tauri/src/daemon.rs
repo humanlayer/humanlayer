@@ -40,6 +40,8 @@ impl DaemonManager {
         is_dev: bool,
         branch_override: Option<String>,
     ) -> Result<DaemonInfo, String> {
+        // Check if this is a nightly build based on app identifier
+        let is_nightly = app_handle.config().identifier.contains("nightly");
         // Check if already running
         {
             let process = self.process.lock().unwrap();
@@ -131,6 +133,9 @@ impl DaemonManager {
                 }
             }
             dev_db
+        } else if is_nightly {
+            // Nightly build uses daemon-nightly.db
+            humanlayer_dir.join("daemon-nightly.db")
         } else {
             humanlayer_dir.join("daemon.db")
         };
@@ -141,6 +146,9 @@ impl DaemonManager {
             PathBuf::from(sock_path)
         } else if is_dev {
             humanlayer_dir.join(format!("daemon-{branch_id}.sock"))
+        } else if is_nightly {
+            // Nightly build uses daemon-nightly.sock
+            humanlayer_dir.join("daemon-nightly.sock")
         } else {
             humanlayer_dir.join("daemon.sock")
         };
