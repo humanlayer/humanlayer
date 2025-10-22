@@ -273,6 +273,56 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 		}
 	}
 
+	// Handle working directory validation and creation
+	if claudeConfig.WorkingDir != "" {
+		// Expand ~ if present
+		if strings.HasPrefix(claudeConfig.WorkingDir, "~") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get home directory: %w", err)
+			}
+			claudeConfig.WorkingDir = strings.Replace(claudeConfig.WorkingDir, "~", home, 1)
+		}
+
+		// Check directory status
+		info, err := os.Stat(claudeConfig.WorkingDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Directory doesn't exist
+				if config.CreateDirectoryIfNotExists {
+					slog.Info("Creating working directory",
+						"path", claudeConfig.WorkingDir,
+						"session_id", sessionID)
+
+					// Create with parent directories
+					if err := os.MkdirAll(claudeConfig.WorkingDir, 0755); err != nil {
+						return nil, fmt.Errorf("failed to create working directory %s: %w",
+							claudeConfig.WorkingDir, err)
+					}
+
+					slog.Info("Successfully created working directory",
+						"path", claudeConfig.WorkingDir)
+				} else {
+					// Return specific error that client can handle
+					return nil, &DirectoryNotFoundError{
+						Path:    claudeConfig.WorkingDir,
+						Message: fmt.Sprintf("working directory does not exist: %s", claudeConfig.WorkingDir),
+					}
+				}
+			} else {
+				// Other error (permissions, etc.)
+				return nil, fmt.Errorf("error accessing working directory %s: %w",
+					claudeConfig.WorkingDir, err)
+			}
+		} else {
+			// Path exists - verify it's a directory
+			if !info.IsDir() {
+				return nil, fmt.Errorf("working directory path exists but is not a directory: %s",
+					claudeConfig.WorkingDir)
+			}
+		}
+	}
+
 	// Create session record directly in database
 	startTime := time.Now()
 

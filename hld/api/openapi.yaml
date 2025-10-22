@@ -73,6 +73,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/DebugInfoResponse'
 
+  /validate-directory:
+    post:
+      operationId: validateDirectory
+      summary: Validate directory existence
+      description: Check if a directory exists and whether it can be created
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ValidateDirectoryRequest'
+      responses:
+        '200':
+          description: Directory validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateDirectoryResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /sessions:
     post:
       operationId: createSession
@@ -95,6 +118,12 @@ paths:
                 $ref: '#/components/schemas/CreateSessionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '422':
+          description: Directory does not exist and needs to be created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryNotFoundResponse'
         '500':
           $ref: '#/components/responses/InternalError'
 
@@ -1328,6 +1357,10 @@ components:
           type: boolean
           description: Create session in draft state without launching Claude
           default: false
+        createDirectoryIfNotExists:
+          type: boolean
+          description: Create the working directory if it does not exist
+          default: false
 
     CreateSessionResponse:
       type: object
@@ -1348,6 +1381,64 @@ components:
               type: string
               description: Created run ID
               example: run_new456
+
+    ValidateDirectoryRequest:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+          description: Directory path to validate
+          example: /home/user/new-project
+
+    ValidateDirectoryResponse:
+      type: object
+      required:
+        - exists
+        - expandedPath
+      properties:
+        exists:
+          type: boolean
+          description: Whether the directory exists
+        isDirectory:
+          type: boolean
+          description: Whether the path is a directory (only set if exists is true)
+        canCreate:
+          type: boolean
+          description: Whether the directory can be created (only set if exists is false)
+        expandedPath:
+          type: string
+          description: The expanded path with ~ resolved
+          example: /home/user/new-project
+        error:
+          type: string
+          description: Error message if path validation failed
+
+    DirectoryNotFoundResponse:
+      type: object
+      required:
+        - error
+        - message
+        - path
+        - requiresCreation
+      properties:
+        error:
+          type: string
+          description: Error code
+          example: directory_not_found
+        message:
+          type: string
+          description: Human-readable error message
+          example: working directory does not exist /home/user/new-project
+        path:
+          type: string
+          description: The directory path that does not exist
+          example: /home/user/new-project
+        requiresCreation:
+          type: boolean
+          description: Indicates that directory creation is required
+          example: true
 
     SessionResponse:
       type: object

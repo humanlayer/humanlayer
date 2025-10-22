@@ -77,6 +77,7 @@ type LaunchSessionConfig struct {
 	AutoAcceptEdits                   bool   // Auto-accept edit tools
 	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
 	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
+	CreateDirectoryIfNotExists        bool   // Create working directory if it doesn't exist
 	// Proxy configuration
 	ProxyEnabled       bool   // Whether proxy is enabled
 	ProxyBaseURL       string // Proxy base URL
@@ -101,6 +102,16 @@ type ContinueSessionConfig struct {
 	ProxyBaseURL          string                // Proxy base URL
 	ProxyModelOverride    string                // Model to use with proxy
 	ProxyAPIKey           string                // API key for proxy service
+}
+
+// DirectoryNotFoundError indicates a directory doesn't exist and needs creation
+type DirectoryNotFoundError struct {
+	Path    string
+	Message string
+}
+
+func (e *DirectoryNotFoundError) Error() string {
+	return e.Message
 }
 
 // SessionManager defines the interface for managing Claude Code sessions
