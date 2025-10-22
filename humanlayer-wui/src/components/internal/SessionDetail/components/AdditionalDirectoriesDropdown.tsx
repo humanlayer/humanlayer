@@ -295,7 +295,7 @@ export function AdditionalDirectoriesDropdown({
   const directoryCount = directories?.length || 0
 
   const buttonContent = (
-    <div className="group inline-flex items-center">
+    <div className="inline-flex items-center">
       <button
         className={`inline-flex items-center text-sm font-mono transition-colors focus:outline-none ${
           canEdit
@@ -312,7 +312,7 @@ export function AdditionalDirectoriesDropdown({
       <Button
         variant="ghost"
         size="icon"
-        className="w-5 h-5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+        className="w-5 h-5 ml-1"
         onClick={e => {
           e.stopPropagation()
           copyToClipboard(workingDir)
