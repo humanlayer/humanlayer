@@ -541,16 +541,24 @@ export const useStore = create<StoreState>((set, get) => {
           throw new Error(`Failed to discard ${failedCount} drafts`)
         }
 
-        // Remove all successfully deleted sessions from local state
+        // Update sessions status to 'discarded' instead of removing them
+        // This allows undo functionality to work properly
         set(state => ({
-          sessions: state.sessions.filter(session => !sessionIds.includes(session.id)),
-          // Clear focused session if it was removed
+          sessions: state.sessions.map(session =>
+            sessionIds.includes(session.id)
+              ? { ...session, status: 'discarded' as SessionStatus }
+              : session
+          ),
+          // Clear focused session if it was in the deleted list
           focusedSession: sessionIds.includes(state.focusedSession?.id ?? '')
             ? null
             : state.focusedSession,
           // Clear selection after bulk operation
           selectedSessions: new Set(),
         }))
+
+        // Refresh to update the view based on current filters
+        await get().refreshSessions()
       } catch (error) {
         logger.error('Failed to bulk discard drafts:', error)
         throw error
