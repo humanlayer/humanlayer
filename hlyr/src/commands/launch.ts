@@ -40,6 +40,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
     if (additionalDirs.length > 0) {
       console.log('Additional directories:', additionalDirs)
     }
+    console.log('Daemon socket:', socketPath)
     console.log('Approvals enabled:', options.approvals !== false)
 
     if (options.dangerouslySkipPermissions) {

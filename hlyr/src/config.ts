@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import path from 'path'
 import chalk from 'chalk'
+import { getInvocationName, getDefaultSocketPath } from './utils/invocation.js'
 
 // Load environment variables
 dotenv.config()
@@ -63,7 +64,7 @@ const CONFIG_SCHEMA: ConfigSchema = {
     envVar: 'HUMANLAYER_DAEMON_SOCKET',
     configKey: 'daemon_socket',
     flagKey: 'daemonSocket',
-    defaultValue: '~/.humanlayer/daemon.sock',
+    defaultValue: getDefaultSocketPath(getInvocationName()),
     required: true,
   },
   run_id: {

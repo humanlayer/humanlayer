@@ -9,13 +9,24 @@ import { claudeCommand } from './commands/claude.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
 import { startClaudeApprovalsMCPServer } from './mcp.js'
 import { getDefaultConfigPath } from './config.js'
+import { getInvocationName, shouldLaunchApp, getAppPath, launchApp } from './utils/invocation.js'
 
 // Version is injected at build time by tsup
 const VERSION = process.env.PACKAGE_VERSION || '0.11.0'
 
 const program = new Command()
 
-program.name('humanlayer').description('HumanLayer, but on your command-line.').version(VERSION)
+// Determine the invocation name for dynamic behavior
+const invocationName = getInvocationName()
+
+program
+  .name(
+    invocationName === 'codelayer' || invocationName === 'codelayer-nightly'
+      ? invocationName
+      : 'humanlayer',
+  )
+  .description('HumanLayer, but on your command-line.')
+  .version(VERSION)
 
 const mcpCommand = program.command('mcp').description('MCP server functionality')
 
@@ -103,5 +114,23 @@ program.configureOutput({
     }
   },
 })
+
+// Check if we should launch the app instead of running CLI
+const hasArgs = process.argv.length > 2 // More than just node/script name
+
+if (shouldLaunchApp(invocationName, hasArgs)) {
+  const appPath = getAppPath(invocationName)
+  if (appPath) {
+    launchApp(appPath)
+    process.exit(0)
+  } else {
+    const appName = invocationName === 'codelayer-nightly' ? 'CodeLayer-Nightly' : 'CodeLayer'
+    console.error(`${appName} app not found. Please install it first:`)
+    console.error(
+      `    brew install --cask humanlayer/humanlayer/${invocationName === 'codelayer-nightly' ? 'codelayer-nightly' : 'codelayer'}`,
+    )
+    process.exit(1)
+  }
+}
 
 program.parse(process.argv)
