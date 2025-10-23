@@ -315,10 +315,43 @@ export class HTTPDaemonClient implements IDaemonClient {
     return { success: true }
   }
 
-  async launchDraftSession(sessionId: string, prompt: string): Promise<{ success: boolean }> {
+  async launchDraftSession(
+    sessionId: string,
+    prompt: string,
+    createDirectoryIfNotExists?: boolean,
+  ): Promise<{ success: boolean }> {
     await this.ensureConnected()
-    await this.client!.launchDraftSession(sessionId, prompt)
-    return { success: true }
+    try {
+      await this.client!.launchDraftSession(sessionId, prompt, createDirectoryIfNotExists)
+      return { success: true }
+    } catch (error: any) {
+      // The SDK throws a ResponseError with the response object
+      // We need to check error.response.status and read the body
+      const response = error.response
+
+      if (response && response.status === 422) {
+        // Read the JSON body from the response
+        let errorBody
+        try {
+          errorBody = await response.json()
+        } catch (jsonError) {
+          logger.error('[launchDraftSession] Failed to parse 422 response body:', jsonError)
+          throw error // Re-throw original error if JSON parsing fails
+        }
+
+        if (errorBody?.error === 'directory_not_found') {
+          // Re-throw with proper structure for UI to handle
+          throw {
+            status: 422,
+            data: errorBody,
+            message: errorBody.message,
+          }
+        }
+      }
+
+      // Re-throw other errors
+      throw error
+    }
   }
 
   async deleteDraftSession(sessionId: string): Promise<{ success: boolean }> {

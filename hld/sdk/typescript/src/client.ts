@@ -135,10 +135,13 @@ export class HLDClient {
     }
 
     // Launch draft session
-    async launchDraftSession(id: string, prompt: string): Promise<void> {
+    async launchDraftSession(id: string, prompt: string, createDirectoryIfNotExists?: boolean): Promise<void> {
         await this.sessionsApi.launchDraftSession({
             id,
-            launchDraftSessionRequest: { prompt }
+            launchDraftSessionRequest: {
+                prompt,
+                createDirectoryIfNotExists
+            }
         });
     }
 

@@ -18,6 +18,8 @@ import type {
   ErrorResponse,
   FuzzySearchFilesRequest,
   FuzzySearchFilesResponse,
+  ValidateDirectoryRequest,
+  ValidateDirectoryResponse,
 } from '../models/index';
 import {
     ErrorResponseFromJSON,
@@ -26,10 +28,18 @@ import {
     FuzzySearchFilesRequestToJSON,
     FuzzySearchFilesResponseFromJSON,
     FuzzySearchFilesResponseToJSON,
+    ValidateDirectoryRequestFromJSON,
+    ValidateDirectoryRequestToJSON,
+    ValidateDirectoryResponseFromJSON,
+    ValidateDirectoryResponseToJSON,
 } from '../models/index';
 
 export interface FuzzySearchFilesOperationRequest {
     fuzzySearchFilesRequest: FuzzySearchFilesRequest;
+}
+
+export interface ValidateDirectoryOperationRequest {
+    validateDirectoryRequest: ValidateDirectoryRequest;
 }
 
 /**
@@ -54,6 +64,22 @@ export interface FilesApiInterface {
      * Fuzzy search for files and folders
      */
     fuzzySearchFiles(requestParameters: FuzzySearchFilesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FuzzySearchFilesResponse>;
+
+    /**
+     * Check if a directory exists and whether it can be created
+     * @summary Validate directory existence
+     * @param {ValidateDirectoryRequest} validateDirectoryRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FilesApiInterface
+     */
+    validateDirectoryRaw(requestParameters: ValidateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ValidateDirectoryResponse>>;
+
+    /**
+     * Check if a directory exists and whether it can be created
+     * Validate directory existence
+     */
+    validateDirectory(requestParameters: ValidateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ValidateDirectoryResponse>;
 
 }
 
@@ -100,6 +126,47 @@ export class FilesApi extends runtime.BaseAPI implements FilesApiInterface {
      */
     async fuzzySearchFiles(requestParameters: FuzzySearchFilesOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<FuzzySearchFilesResponse> {
         const response = await this.fuzzySearchFilesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Check if a directory exists and whether it can be created
+     * Validate directory existence
+     */
+    async validateDirectoryRaw(requestParameters: ValidateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ValidateDirectoryResponse>> {
+        if (requestParameters['validateDirectoryRequest'] == null) {
+            throw new runtime.RequiredError(
+                'validateDirectoryRequest',
+                'Required parameter "validateDirectoryRequest" was null or undefined when calling validateDirectory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/validate-directory`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ValidateDirectoryRequestToJSON(requestParameters['validateDirectoryRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ValidateDirectoryResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Check if a directory exists and whether it can be created
+     * Validate directory existence
+     */
+    async validateDirectory(requestParameters: ValidateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ValidateDirectoryResponse> {
+        const response = await this.validateDirectoryRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
