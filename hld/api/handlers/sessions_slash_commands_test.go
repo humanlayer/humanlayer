@@ -212,9 +212,14 @@ func TestGetSlashCommands(t *testing.T) {
 	// Override HOME to avoid picking up real global commands
 	tempHomeDir := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	_ = os.Unsetenv("CLAUDE_CONFIG_DIR") // Ensure we don't pick up real config
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 
 	// Create directory structure with test commands
@@ -364,13 +369,18 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 
 	// Create a temp home directory for global commands
 	tempHomeDir := t.TempDir()
-	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
+	globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands")
 
 	// Set HOME env var temporarily for this test
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	_ = os.Unsetenv("CLAUDE_CONFIG_DIR") // Use default location
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 
 	// Create directory structures
@@ -520,13 +530,18 @@ func TestGetSlashCommandsGlobalOverridesLocal(t *testing.T) {
 
 	// Create a temp home directory for global commands
 	tempHomeDir := t.TempDir()
-	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
+	globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands")
 
 	// Set HOME env var temporarily for this test
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	_ = os.Unsetenv("CLAUDE_CONFIG_DIR") // Use default location
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 
 	// Create directory structures with nested folders
@@ -651,9 +666,9 @@ func TestGetSlashCommandsRespectsCLAUDE_CONFIG_DIR(t *testing.T) {
 
 	// Create test commands in custom config dir
 	customCommands := map[string]string{
-		"custom_command.md":      "# Custom Command from CLAUDE_CONFIG_DIR",
-		"replicated_command.md":  "# Replicated Command",
-		"another_custom.md":      "# Another Custom Command",
+		"custom_command.md":     "# Custom Command from CLAUDE_CONFIG_DIR",
+		"replicated_command.md": "# Replicated Command",
+		"another_custom.md":     "# Another Custom Command",
 	}
 
 	for path, content := range customCommands {
