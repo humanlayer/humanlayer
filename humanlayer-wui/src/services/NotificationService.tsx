@@ -374,7 +374,7 @@ class NotificationService {
     logger.error(context || 'Error:', error)
 
     // Format the error message
-    const formattedMessage = formatError(error)
+    const formattedMessage = await formatError(error)
 
     // Add context if provided
     const body = context ? `${context}: ${formattedMessage}` : formattedMessage

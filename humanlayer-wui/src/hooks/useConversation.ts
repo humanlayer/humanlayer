@@ -89,7 +89,7 @@ export function useConversation(
         sessionStatus,
       )
 
-      setError(formatError(err))
+      setError(await formatError(err))
       setErrorCount(prev => prev + 1)
     } finally {
       setLoading(false)
