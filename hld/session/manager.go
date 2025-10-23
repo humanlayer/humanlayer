@@ -282,7 +282,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 			if err != nil {
 				return nil, fmt.Errorf("failed to get home directory: %w", err)
 			}
-			claudeConfig.WorkingDir = strings.Replace(claudeConfig.WorkingDir, "~", home, 1)
+			claudeConfig.WorkingDir = filepath.Join(home, strings.TrimPrefix(claudeConfig.WorkingDir, "~"))
 		}
 
 		// Check directory status
