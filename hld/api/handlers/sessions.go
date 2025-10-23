@@ -918,9 +918,26 @@ func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.Launch
 		}
 	}
 
+	// Extract createDirectoryIfNotExists flag (default false)
+	createDirectoryIfNotExists := false
+	if req.Body.CreateDirectoryIfNotExists != nil {
+		createDirectoryIfNotExists = *req.Body.CreateDirectoryIfNotExists
+	}
+
 	// Launch the draft session
-	err = h.manager.LaunchDraftSession(ctx, string(req.Id), req.Body.Prompt)
+	err = h.manager.LaunchDraftSession(ctx, string(req.Id), req.Body.Prompt, createDirectoryIfNotExists)
 	if err != nil {
+		// Check if it's a directory not found error
+		var dirNotFound *session.DirectoryNotFoundError
+		if errors.As(err, &dirNotFound) {
+			// Return special status code to indicate directory needs creation
+			return api.LaunchDraftSession422JSONResponse{
+				Error:            "directory_not_found",
+				Message:          dirNotFound.Message,
+				Path:             dirNotFound.Path,
+				RequiresCreation: true,
+			}, nil
+		}
 		slog.Error("Failed to launch draft session",
 			"error", fmt.Sprintf("%v", err),
 			"session_id", req.Id,

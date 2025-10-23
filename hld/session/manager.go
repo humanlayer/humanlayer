@@ -274,7 +274,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 	}
 
 	// Handle working directory validation and creation
-	if claudeConfig.WorkingDir != "" {
+	// Skip validation for drafts - allow any path to be set, validate later when launching
+	if claudeConfig.WorkingDir != "" && !isDraft {
 		// Expand ~ if present
 		if strings.HasPrefix(claudeConfig.WorkingDir, "~") {
 			home, err := os.UserHomeDir()
@@ -2073,7 +2074,7 @@ func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID st
 }
 
 // LaunchDraftSession launches a draft session by transitioning it to running state
-func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prompt string) error {
+func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prompt string, createDirectoryIfNotExists bool) error {
 	// Get the session from store
 	sess, err := m.store.GetSession(ctx, sessionID)
 	if err != nil {
@@ -2083,6 +2084,56 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 	// Check if session is in draft state
 	if sess.Status != store.SessionStatusDraft {
 		return fmt.Errorf("session is not in draft state: current status is %s", sess.Status)
+	}
+
+	// Validate and potentially create working directory BEFORE updating status
+	// This keeps the session in draft state if validation fails
+	if sess.WorkingDir != "" {
+		// Expand ~ if present
+		workingDir := sess.WorkingDir
+		if strings.HasPrefix(workingDir, "~") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("failed to get home directory: %w", err)
+			}
+			workingDir = strings.Replace(workingDir, "~", home, 1)
+		}
+
+		// Check directory status
+		info, err := os.Stat(workingDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Directory doesn't exist
+				if createDirectoryIfNotExists {
+					slog.Info("Creating working directory for draft session",
+						"path", workingDir,
+						"session_id", sessionID)
+
+					// Create with parent directories
+					if err := os.MkdirAll(workingDir, 0755); err != nil {
+						return fmt.Errorf("failed to create working directory %s: %w", workingDir, err)
+					}
+
+					slog.Info("Successfully created working directory for draft session",
+						"path", workingDir,
+						"session_id", sessionID)
+				} else {
+					// Return specific error that client can handle (422)
+					return &DirectoryNotFoundError{
+						Path:    workingDir,
+						Message: fmt.Sprintf("working directory does not exist: %s", workingDir),
+					}
+				}
+			} else {
+				// Other error (permissions, etc.)
+				return fmt.Errorf("error accessing working directory %s: %w", workingDir, err)
+			}
+		} else {
+			// Path exists - verify it's a directory
+			if !info.IsDir() {
+				return fmt.Errorf("working directory path exists but is not a directory: %s", workingDir)
+			}
+		}
 	}
 
 	// Update the query with the actual prompt and clear editor state

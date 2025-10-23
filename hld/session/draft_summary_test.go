@@ -56,7 +56,7 @@ func TestLaunchDraftSession_SummaryShouldBeUpdated(t *testing.T) {
 
 	// LaunchDraftSession will fail because Claude binary doesn't exist in test env,
 	// but the database update happens before that, so we can still verify the behavior
-	_ = manager.LaunchDraftSession(ctx, draftSession.ID, newPrompt)
+	_ = manager.LaunchDraftSession(ctx, draftSession.ID, newPrompt, false)
 
 	// Verify the query was updated
 	session, err = sqliteStore.GetSession(ctx, draftSession.ID)

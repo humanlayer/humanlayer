@@ -266,6 +266,10 @@ paths:
                 prompt:
                   type: string
                   description: Initial prompt to send to Claude
+                createDirectoryIfNotExists:
+                  type: boolean
+                  description: Create working directory if it doesn't exist
+                  default: false
               required:
                 - prompt
       responses:
@@ -283,6 +287,12 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
+        '422':
+          description: Directory does not exist and needs to be created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DirectoryNotFoundResponse'
         '500':
           $ref: '#/components/responses/InternalError'
 

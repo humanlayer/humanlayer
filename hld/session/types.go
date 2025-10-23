@@ -132,7 +132,7 @@ type SessionManager interface {
 	InterruptSession(ctx context.Context, sessionID string) error
 
 	// LaunchDraftSession launches a draft session by transitioning it to running state
-	LaunchDraftSession(ctx context.Context, sessionID string, prompt string) error
+	LaunchDraftSession(ctx context.Context, sessionID string, prompt string, createDirectoryIfNotExists bool) error
 
 	// StopAllSessions gracefully stops all active sessions with a timeout
 	StopAllSessions(timeout time.Duration) error
