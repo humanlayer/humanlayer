@@ -46,7 +46,6 @@ export function AdditionalDirectoriesDropdown({
   const [isAdding, setIsAdding] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [directoryExists, setDirectoryExists] = useState<boolean | null>(null)
-  const [isValidating, setIsValidating] = useState(false)
   const validationTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Add refs for focus management
@@ -252,15 +251,12 @@ export function AdditionalDirectoriesDropdown({
     }
 
     try {
-      setIsValidating(true)
       const result = await daemonClient.validateDirectory(path)
       // Note: OpenAPI generator renames 'exists' to '_exists' to avoid reserved word
       setDirectoryExists(result._exists)
     } catch (error) {
       console.error('Failed to validate directory:', error)
       setDirectoryExists(null)
-    } finally {
-      setIsValidating(false)
     }
   }
 
