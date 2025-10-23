@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronDown, ChevronUp, FolderOpen, Plus, X, Lock, Copy } from 'lucide-react'
+import { ChevronDown, ChevronUp, FolderOpen, Plus, X, Lock, Copy, CircleX } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { cn } from '@/lib/utils'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { copyToClipboard } from '@/utils/clipboard'
+import { daemonClient } from '@/lib/daemon'
 
 interface AdditionalDirectoriesDropdownProps {
   workingDir: string
@@ -44,6 +45,8 @@ export function AdditionalDirectoriesDropdown({
   const [newDirectory, setNewDirectory] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [directoryExists, setDirectoryExists] = useState<boolean | null>(null)
+  const validationTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // Add refs for focus management
   const addButtonRef = useRef<HTMLButtonElement>(null)
@@ -240,27 +243,88 @@ export function AdditionalDirectoriesDropdown({
     },
   )
 
+  // Validate directory existence with debouncing
+  const validateDirectory = async (path: string) => {
+    if (!path.trim()) {
+      setDirectoryExists(null)
+      return
+    }
+
+    try {
+      const result = await daemonClient.validateDirectory(path)
+      // Note: OpenAPI generator renames 'exists' to '_exists' to avoid reserved word
+      setDirectoryExists(result._exists)
+    } catch (error) {
+      console.error('Failed to validate directory:', error)
+      setDirectoryExists(null)
+    }
+  }
+
+  // Debounced validation when newDirectory changes
+  useEffect(() => {
+    // Clear any existing timer
+    if (validationTimerRef.current) {
+      clearTimeout(validationTimerRef.current)
+    }
+
+    if (newDirectory.trim()) {
+      // Set new timer for debounced validation
+      validationTimerRef.current = setTimeout(() => {
+        validateDirectory(newDirectory)
+      }, 300) // 300ms debounce
+    } else {
+      setDirectoryExists(null)
+    }
+
+    // Cleanup on unmount or when newDirectory changes
+    return () => {
+      if (validationTimerRef.current) {
+        clearTimeout(validationTimerRef.current)
+      }
+    }
+  }, [newDirectory])
+
   const handleAddDirectory = async (directoryPath?: string) => {
     const pathToAdd = directoryPath || newDirectory
     const trimmed = pathToAdd.trim()
     if (trimmed && !localDirectories.includes(trimmed)) {
-      const updated = [...localDirectories, trimmed]
-      setLocalDirectories(updated)
       setIsUpdating(true)
+      const wasCreated = directoryExists === false
       try {
+        // Create directory if it doesn't exist
+        if (wasCreated) {
+          await daemonClient.createDirectory(trimmed)
+        }
+
+        // Add to directories list
+        const updated = [...localDirectories, trimmed]
+        setLocalDirectories(updated)
+
         // Await the update to ensure it completes before allowing further actions
         await onDirectoriesChange?.(updated)
         setNewDirectory('')
         setIsAdding(false)
+        setDirectoryExists(null)
 
-        // Show appropriate message based on session status
-        if (sessionStatus === 'running' || sessionStatus === 'starting') {
-          toast.success('Directory added - will apply at next message')
+        // Show appropriate message based on what happened and session status
+        if (wasCreated) {
+          if (sessionStatus === 'running' || sessionStatus === 'starting') {
+            toast.success('Directory created and added - will apply at next message')
+          } else {
+            toast.success('Directory created and added')
+          }
         } else {
-          toast.success('Directory added')
+          if (sessionStatus === 'running' || sessionStatus === 'starting') {
+            toast.success('Directory added - will apply at next message')
+          } else {
+            toast.success('Directory added')
+          }
         }
-      } catch {
-        toast.error('Failed to add directory')
+      } catch (error) {
+        const action = wasCreated ? 'create and add directory' : 'add directory'
+        toast.error(`Failed to ${action}`, {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
         // Revert the local change on error
         setLocalDirectories(directories)
       } finally {
@@ -364,7 +428,7 @@ export function AdditionalDirectoriesDropdown({
         {buttonContent}
       </PopoverTrigger>
       <PopoverContent
-        className="w-96 p-3"
+        className="p-3 w-144"
         align="start"
         sideOffset={5}
         onOpenAutoFocus={e => {
@@ -456,7 +520,7 @@ export function AdditionalDirectoriesDropdown({
 
               {isAdding && (
                 <div className="flex gap-1 pt-1">
-                  <div className="flex-1" ref={searchInputRef}>
+                  <div className="flex-1 mr-2" ref={searchInputRef}>
                     <SearchInput
                       value={newDirectory}
                       onChange={setNewDirectory}
@@ -470,29 +534,30 @@ export function AdditionalDirectoriesDropdown({
                       }}
                       placeholder="Enter directory path..."
                       recentDirectories={recentPaths || []}
-                      className="!h-7 !text-xs md:!text-xs !mt-0"
+                      className="!h-8 !text-xs md:!text-xs !mt-0"
                       dropdownClassName="text-xs"
                       autoFocus
                     />
                   </div>
                   <Button
                     size="sm"
+                    variant={directoryExists === false ? 'destructive' : 'default'}
                     onClick={() => handleAddDirectory()}
                     disabled={isUpdating || !newDirectory.trim()}
-                    className="h-7 px-2"
+                    className="h-8 px-2"
                   >
-                    Add
+                    {directoryExists === false ? 'Create' : 'Add'}
                   </Button>
                   <Button
-                    size="sm"
+                    size="icon"
                     variant="ghost"
+                    className="h-8 px-2"
                     onClick={() => {
                       setIsAdding(false)
                       setNewDirectory('')
                     }}
-                    className="h-7 px-2"
                   >
-                    Cancel
+                    <CircleX />
                   </Button>
                 </div>
               )}

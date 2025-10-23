@@ -759,7 +759,7 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 
 		// Mock launching the draft session
 		mockManager.EXPECT().
-			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt", false).
 			Return(nil).
 			Times(1)
 
@@ -816,7 +816,7 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 
 		// Mock launching the draft session
 		mockManager.EXPECT().
-			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt", false).
 			Return(nil).
 			Times(1)
 
@@ -874,7 +874,7 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 
 		// Mock launching the draft session
 		mockManager.EXPECT().
-			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt", false).
 			Return(nil).
 			Times(1)
 

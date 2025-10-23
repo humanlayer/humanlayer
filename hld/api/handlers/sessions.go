@@ -75,6 +75,88 @@ func expandTilde(path string) string {
 	return path
 }
 
+// ValidateDirectory checks if a directory exists and returns its status
+func (h *SessionHandlers) ValidateDirectory(ctx context.Context, req api.ValidateDirectoryRequestObject) (api.ValidateDirectoryResponseObject, error) {
+	dirPath := req.Body.Path
+
+	// Expand ~ to home directory if needed
+	dirPath = expandTilde(dirPath)
+
+	// Check if directory exists
+	info, err := os.Stat(dirPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Directory doesn't exist but can be created
+			return api.ValidateDirectory200JSONResponse{
+				Exists:       false,
+				CanCreate:    ptr(true),
+				ExpandedPath: dirPath,
+			}, nil
+		}
+		// Other error (permissions, etc.)
+		errorMsg := err.Error()
+		return api.ValidateDirectory200JSONResponse{
+			Exists:       false,
+			CanCreate:    ptr(false),
+			Error:        &errorMsg,
+			ExpandedPath: dirPath,
+		}, nil
+	}
+
+	// Path exists - check if it's a directory
+	if !info.IsDir() {
+		errorMsg := "Path exists but is not a directory"
+		return api.ValidateDirectory200JSONResponse{
+			Exists:       true,
+			IsDirectory:  ptr(false),
+			Error:        &errorMsg,
+			ExpandedPath: dirPath,
+		}, nil
+	}
+
+	return api.ValidateDirectory200JSONResponse{
+		Exists:       true,
+		IsDirectory:  ptr(true),
+		ExpandedPath: dirPath,
+	}, nil
+}
+
+// CreateDirectory creates a directory and any necessary parent directories
+func (h *SessionHandlers) CreateDirectory(ctx context.Context, req api.CreateDirectoryRequestObject) (api.CreateDirectoryResponseObject, error) {
+	dirPath := req.Body.Path
+
+	// Expand ~ to home directory if needed
+	dirPath = expandTilde(dirPath)
+
+	// Create the directory with parent directories
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		slog.Error("Failed to create directory",
+			"path", dirPath,
+			"error", err)
+		return api.CreateDirectory500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code: "CREATE_DIRECTORY_FAILED",
+				},
+			},
+		}, nil
+	}
+
+	slog.Info("Created directory",
+		"path", dirPath)
+
+	created := true
+	return api.CreateDirectory200JSONResponse{
+		Path:    &dirPath,
+		Created: &created,
+	}, nil
+}
+
+// ptr is a helper function to get a pointer to a value
+func ptr[T any](v T) *T {
+	return &v
+}
+
 // CreateSession implements POST /sessions
 func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessionRequestObject) (api.CreateSessionResponseObject, error) {
 	// Build launch config with embedded Claude config
@@ -160,11 +242,27 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 		}
 	}
 
+	// Handle createDirectoryIfNotExists flag
+	if req.Body.CreateDirectoryIfNotExists != nil && *req.Body.CreateDirectoryIfNotExists {
+		config.CreateDirectoryIfNotExists = true
+	}
+
 	// Check for draft flag in request
 	isDraft := req.Body.Draft != nil && *req.Body.Draft
 
-	session, err := h.manager.LaunchSession(ctx, config, isDraft)
+	sess, err := h.manager.LaunchSession(ctx, config, isDraft)
 	if err != nil {
+		// Check if it's a directory not found error
+		var dirNotFound *session.DirectoryNotFoundError
+		if errors.As(err, &dirNotFound) {
+			// Return special status code to indicate directory needs creation
+			return api.CreateSession422JSONResponse{
+				Error:            "directory_not_found",
+				Message:          dirNotFound.Message,
+				Path:             dirNotFound.Path,
+				RequiresCreation: true,
+			}, nil
+		}
 		slog.Error("Failed to launch session",
 			"error", fmt.Sprintf("%v", err),
 			"query", config.Query,
@@ -182,8 +280,8 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 	}
 
 	resp := api.CreateSessionResponse{}
-	resp.Data.SessionId = session.ID
-	resp.Data.RunId = session.RunID
+	resp.Data.SessionId = sess.ID
+	resp.Data.RunId = sess.RunID
 	return api.CreateSession201JSONResponse(resp), nil
 }
 
@@ -851,9 +949,26 @@ func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.Launch
 		}
 	}
 
+	// Extract createDirectoryIfNotExists flag (default false)
+	createDirectoryIfNotExists := false
+	if req.Body.CreateDirectoryIfNotExists != nil {
+		createDirectoryIfNotExists = *req.Body.CreateDirectoryIfNotExists
+	}
+
 	// Launch the draft session
-	err = h.manager.LaunchDraftSession(ctx, string(req.Id), req.Body.Prompt)
+	err = h.manager.LaunchDraftSession(ctx, string(req.Id), req.Body.Prompt, createDirectoryIfNotExists)
 	if err != nil {
+		// Check if it's a directory not found error
+		var dirNotFound *session.DirectoryNotFoundError
+		if errors.As(err, &dirNotFound) {
+			// Return special status code to indicate directory needs creation
+			return api.LaunchDraftSession422JSONResponse{
+				Error:            "directory_not_found",
+				Message:          dirNotFound.Message,
+				Path:             dirNotFound.Path,
+				RequiresCreation: true,
+			}, nil
+		}
 		slog.Error("Failed to launch draft session",
 			"error", fmt.Sprintf("%v", err),
 			"session_id", req.Id,

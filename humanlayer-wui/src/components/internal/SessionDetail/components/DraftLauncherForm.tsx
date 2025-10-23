@@ -20,6 +20,7 @@ import { logger } from '@/lib/logging'
 import { formatError } from '@/utils/errors'
 import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
 import { DiscardDraftDialog } from './DiscardDraftDialog'
+import { CreateDirectoryDialog } from './CreateDirectoryDialog'
 import { DraftLauncherInput } from './DraftLauncherInput'
 
 interface DraftLauncherFormProps {
@@ -101,6 +102,8 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const [isLaunchingDraft, setIsLaunchingDraft] = useState(false)
   const [showDiscardDraftDialog, setShowDiscardDraftDialog] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
+  const [showCreateDirectoryDialog, setShowCreateDirectoryDialog] = useState(false)
+  const [directoryToCreate, setDirectoryToCreate] = useState<string | null>(null)
   // Sync timer for debouncing updates
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -437,7 +440,10 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
   // Handle launching a draft session
   const handleLaunchDraft = useCallback(
-    async (settings: { autoAcceptEdits: boolean; dangerouslySkipPermissions: boolean }) => {
+    async (
+      settings: { autoAcceptEdits: boolean; dangerouslySkipPermissions: boolean },
+      createDirectoryIfNotExists = false,
+    ) => {
       if (isLaunchingDraft) return
 
       // Validate that we have a session
@@ -495,7 +501,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         await daemonClient.updateSession(sessionId, updatePayload)
 
         // Launch the draft session with the prompt
-        await daemonClient.launchDraftSession(sessionId, currentPrompt)
+        await daemonClient.launchDraftSession(sessionId, currentPrompt, createDirectoryIfNotExists)
 
         // Track session creation event (from draft)
         trackEvent(POSTHOG_EVENTS.SESSION_CREATED, {
@@ -521,11 +527,19 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
         // Navigate directly to the launched session
         navigate(`/sessions/${sessionId}`)
-      } catch (error) {
+      } catch (error: any) {
+        // Check if it's a 422 directory not found error
+        if (error.status === 422 && error.data?.error === 'directory_not_found') {
+          setDirectoryToCreate(error.data.path)
+          setShowCreateDirectoryDialog(true)
+          setIsLaunchingDraft(false)
+          return // Don't show error toast, let user decide via dialog
+        }
+
+        // Other errors
         toast.error('Failed to launch draft session', {
           description: await formatError(error),
         })
-      } finally {
         setIsLaunchingDraft(false)
       }
     },
@@ -615,6 +629,20 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     },
     [setDefaultDangerouslyBypassPermissionsSetting],
   )
+
+  // Handle directory creation confirmation - retry launch with directory creation enabled
+  const handleConfirmCreateDirectory = useCallback(() => {
+    setShowCreateDirectoryDialog(false)
+    setDirectoryToCreate(null)
+    // Retry the launch with the same settings but directory creation enabled
+    handleLaunchDraft(
+      {
+        autoAcceptEdits: defaultAutoAcceptEditsSetting,
+        dangerouslySkipPermissions: defaultDangerouslyBypassPermissionsSetting,
+      },
+      true, // createDirectoryIfNotExists
+    )
+  }, [handleLaunchDraft, defaultAutoAcceptEditsSetting, defaultDangerouslyBypassPermissionsSetting])
 
   // ======== HOTKEYS ========
 
@@ -831,6 +859,17 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
           open={dangerousSkipPermissionsDialogOpen}
           onOpenChange={setDangerousSkipPermissionsDialogOpen}
           onConfirm={handleDangerousSkipPermissionsConfirm}
+        />
+
+        {/* Create Directory Dialog */}
+        <CreateDirectoryDialog
+          open={showCreateDirectoryDialog}
+          directoryPath={directoryToCreate}
+          onConfirm={handleConfirmCreateDirectory}
+          onCancel={() => {
+            setShowCreateDirectoryDialog(false)
+            setDirectoryToCreate(null)
+          }}
         />
       </div>
     </HotkeyScopeBoundary>

@@ -135,10 +135,13 @@ export class HLDClient {
     }
 
     // Launch draft session
-    async launchDraftSession(id: string, prompt: string): Promise<void> {
+    async launchDraftSession(id: string, prompt: string, createDirectoryIfNotExists?: boolean): Promise<void> {
         await this.sessionsApi.launchDraftSession({
             id,
-            launchDraftSessionRequest: { prompt }
+            launchDraftSessionRequest: {
+                prompt,
+                createDirectoryIfNotExists
+            }
         });
     }
 
@@ -311,6 +314,22 @@ export class HLDClient {
     }): Promise<FuzzySearchFilesResponse> {
         const response = await this.filesApi.fuzzySearchFiles({
             fuzzySearchFilesRequest: params
+        });
+        return response;
+    }
+
+    // Validate directory existence
+    async validateDirectory(path: string) {
+        const response = await this.filesApi.validateDirectory({
+            validateDirectoryRequest: { path }
+        });
+        return response;
+    }
+
+    // Create directory
+    async createDirectory(path: string) {
+        const response = await this.filesApi.createDirectory({
+            createDirectoryRequest: { path }
         });
         return response;
     }

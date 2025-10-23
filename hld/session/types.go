@@ -77,6 +77,7 @@ type LaunchSessionConfig struct {
 	AutoAcceptEdits                   bool   // Auto-accept edit tools
 	DangerouslySkipPermissions        bool   // Whether to auto-approve all tools
 	DangerouslySkipPermissionsTimeout *int64 // Optional timeout in milliseconds
+	CreateDirectoryIfNotExists        bool   // Create working directory if it doesn't exist
 	// Proxy configuration
 	ProxyEnabled       bool   // Whether proxy is enabled
 	ProxyBaseURL       string // Proxy base URL
@@ -103,6 +104,16 @@ type ContinueSessionConfig struct {
 	ProxyAPIKey           string                // API key for proxy service
 }
 
+// DirectoryNotFoundError indicates a directory doesn't exist and needs creation
+type DirectoryNotFoundError struct {
+	Path    string
+	Message string
+}
+
+func (e *DirectoryNotFoundError) Error() string {
+	return e.Message
+}
+
 // SessionManager defines the interface for managing Claude Code sessions
 type SessionManager interface {
 	// LaunchSession starts a new Claude Code session
@@ -121,7 +132,7 @@ type SessionManager interface {
 	InterruptSession(ctx context.Context, sessionID string) error
 
 	// LaunchDraftSession launches a draft session by transitioning it to running state
-	LaunchDraftSession(ctx context.Context, sessionID string, prompt string) error
+	LaunchDraftSession(ctx context.Context, sessionID string, prompt string, createDirectoryIfNotExists bool) error
 
 	// StopAllSessions gracefully stops all active sessions with a timeout
 	StopAllSessions(timeout time.Duration) error
