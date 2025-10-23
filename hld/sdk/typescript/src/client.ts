@@ -318,6 +318,22 @@ export class HLDClient {
         return response;
     }
 
+    // Validate directory existence
+    async validateDirectory(path: string) {
+        const response = await this.filesApi.validateDirectory({
+            validateDirectoryRequest: { path }
+        });
+        return response;
+    }
+
+    // Create directory
+    async createDirectory(path: string) {
+        const response = await this.filesApi.createDirectory({
+            createDirectoryRequest: { path }
+        });
+        return response;
+    }
+
     // Agents
     async discoverAgents(params: {
         discoverAgentsRequest: { workingDir: string }

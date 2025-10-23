@@ -96,6 +96,42 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /directories:
+    post:
+      operationId: createDirectory
+      summary: Create a directory
+      description: Create a directory and any necessary parent directories
+      tags:
+        - Files
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  description: The directory path to create
+              required:
+                - path
+      responses:
+        '200':
+          description: Directory created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+                    description: The created directory path
+                  created:
+                    type: boolean
+                    description: Whether the directory was created
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /sessions:
     post:
       operationId: createSession

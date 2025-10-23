@@ -674,6 +674,18 @@ export class HTTPDaemonClient implements IDaemonClient {
     return response
   }
 
+  async validateDirectory(path: string) {
+    await this.ensureConnected()
+    const response = await this.client!.validateDirectory(path)
+    return response
+  }
+
+  async createDirectory(path: string) {
+    await this.ensureConnected()
+    const response = await this.client!.createDirectory(path)
+    return response
+  }
+
   async discoverAgents(workingDir: string): Promise<Agent[]> {
     await this.ensureConnected()
 

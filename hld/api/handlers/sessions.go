@@ -121,6 +121,37 @@ func (h *SessionHandlers) ValidateDirectory(ctx context.Context, req api.Validat
 	}, nil
 }
 
+// CreateDirectory creates a directory and any necessary parent directories
+func (h *SessionHandlers) CreateDirectory(ctx context.Context, req api.CreateDirectoryRequestObject) (api.CreateDirectoryResponseObject, error) {
+	dirPath := req.Body.Path
+
+	// Expand ~ to home directory if needed
+	dirPath = expandTilde(dirPath)
+
+	// Create the directory with parent directories
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		slog.Error("Failed to create directory",
+			"path", dirPath,
+			"error", err)
+		return api.CreateDirectory500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code: "CREATE_DIRECTORY_FAILED",
+				},
+			},
+		}, nil
+	}
+
+	slog.Info("Created directory",
+		"path", dirPath)
+
+	created := true
+	return api.CreateDirectory200JSONResponse{
+		Path:    &dirPath,
+		Created: &created,
+	}, nil
+}
+
 // ptr is a helper function to get a pointer to a value
 func ptr[T any](v T) *T {
 	return &v

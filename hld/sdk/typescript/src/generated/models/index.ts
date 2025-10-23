@@ -20,6 +20,8 @@ export * from './ConversationResponse';
 export * from './CreateApprovalRequest';
 export * from './CreateApprovalResponse';
 export * from './CreateApprovalResponseData';
+export * from './CreateDirectory200Response';
+export * from './CreateDirectoryRequest';
 export * from './CreateSessionRequest';
 export * from './CreateSessionResponse';
 export * from './CreateSessionResponseData';

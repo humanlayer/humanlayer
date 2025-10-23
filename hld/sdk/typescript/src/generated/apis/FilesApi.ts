@@ -15,6 +15,8 @@
 
 import * as runtime from '../runtime';
 import type {
+  CreateDirectory200Response,
+  CreateDirectoryRequest,
   ErrorResponse,
   FuzzySearchFilesRequest,
   FuzzySearchFilesResponse,
@@ -22,6 +24,10 @@ import type {
   ValidateDirectoryResponse,
 } from '../models/index';
 import {
+    CreateDirectory200ResponseFromJSON,
+    CreateDirectory200ResponseToJSON,
+    CreateDirectoryRequestFromJSON,
+    CreateDirectoryRequestToJSON,
     ErrorResponseFromJSON,
     ErrorResponseToJSON,
     FuzzySearchFilesRequestFromJSON,
@@ -33,6 +39,10 @@ import {
     ValidateDirectoryResponseFromJSON,
     ValidateDirectoryResponseToJSON,
 } from '../models/index';
+
+export interface CreateDirectoryOperationRequest {
+    createDirectoryRequest: CreateDirectoryRequest;
+}
 
 export interface FuzzySearchFilesOperationRequest {
     fuzzySearchFilesRequest: FuzzySearchFilesRequest;
@@ -49,6 +59,22 @@ export interface ValidateDirectoryOperationRequest {
  * @interface FilesApiInterface
  */
 export interface FilesApiInterface {
+    /**
+     * Create a directory and any necessary parent directories
+     * @summary Create a directory
+     * @param {CreateDirectoryRequest} createDirectoryRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof FilesApiInterface
+     */
+    createDirectoryRaw(requestParameters: CreateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateDirectory200Response>>;
+
+    /**
+     * Create a directory and any necessary parent directories
+     * Create a directory
+     */
+    createDirectory(requestParameters: CreateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateDirectory200Response>;
+
     /**
      * Performs fuzzy matching on file and folder paths within specified directories. Returns matches sorted by relevance with character-level highlighting information.  Respects .gitignore by default. Search completes within 5 seconds or returns partial results with timeout error. 
      * @summary Fuzzy search for files and folders
@@ -87,6 +113,47 @@ export interface FilesApiInterface {
  * 
  */
 export class FilesApi extends runtime.BaseAPI implements FilesApiInterface {
+
+    /**
+     * Create a directory and any necessary parent directories
+     * Create a directory
+     */
+    async createDirectoryRaw(requestParameters: CreateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CreateDirectory200Response>> {
+        if (requestParameters['createDirectoryRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createDirectoryRequest',
+                'Required parameter "createDirectoryRequest" was null or undefined when calling createDirectory().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/directories`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateDirectoryRequestToJSON(requestParameters['createDirectoryRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CreateDirectory200ResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Create a directory and any necessary parent directories
+     * Create a directory
+     */
+    async createDirectory(requestParameters: CreateDirectoryOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CreateDirectory200Response> {
+        const response = await this.createDirectoryRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Performs fuzzy matching on file and folder paths within specified directories. Returns matches sorted by relevance with character-level highlighting information.  Respects .gitignore by default. Search completes within 5 seconds or returns partial results with timeout error. 
