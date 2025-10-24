@@ -353,6 +353,10 @@ export const DraftLauncherInput = forwardRef<
     let borderColorClass = isFocused ? 'border-[var(--terminal-accent)]' : 'border-transparent'
     let outerBorderColorClass = ''
 
+    if (!responseEditor?.isFocused) {
+      placeholder = 'ENTER to start typing…'
+    }
+
     if (isDragHover) {
       borderColorClass = 'border-[var(--terminal-accent)]'
       outerBorderColorClass = 'border-[var(--terminal-accent)]'
