@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - kyle/eng-2175-auto-create-worktree-and-checkout-for-linear
+      - kyle/eng-2236-allow-setting-max_thinking_tokens-env-variable-through-ui
   schedule:
     - cron: "*/15 * * * *"
   workflow_dispatch:
