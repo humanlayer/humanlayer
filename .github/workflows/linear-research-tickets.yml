@@ -37,7 +37,27 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         run: |
           # Count tickets currently in "research in review" status
-          review_count=$(linear list-issues --max-issues 100 --status 'research in review' --assignee 'LinearLayer (Claude)' --ids-only --output-format json | jq 'length')
+          review_json=$(linear list-issues --max-issues 100 --status 'research in review' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)
+
+          # Check if linear command succeeded
+          if [ $? -ne 0 ]; then
+            echo "Error: Failed to query tickets in review. Defaulting to no capacity."
+            echo "review_count=999" >> "$GITHUB_OUTPUT"
+            echo "available_slots=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Count tickets using jq
+          review_count=$(echo "$review_json" | jq 'length')
+
+          # Validate jq output is a number
+          if ! [[ "$review_count" =~ ^[0-9]+$ ]]; then
+            echo "Error: Invalid count result. Defaulting to no capacity."
+            echo "review_count=999" >> "$GITHUB_OUTPUT"
+            echo "available_slots=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           echo "review_count=$review_count" >> "$GITHUB_OUTPUT"
 
           # Calculate available slots
@@ -49,7 +69,16 @@ jobs:
           fi
 
           echo "available_slots=$available_slots" >> "$GITHUB_OUTPUT"
-          echo "WIP Status: $review_count/${{ env.RESEARCH_WIP_LIMIT }} tickets in review, $available_slots slots available"
+
+          # Enhanced logging for monitoring
+          echo "::notice title=WIP Status::$review_count/${{ env.RESEARCH_WIP_LIMIT }} tickets in review, $available_slots slots available"
+
+          # Log warning when approaching limit
+          if [ "$available_slots" -le 1 ] && [ "$available_slots" -gt 0 ]; then
+            echo "::warning title=Approaching WIP Limit::Only $available_slots slot(s) remaining before WIP limit"
+          elif [ "$available_slots" -eq 0 ]; then
+            echo "::warning title=WIP Limit Reached::No capacity for new tickets (WIP limit: ${{ env.RESEARCH_WIP_LIMIT }})"
+          fi
 
       - name: "Get researchable tickets"
         env:
