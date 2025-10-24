@@ -304,7 +304,6 @@ export function Layout() {
       }
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: false,
       preventDefault: true,
     },
@@ -381,7 +380,6 @@ export function Layout() {
       }
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: false,
       preventDefault: true,
     },
@@ -710,7 +708,6 @@ export function Layout() {
       navigate('/')
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -728,7 +725,6 @@ export function Layout() {
       navigate('/')
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
@@ -764,7 +760,6 @@ export function Layout() {
       navigate('/')
     },
     {
-      scopes: [HOTKEY_SCOPES.ROOT],
       preventDefault: true,
       enableOnFormTags: false,
     },
