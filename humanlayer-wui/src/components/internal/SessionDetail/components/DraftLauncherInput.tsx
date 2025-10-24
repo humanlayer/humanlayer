@@ -349,7 +349,7 @@ export const DraftLauncherInput = forwardRef<
     const isMac = navigator.platform.includes('Mac')
 
     // Placeholder and border styling
-    let placeholder = 'Find a bug and fix it.'
+    let placeholder = 'Enter your prompt to launch a session...'
     let borderColorClass = isFocused ? 'border-[var(--terminal-accent)]' : 'border-transparent'
     let outerBorderColorClass = ''
 

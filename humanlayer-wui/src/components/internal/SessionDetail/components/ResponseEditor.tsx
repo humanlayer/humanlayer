@@ -451,7 +451,7 @@ interface ResponseEditorProps {
   onChange: (value: Content) => void
   onKeyDown?: (e: React.KeyboardEvent) => void
   disabled?: boolean
-  placeholder?: string
+  placeholder: string
   className?: string
   onFocus?: () => void
   onBlur?: () => void
@@ -478,10 +478,9 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
     },
     ref,
   ) => {
-    const PLACEHOLDER_DEFAULT = 'Type something...'
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
-    const placeholderRef = useRef<string>(placeholder || PLACEHOLDER_DEFAULT)
+    const placeholderRef = useRef<string>(placeholder)
     const staticPlaceholderRef = useRef(() => placeholderRef.current)
 
     // Always create a local ref for backwards compatibility
@@ -537,7 +536,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           onSubmit: () => onSubmitRef.current?.(),
         }),
         Placeholder.configure({
-          placeholder: staticPlaceholderRef.current || PLACEHOLDER_DEFAULT,
+          placeholder: staticPlaceholderRef.current,
         }),
         // Slash command Mention extension
         Mention.extend({
@@ -888,7 +887,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
     })
 
     useEffect(() => {
-      placeholderRef.current = placeholder || PLACEHOLDER_DEFAULT
+      placeholderRef.current = placeholder
       editor?.commands.selectAll()
     }, [editor, placeholder])
 
