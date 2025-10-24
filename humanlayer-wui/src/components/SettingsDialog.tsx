@@ -17,6 +17,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { appLogDir } from '@tauri-apps/api/path'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { copyToClipboard } from '@/utils/clipboard'
+import { getKeyboardLayoutCharPreference, setKeyboardLayoutCharPreference } from '@/lib/preferences'
 
 interface SettingsDialogProps {
   open: boolean
@@ -35,6 +36,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const [claudePath, setClaudePath] = useState('')
   const [isUpdatingPath, setIsUpdatingPath] = useState(false)
   const [showClaudePathInput, setShowClaudePathInput] = useState(false)
+  const [keyboardLayoutChar, setKeyboardLayoutChar] = useState(true)
 
   // Log-related state
   const [logPath, setLogPath] = useState<string>('')
@@ -47,6 +49,8 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
       fetchClaudeConfig()
       // Track settings opened event
       trackEvent(POSTHOG_EVENTS.SETTINGS_OPENED, {})
+      // Load keyboard layout preference
+      setKeyboardLayoutChar(getKeyboardLayoutCharPreference())
     }
   }, [open, fetchClaudeConfig, trackEvent])
 
@@ -136,6 +140,23 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleKeyboardLayoutToggle = (checked: boolean) => {
+    setKeyboardLayoutCharPreference(checked)
+    setKeyboardLayoutChar(checked)
+
+    toast.success(
+      checked
+        ? 'Hotkeys will now respond to character output'
+        : 'Hotkeys will now respond to physical key position',
+      { duration: 3000 },
+    )
+
+    // Reload the page to apply the new preference to all hotkeys
+    setTimeout(() => {
+      window.location.reload()
+    }, 1000)
   }
 
   const handleClaudePathUpdate = async () => {
@@ -435,6 +456,29 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                 checked={userSettings?.optInTelemetry ?? false}
                 onCheckedChange={handleTelemetryToggle}
                 disabled={!userSettings || saving}
+              />
+            </div>
+
+            {/* Keyboard Layout Preference */}
+            <div className="flex items-start justify-between pt-8">
+              <div className="flex-1">
+                <h3 className="font-medium">Keyboard Layout Support</h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                  Choose how hotkeys respond to your keyboard layout
+                </p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-500 mt-2">
+                  {keyboardLayoutChar
+                    ? 'Character-based: Hotkeys respond to the character produced. Recommended for non-QWERTY layouts.'
+                    : 'Position-based: Hotkeys respond to physical key position. Traditional behavior for QWERTY.'}
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                  Note: Changing this setting will reload the application
+                </p>
+              </div>
+              <Switch
+                checked={keyboardLayoutChar}
+                onCheckedChange={handleKeyboardLayoutToggle}
+                className="ml-4"
               />
             </div>
 
