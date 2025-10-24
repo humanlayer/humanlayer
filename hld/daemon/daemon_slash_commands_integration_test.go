@@ -33,14 +33,19 @@ func TestSlashCommandsIntegration(t *testing.T) {
 	// Create temporary home directory for global commands
 	tempHomeDir := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	defer func() {
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
 		} else {
 			os.Unsetenv("HOME")
 		}
+		if originalClaudeConfigDir != "" {
+			os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 	os.Setenv("HOME", tempHomeDir)
+	os.Unsetenv("CLAUDE_CONFIG_DIR") // Use default location
 
 	// Set environment for test
 	os.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
@@ -123,7 +128,7 @@ A local command in a nested directory.`,
 		}
 
 		// Create global commands in temp home directory
-		globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
+		globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands")
 		err = os.MkdirAll(filepath.Join(globalCommandsDir, "tmp"), 0755)
 		require.NoError(t, err)
 		defer func() {
@@ -406,14 +411,19 @@ func TestSlashCommandsPerformance(t *testing.T) {
 	// Create temporary home directory
 	tempHomeDir := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	defer func() {
 		if originalHome != "" {
 			os.Setenv("HOME", originalHome)
 		} else {
 			os.Unsetenv("HOME")
 		}
+		if originalClaudeConfigDir != "" {
+			os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 	os.Setenv("HOME", tempHomeDir)
+	os.Unsetenv("CLAUDE_CONFIG_DIR") // Use default location
 
 	// Set environment
 	os.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
@@ -454,11 +464,11 @@ func TestSlashCommandsPerformance(t *testing.T) {
 	err = os.MkdirAll(localCommandsDir, 0755)
 	require.NoError(t, err)
 
-	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands", "perf")
+	globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands", "perf")
 	err = os.MkdirAll(globalCommandsDir, 0755)
 	require.NoError(t, err)
 	defer func() {
-		os.RemoveAll(filepath.Join(tempHomeDir, ".claude", "commands", "perf"))
+		os.RemoveAll(filepath.Join(tempHomeDir, ".config", "claude-code", "commands", "perf"))
 	}()
 
 	// Create 50 local and 50 global commands

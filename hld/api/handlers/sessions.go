@@ -1618,11 +1618,17 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 
 	// Build command directory paths
 	localCommandsDir := filepath.Join(expandTilde(workingDir), ".claude", "commands")
-	homeDir, err := os.UserHomeDir()
-	globalCommandsDir := ""
-	if err == nil {
-		globalCommandsDir = filepath.Join(homeDir, ".claude", "commands")
+
+	// Respect CLAUDE_CONFIG_DIR for global commands
+	configDir := os.Getenv("CLAUDE_CONFIG_DIR")
+	if configDir == "" {
+		// Fall back to default Claude Code location
+		homeDir, err := os.UserHomeDir()
+		if err == nil {
+			configDir = filepath.Join(homeDir, ".config", "claude-code")
+		}
 	}
+	globalCommandsDir := filepath.Join(expandTilde(configDir), "commands")
 
 	// Use a map to track commands and handle deduplication
 	// Key is command name, value is the command with source
