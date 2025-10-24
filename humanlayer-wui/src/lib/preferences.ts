@@ -1,5 +1,6 @@
 // Storage keys
 export const ARCHIVE_ON_FORK_KEY = 'archive-source-on-fork'
+export const KEYBOARD_LAYOUT_CHAR_KEY = 'humanlayer-keyboard-layout-char'
 
 // Draft Launcher preference keys
 export const DRAFT_LAUNCHER_PREFS = {
@@ -15,6 +16,16 @@ export const getArchiveOnForkPreference = (): boolean => {
 
 export const setArchiveOnForkPreference = (value: boolean): void => {
   localStorage.setItem(ARCHIVE_ON_FORK_KEY, String(value))
+}
+
+// Keyboard layout helper functions
+export const getKeyboardLayoutCharPreference = (): boolean => {
+  const stored = localStorage.getItem(KEYBOARD_LAYOUT_CHAR_KEY)
+  return stored !== null ? JSON.parse(stored) : true // Default to true for character-based
+}
+
+export const setKeyboardLayoutCharPreference = (useKeyChar: boolean): void => {
+  localStorage.setItem(KEYBOARD_LAYOUT_CHAR_KEY, JSON.stringify(useKeyChar))
 }
 
 // Draft Launcher helper functions
