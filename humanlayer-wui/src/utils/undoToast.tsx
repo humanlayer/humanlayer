@@ -27,7 +27,7 @@ export function showUndoToast(options: UndoToastOptions) {
   return toast(title, {
     id: toastId,
     description,
-    duration: 30000, // 30 seconds before auto-dismiss
+    duration: 10000, // 10 seconds before auto-dismiss
     position: 'top-right', // Match CMD+SHIFT+J positioning
     action: (
       <CodeLayerToastButtons
