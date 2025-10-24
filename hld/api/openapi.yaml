@@ -519,9 +519,10 @@ paths:
   /sessions/search:
     get:
       operationId: searchSessions
-      summary: Search sessions by title
+      summary: Search sessions
       description: |
-        Search for sessions using SQL LIKE queries against the title field.
+        Search for sessions using SQL LIKE queries across title, summary, and query fields.
+        Only returns "normal" leaf sessions (not archived, not draft, not discarded, no children).
         Returns top sessions ordered by last_activity_at descending.
         Limited to 20 most recently modified sessions for performance.
       tags:
@@ -533,7 +534,7 @@ paths:
           schema:
             type: string
             maxLength: 100
-          description: Search query for title matching (uses SQL LIKE)
+          description: Search query for matching against title, summary, or query fields (uses SQL LIKE)
         - name: limit
           in: query
           required: false
