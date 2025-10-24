@@ -478,8 +478,11 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
     },
     ref,
   ) => {
+    const PLACEHOLDER_DEFAULT = 'Type something...'
     const onSubmitRef = React.useRef<ResponseEditorProps['onSubmit']>()
     const onChangeRef = React.useRef<ResponseEditorProps['onChange']>()
+    const placeholderRef = useRef<string>(placeholder || PLACEHOLDER_DEFAULT)
+    const staticPlaceholderRef = useRef(() => placeholderRef.current)
 
     // Always create a local ref for backwards compatibility
     const localWorkingDirRef = React.useRef(workingDir || '')
@@ -534,7 +537,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           onSubmit: () => onSubmitRef.current?.(),
         }),
         Placeholder.configure({
-          placeholder: placeholder || 'Type something...',
+          placeholder: staticPlaceholderRef.current || PLACEHOLDER_DEFAULT,
         }),
         // Slash command Mention extension
         Mention.extend({
@@ -883,6 +886,11 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
       enableInputRules: false,
       enablePasteRules: false,
     })
+
+    useEffect(() => {
+      placeholderRef.current = placeholder || PLACEHOLDER_DEFAULT
+      editor?.commands.selectAll()
+    }, [editor, placeholder])
 
     // Handle editable state
     useEffect(() => {

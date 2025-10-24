@@ -483,6 +483,10 @@ export const ActiveSessionInput = forwardRef<
     let placeholder = getInputPlaceholder(session.status)
     let borderColorClass = isFocused ? 'border-[var(--terminal-accent)]' : 'border-transparent'
 
+    if (!responseEditor?.isFocused) {
+      placeholder = 'ENTER to start typing…'
+    }
+
     if (isDragHover) {
       borderColorClass = 'border-[var(--terminal-accent)]'
     } else if (isDenying) {
