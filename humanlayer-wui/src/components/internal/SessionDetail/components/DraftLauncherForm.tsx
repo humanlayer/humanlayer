@@ -1,7 +1,7 @@
 import { FolderOpen, TextSearch } from 'lucide-react'
 import type React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'

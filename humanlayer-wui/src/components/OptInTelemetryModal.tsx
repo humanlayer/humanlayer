@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Shield, Eye, EyeOff } from 'lucide-react'
 import { toast } from 'sonner'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 

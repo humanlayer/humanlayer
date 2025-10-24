@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import {
   Dialog,
   DialogContent,

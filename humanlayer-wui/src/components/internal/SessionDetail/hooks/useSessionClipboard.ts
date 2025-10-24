@@ -1,4 +1,4 @@
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { copyToClipboard } from '@/utils/clipboard'
 import { HotkeyScope } from '@/hooks/hotkeys/scopes'

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { useHotkeyUnicodeChars, formatHotkeyForDisplay } from '@/hooks/useHotkeyUnicodeChars'
 
 interface HotkeyPanelProps {

@@ -1,6 +1,6 @@
 import { RefObject } from 'react'
 import { useEffect, useState, useMemo, useCallback } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { useSessionLauncher, isViewingSessionDetail } from '@/hooks/useSessionLauncher'
 import { useStore } from '@/AppStore'
 import { KeyboardShortcut } from './HotkeyPanel'

@@ -1,7 +1,7 @@
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type React from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import CommandPaletteMenu from './CommandPaletteMenu'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 

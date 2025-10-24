@@ -17,7 +17,7 @@ import {
   Heart,
   Terminal,
 } from 'lucide-react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { KeyboardShortcut } from './HotkeyPanel'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'

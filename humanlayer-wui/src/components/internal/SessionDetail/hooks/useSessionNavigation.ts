@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { HotkeyScope } from '@/hooks/hotkeys/scopes'
 

@@ -5,7 +5,7 @@ import { Input } from './ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
 import { Command, CommandEmpty, CommandItem, CommandList } from './ui/command'
 import { Clock } from 'lucide-react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import type { RecentPath } from '@/lib/daemon'
 
 interface QuickLauncherDirectoryInputProps {

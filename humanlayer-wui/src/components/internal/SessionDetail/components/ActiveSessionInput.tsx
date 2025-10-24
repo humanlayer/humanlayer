@@ -10,7 +10,7 @@ import {
 } from '@/components/internal/SessionDetail/utils/sessionStatus'
 import { ResponseInputLocalStorageKey } from '@/components/internal/SessionDetail/hooks/useSessionActions'
 import { StatusBar, StatusBarRef } from './StatusBar'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { ResponseEditor } from './ResponseEditor'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { useStore } from '@/AppStore'

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { scopeManager } from '../hooks/hotkeys/scopeManager'
-import { useHotkeysContext, useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeysContext } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { useDebugStore } from '@/stores/useDebugStore'
 
 export function HotkeyScopeDebugger() {

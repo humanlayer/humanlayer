@@ -1,7 +1,7 @@
 import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import { useEffect, useRef, useState } from 'react'
 import { CircleOff, CheckSquare, Square, Pencil, ShieldOff } from 'lucide-react'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'

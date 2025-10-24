@@ -7,7 +7,7 @@ import { Input } from './ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from './ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from './ui/command'
 import { ArrowDownUp, FileWarning, Clock } from 'lucide-react'
-import { useHotkeys } from 'react-hotkeys-hook'
+import { useHotkeys } from '@/hooks/useHotkeys'
 import type { RecentPath } from '@/lib/daemon'
 
 interface SearchInputProps {
