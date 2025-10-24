@@ -122,6 +122,7 @@ function MyComponent() {
 - [Architecture Overview](docs/ARCHITECTURE.md) - System design and data flow
 - [Developer Guide](docs/DEVELOPER_GUIDE.md) - Best practices and examples
 - [API Reference](docs/API.md) - Hook and type documentation
+- [Hotkeys Reference](HOTKEYS.md) - Keyboard shortcuts and layout support
 
 ## Status
 
