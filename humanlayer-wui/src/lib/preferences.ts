@@ -21,7 +21,7 @@ export const setArchiveOnForkPreference = (value: boolean): void => {
 // Keyboard layout helper functions
 export const getKeyboardLayoutCharPreference = (): boolean => {
   const stored = localStorage.getItem(KEYBOARD_LAYOUT_CHAR_KEY)
-  return stored !== null ? JSON.parse(stored) : true // Default to true for character-based
+  return stored !== null ? JSON.parse(stored) : false // Default to false for position-based
 }
 
 export const setKeyboardLayoutCharPreference = (useKeyChar: boolean): void => {
