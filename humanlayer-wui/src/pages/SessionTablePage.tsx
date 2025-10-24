@@ -15,7 +15,6 @@ import { toast } from 'sonner'
 
 export function SessionTablePage() {
   const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
-  const openSessionLauncher = useSessionLauncher(state => state.open)
   const navigate = useNavigate()
   const tableRef = useRef<HTMLDivElement>(null)
 
@@ -357,9 +356,18 @@ export function SessionTablePage() {
           </TabsList>
         </Tabs>
 
-        <Button onClick={() => openSessionLauncher()} size="sm" variant="outline">
-          Create <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">c</kbd>
-        </Button>
+        {/* Only show Create button when not in empty state for normal/drafts view */}
+        {(viewMode === ViewMode.Archived || sessions.length > 0) && (
+          <Button
+            onClick={() => {
+              navigate('/sessions/draft')
+            }}
+            size="sm"
+            variant="outline"
+          >
+            Create <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">c</kbd>
+          </Button>
+        )}
       </nav>
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable
