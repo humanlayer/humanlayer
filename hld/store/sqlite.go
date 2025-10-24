@@ -1794,6 +1794,8 @@ func (s *SQLiteStore) SearchSessionsByTitle(ctx context.Context, query string, l
 
 	// Build the SQL query with LIKE pattern
 	// Use % wildcards for substring matching anywhere in title
+	// Filter to only leaf sessions (sessions with no children)
+	// Filter to only "normal" sessions (not archived, not draft, not discarded)
 	sqlQuery := `
 		SELECT id, run_id, claude_session_id, parent_session_id,
 			query, summary, title, model, model_id, working_dir, max_turns, system_prompt, append_system_prompt, custom_instructions,
@@ -1804,14 +1806,22 @@ func (s *SQLiteStore) SearchSessionsByTitle(ctx context.Context, query string, l
 			dangerously_skip_permissions, dangerously_skip_permissions_expires_at, dangerously_skip_permissions_timeout_ms,
 			proxy_enabled, proxy_base_url, proxy_model_override, proxy_api_key, additional_directories, editor_state
 		FROM sessions
-		WHERE 1=1`
+		WHERE 1=1
+		AND NOT EXISTS (
+			SELECT 1 FROM sessions children
+			WHERE children.parent_session_id = sessions.id
+		)
+		AND (archived IS NULL OR archived = 0)
+		AND status != 'draft'
+		AND status != 'discarded'`
 
 	var args []interface{}
 
-	// Only add WHERE clause if query is not empty
+	// Search across title, summary, and query fields to match UI display logic
+	// UI shows: title || summary || query, so search should match this behavior
 	if query != "" {
-		sqlQuery += " AND title LIKE ?"
-		args = append(args, "%"+query+"%")
+		sqlQuery += " AND (title LIKE ? OR summary LIKE ? OR query LIKE ?)"
+		args = append(args, "%"+query+"%", "%"+query+"%", "%"+query+"%")
 	}
 
 	// Order by last activity and limit
