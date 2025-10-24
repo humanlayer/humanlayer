@@ -461,6 +461,22 @@ interface ResponseEditorProps {
   // NOTE: Business logic callbacks removed - now handled by SessionDetail
 }
 
+/**
+ * ResponseEditor - A TipTap-based markdown editor with syntax highlighting
+ *
+ * Features:
+ * - Markdown syntax highlighting via decorations
+ * - Slash commands for quick actions
+ * - File mentions with @ syntax
+ * - Custom keyboard shortcuts
+ *
+ * Known Limitations:
+ * - Safari may still show autocorrect/autocomplete on contenteditable elements
+ *   despite setting the appropriate attributes. This is a Safari platform bug.
+ *   Users can disable autocorrect in Safari settings or use Chrome/Firefox.
+ *
+ * @component
+ */
 export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void }, ResponseEditorProps>(
   (
     {
@@ -845,11 +861,17 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
       onCreate: () => {
         // Editor created
       },
+      // Note: Safari has a known limitation where autocorrect/autocomplete attributes
+      // on contenteditable elements (which TipTap uses) are not fully respected.
+      // Safari users experiencing autocorrect issues can disable it system-wide in
+      // macOS System Settings > Keyboard, or in Safari via Edit > Spelling and Grammar.
+      // This is a longstanding Safari bug that affects all contenteditable-based editors.
       editorProps: {
         attributes: {
           class: `tiptap-editor ${className || ''}`,
           spellcheck: 'false',
           autocorrect: 'off',
+          autocomplete: 'off',
           autocapitalize: 'off',
         },
         handleKeyDown: (view, event) => {
@@ -1048,7 +1070,15 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
     return (
       <>
         <div className="tiptap-wrapper">
-          <EditorContent editor={editor} onFocus={onFocus} onBlur={onBlur} />
+          <EditorContent
+            editor={editor}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            spellCheck={false}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+          />
         </div>
 
         {/* Controlled tooltip for file mentions */}
