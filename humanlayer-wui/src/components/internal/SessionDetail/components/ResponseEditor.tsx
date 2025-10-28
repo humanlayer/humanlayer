@@ -424,6 +424,7 @@ const KeyboardShortcuts = Extension.create({
   addKeyboardShortcuts() {
     return {
       Escape: () => this.editor.commands.blur(),
+      'Ctrl-[': () => this.editor.commands.blur(),
       'Mod-Enter': editor => {
         if (!editor.editor.isEmpty) {
           this.options.onSubmit?.()
