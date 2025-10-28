@@ -306,6 +306,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
 
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
   const lastTodo = events
     ?.toReversed()
@@ -770,8 +771,12 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   useEffect(() => {
     const checkPendingApprovalVisibility = () => {
       if (session.status === SessionStatus.WaitingInput) {
-        const pendingEvent = events.find(e => e.approvalStatus === ApprovalStatus.Pending)
-        if (pendingEvent) {
+        const pendingEvents = events.filter(e => e.approvalStatus === ApprovalStatus.Pending)
+        setPendingApprovalsCount(pendingEvents.length)
+
+        if (pendingEvents.length > 0) {
+          // Check visibility of the first pending approval
+          const pendingEvent = pendingEvents[0]
           const container = document.querySelector('[data-conversation-container]')
           const element = container?.querySelector(`[data-event-id="${pendingEvent.id}"]`)
           if (container && element) {
@@ -796,6 +801,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
           setHasPendingApprovalsOutOfView(false)
         }
       } else {
+        setPendingApprovalsCount(0)
         setHasPendingApprovalsOutOfView(false)
       }
     }
@@ -918,7 +924,11 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
               }}
             >
               <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-                <span>Pending Approval</span>
+                <span>
+                  {pendingApprovalsCount === 1
+                    ? 'Pending Approval'
+                    : `${pendingApprovalsCount} Pending Approvals`}
+                </span>
                 <ChevronDown className="w-3 h-3 animate-bounce" />
               </div>
             </div>
