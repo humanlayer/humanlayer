@@ -1,0 +1,33 @@
+{
+  "providers": {
+    "primary": "github-copilot",
+    "fallback": ["deepseek", "groq", "github-models"],
+    "cloud": ["azure-openai", "aws-bedrock", "vertex-ai"]
+  },
+  "rateLimiting": {
+    "github-copilot": {
+      "monthlyLimit": 500,
+      "resetDay": 1
+    },
+    "groq": {
+      "dailyLimit": 100
+    }
+  },
+  "autoFallback": true,
+  "studentMode": true,
+  "costTracking": true,
+  "notifications": {
+    "onProviderSwitch": true,
+    "onLimitApproaching": true,
+    "limitThreshold": 80
+  },
+  "models": {
+    "github-copilot": "gpt-4",
+    "deepseek": "deepseek-coder",
+    "groq": "llama-3.3-70b-versatile",
+    "github-models": "gpt-4o",
+    "together-ai": "meta-llama/Llama-3-70b-chat-hf",
+    "fireworks-ai": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+    "opencode-zen": "claude-sonnet-4.5"
+  }
+}

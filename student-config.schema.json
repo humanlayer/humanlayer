@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CodeLayer Student Configuration",
+  "description": "Configuration for student-optimized AI providers with auto-fallback",
+  "type": "object",
+  "properties": {
+    "providers": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "string",
+          "description": "Primary provider to use",
+          "enum": [
+            "github-copilot",
+            "deepseek",
+            "groq",
+            "github-models",
+            "huggingface",
+            "together-ai",
+            "fireworks-ai",
+            "mistral",
+            "azure-openai",
+            "aws-bedrock",
+            "vertex-ai",
+            "openrouter",
+            "baseten",
+            "anthropic",
+            "opencode-zen"
+          ],
+          "default": "github-copilot"
+        },
+        "fallback": {
+          "type": "array",
+          "description": "Fallback providers in order of preference",
+          "items": {
+            "type": "string"
+          },
+          "default": ["deepseek", "groq", "github-models"]
+        },
+        "cloud": {
+          "type": "array",
+          "description": "Cloud providers with student credits",
+          "items": {
+            "type": "string"
+          },
+          "default": ["azure-openai", "aws-bedrock", "vertex-ai"]
+        }
+      }
+    },
+    "rateLimiting": {
+      "type": "object",
+      "description": "Rate limiting configuration per provider",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "monthlyLimit": {
+            "type": "number",
+            "description": "Monthly API call limit"
+          },
+          "resetDay": {
+            "type": "number",
+            "description": "Day of month when limit resets (1-31)",
+            "minimum": 1,
+            "maximum": 31
+          },
+          "dailyLimit": {
+            "type": "number",
+            "description": "Daily API call limit"
+          }
+        }
+      },
+      "default": {
+        "github-copilot": {
+          "monthlyLimit": 500,
+          "resetDay": 1
+        },
+        "groq": {
+          "dailyLimit": 100
+        }
+      }
+    },
+    "autoFallback": {
+      "type": "boolean",
+      "description": "Enable automatic fallback when primary provider fails",
+      "default": true
+    },
+    "studentMode": {
+      "type": "boolean",
+      "description": "Enable student-specific optimizations and free providers",
+      "default": true
+    },
+    "costTracking": {
+      "type": "boolean",
+      "description": "Track API usage and costs",
+      "default": true
+    },
+    "notifications": {
+      "type": "object",
+      "properties": {
+        "onProviderSwitch": {
+          "type": "boolean",
+          "description": "Notify when switching providers",
+          "default": true
+        },
+        "onLimitApproaching": {
+          "type": "boolean",
+          "description": "Notify when approaching rate limits",
+          "default": true
+        },
+        "limitThreshold": {
+          "type": "number",
+          "description": "Percentage threshold for limit warnings (0-100)",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 80
+        }
+      }
+    },
+    "models": {
+      "type": "object",
+      "description": "Preferred models per provider",
+      "additionalProperties": {
+        "type": "string"
+      },
+      "default": {
+        "github-copilot": "gpt-4",
+        "deepseek": "deepseek-coder",
+        "groq": "llama-3.3-70b-versatile",
+        "github-models": "gpt-4o",
+        "together-ai": "meta-llama/Llama-3-70b-chat-hf",
+        "fireworks-ai": "accounts/fireworks/models/llama-v3p1-70b-instruct",
+        "opencode-zen": "claude-sonnet-4.5"
+      }
+    }
+  },
+  "default": {
+    "providers": {
+      "primary": "github-copilot",
+      "fallback": ["deepseek", "groq", "github-models"],
+      "cloud": ["azure-openai", "aws-bedrock", "vertex-ai"]
+    },
+    "rateLimiting": {
+      "github-copilot": {
+        "monthlyLimit": 500,
+        "resetDay": 1
+      }
+    },
+    "autoFallback": true,
+    "studentMode": true,
+    "costTracking": true,
+    "notifications": {
+      "onProviderSwitch": true,
+      "onLimitApproaching": true,
+      "limitThreshold": 80
+    },
+    "models": {
+      "github-copilot": "gpt-4",
+      "deepseek": "deepseek-coder",
+      "groq": "llama-3.3-70b-versatile",
+      "github-models": "gpt-4o",
+      "together-ai": "meta-llama/Llama-3-70b-chat-hf",
+      "fireworks-ai": "accounts/fireworks/models/llama-v3p1-70b-instruct"
+    }
+  }
+}

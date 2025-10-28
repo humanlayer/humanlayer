@@ -31,10 +31,27 @@ export type SessionSnapshot = FileSnapshotInfo // Components expect snake_case
 export type HealthCheckResponse = HealthResponse
 
 // Define client-specific types not in SDK
+export type AIProvider =
+  | 'anthropic'
+  | 'openrouter'
+  | 'baseten'
+  | 'github-copilot'
+  | 'deepseek'
+  | 'groq'
+  | 'together-ai'
+  | 'fireworks-ai'
+  | 'mistral'
+  | 'azure-openai'
+  | 'aws-bedrock'
+  | 'vertex-ai'
+  | 'huggingface'
+  | 'github-models'
+  | 'opencode-zen'
+
 export interface LaunchSessionParams {
   query: string
   title?: string
-  provider?: 'anthropic' | 'openrouter' | 'baseten'
+  provider?: AIProvider
   model?: string
   workingDir?: string
   mcpConfig?: any
@@ -44,8 +61,7 @@ export interface LaunchSessionParams {
   dangerouslySkipPermissions?: boolean
   proxyApiKey?: string
   additionalDirectories?: string[]
-  draft?: boolean // Add draft parameter
-  // Add any WUI-specific extensions if needed
+  draft?: boolean
 }
 
 export interface SessionState {
