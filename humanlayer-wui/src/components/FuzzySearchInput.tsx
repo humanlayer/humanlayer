@@ -284,7 +284,7 @@ export function SearchInput({
           align="start"
           avoidCollisions={false}
           className={cn(
-            // 'w-[var(--radix-popover-trigger-width)]',
+            'w-[var(--radix-popover-trigger-width)]',
             className?.includes('text-xs') && '[&_[cmdk-item]]:text-xs [&_[cmdk-item]]:py-1',
           )}
         >
