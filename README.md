@@ -23,6 +23,16 @@ Built on Claude Code. Open source. Scale from your laptop to your entire team.
 
 </h3>
 
+---
+
+### 🎓 Student Edition Available!
+
+Looking for free AI providers? Check out **[CodeLayer Student Edition](https://github.com/chindris-mihai-alexandru/codelayer-student-edition)** with 13+ free providers, auto-fallback, and OpenCode integration!
+
+**Branch:** [student-providers](https://github.com/chindris-mihai-alexandru/humanlayer/tree/student-providers)
+
+---
+
 <img referrerpolicy="no-referrer-when-downgrade" src="https://static.scarf.sh/a.png?x-pxid=fcfc0926-d841-47fb-b8a6-6aba3a6c3228" />
 
 </div>
