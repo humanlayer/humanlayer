@@ -1028,6 +1028,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 				EventType:       store.EventTypeSystem,
 				Role:            "system",
 				Content:         fmt.Sprintf("Session created with ID: %s", event.SessionID),
+				ParentToolUseID: event.ParentToolUseID,
 			}
 			if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 				return err
@@ -1038,12 +1039,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 				m.eventBus.Publish(bus.Event{
 					Type: bus.EventConversationUpdated,
 					Data: map[string]interface{}{
-						"session_id":        sessionID,
-						"claude_session_id": claudeSessionID,
-						"event_type":        "system",
-						"subtype":           event.Subtype,
-						"content":           fmt.Sprintf("Session created with ID: %s", event.SessionID),
-						"content_type":      "system",
+						"session_id":         sessionID,
+						"claude_session_id":  claudeSessionID,
+						"event_type":         "system",
+						"subtype":            event.Subtype,
+						"content":            fmt.Sprintf("Session created with ID: %s", event.SessionID),
+						"content_type":       "system",
+						"parent_tool_use_id": event.ParentToolUseID,
 					},
 				})
 			}
@@ -1125,6 +1127,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						EventType:       store.EventTypeMessage,
 						Role:            event.Message.Role,
 						Content:         content.Text,
+						ParentToolUseID: event.ParentToolUseID,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -1138,12 +1141,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						m.eventBus.Publish(bus.Event{
 							Type: bus.EventConversationUpdated,
 							Data: map[string]interface{}{
-								"session_id":        sessionID,
-								"claude_session_id": claudeSessionID,
-								"event_type":        "message",
-								"role":              event.Message.Role,
-								"content":           content.Text,
-								"content_type":      "text",
+								"session_id":         sessionID,
+								"claude_session_id":  claudeSessionID,
+								"event_type":         "message",
+								"role":               event.Message.Role,
+								"content":            content.Text,
+								"content_type":       "text",
+								"parent_tool_use_id": event.ParentToolUseID,
 							},
 						})
 					}
@@ -1204,6 +1208,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						Role:              "user",
 						ToolResultForID:   content.ToolUseID,
 						ToolResultContent: content.Content.Value,
+						ParentToolUseID:   event.ParentToolUseID,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -1228,6 +1233,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 								"tool_result_for_id":  content.ToolUseID,
 								"tool_result_content": content.Content.Value,
 								"content_type":        "tool_result",
+								"parent_tool_use_id":  event.ParentToolUseID,
 							},
 						})
 					}
@@ -1249,6 +1255,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						EventType:       store.EventTypeThinking,
 						Role:            event.Message.Role,
 						Content:         content.Thinking,
+						ParentToolUseID: event.ParentToolUseID,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -1262,12 +1269,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						m.eventBus.Publish(bus.Event{
 							Type: bus.EventConversationUpdated,
 							Data: map[string]interface{}{
-								"session_id":        sessionID,
-								"claude_session_id": claudeSessionID,
-								"event_type":        "thinking",
-								"role":              event.Message.Role,
-								"content":           content.Thinking,
-								"content_type":      "thinking",
+								"session_id":         sessionID,
+								"claude_session_id":  claudeSessionID,
+								"event_type":         "thinking",
+								"role":               event.Message.Role,
+								"content":            content.Thinking,
+								"content_type":       "thinking",
+								"parent_tool_use_id": event.ParentToolUseID,
 							},
 						})
 					}
