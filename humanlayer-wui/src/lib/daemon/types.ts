@@ -31,22 +31,10 @@ export type SessionSnapshot = FileSnapshotInfo // Components expect snake_case
 export type HealthCheckResponse = HealthResponse
 
 // Define client-specific types not in SDK
-export type AIProvider =
-  | 'anthropic'
-  | 'openrouter'
-  | 'baseten'
-  | 'github-copilot'
-  | 'deepseek'
-  | 'groq'
-  | 'together-ai'
-  | 'fireworks-ai'
-  | 'mistral'
-  | 'azure-openai'
-  | 'aws-bedrock'
-  | 'vertex-ai'
-  | 'huggingface'
-  | 'github-models'
-  | 'opencode-zen'
+
+export type KnownAIProvider = 'anthropic' | 'openrouter' | 'baseten'
+
+export type AIProvider = KnownAIProvider | (string & {})
 
 export interface LaunchSessionParams {
   query: string
@@ -220,7 +208,7 @@ export enum ViewMode {
 export interface LaunchSessionRequest {
   query: string
   title?: string
-  provider?: 'anthropic' | 'openrouter' | 'baseten'
+  provider?: AIProvider
   model?: string
   mcp_config?: any
   permission_prompt_tool?: string
