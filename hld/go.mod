@@ -22,6 +22,7 @@ require (
 	github.com/spf13/viper v1.20.1
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/mock v0.5.2
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -78,5 +79,4 @@ require (
 	golang.org/x/text v0.26.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
