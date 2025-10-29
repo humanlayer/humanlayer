@@ -456,6 +456,51 @@ async function addLink(issueId: string, url: string, options: { title?: string }
   }
 }
 
+async function assignToMe(issueId?: string): Promise<void> {
+  try {
+    if (!linear) {
+      throw new Error("Linear client not initialized. Check your API key.");
+    }
+
+    // Resolve issue ID (from argument, git branch, or interactive prompt)
+    const resolvedId = await resolveIssueId(issueId);
+
+    // Get the current authenticated user
+    const viewer = await linear.viewer;
+
+    if (!viewer) {
+      console.error(chalk.red("Error: Could not get authenticated user information."));
+      process.exit(1);
+    }
+
+    // Update the issue with the authenticated user as assignee
+    const result = await linear.issueUpdate(resolvedId, {
+      assigneeId: viewer.id
+    });
+
+    if (result.success) {
+      console.log(chalk.green(`✓ Assigned ${resolvedId} to ${viewer.name || viewer.email}`));
+
+      // Fetch and display the updated issue details
+      const updatedIssue = await linear.issue(resolvedId);
+      if (updatedIssue) {
+        const state = await updatedIssue.state;
+        console.log(chalk.dim(`  Status: ${state?.name || "Unknown"}`));
+        console.log(chalk.dim(`  Title: ${updatedIssue.title}`));
+        if (updatedIssue.url) {
+          console.log(chalk.dim(`  View in Linear: ${updatedIssue.url}`));
+        }
+      }
+    } else {
+      console.error(chalk.red(`Failed to assign ${resolvedId} to you.`));
+      process.exit(1);
+    }
+  } catch (error) {
+    console.error(chalk.red("Error assigning issue:"), error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
 async function fetchImages(issueId: string): Promise<void> {
   try {
     // Re-initialize Linear client with signed URL headers to get JWT-signed URLs
@@ -628,6 +673,62 @@ async function getIssueV2(issueId: string, options: {
       }
     }
 
+    // Fetch parent issues if requested
+    if (requestedFields.includes("parents")) {
+      const parentIssues = [];
+      let currentIssue = issue;
+
+      while (true) {
+        const parent = await currentIssue.parent;
+        if (!parent) break;
+
+        const parentData: any = {
+          identifier: parent.identifier,
+          title: parent.title
+        };
+
+        // Fetch additional parent fields if needed
+        if (requestedFields.includes("description")) {
+          parentData.description = parent.description || null;
+        }
+
+        if (requestedFields.includes("assignee")) {
+          const parentAssignee = await parent.assignee;
+          parentData.assignee = parentAssignee?.name || null;
+        }
+
+        if (requestedFields.includes("comments")) {
+          const parentComments = await parent.comments();
+          parentData.comments = [];
+
+          for (const comment of parentComments.nodes) {
+            let commentUser;
+            try {
+              commentUser = await comment.user;
+            } catch (error) {
+              commentUser = null;
+            }
+
+            parentData.comments.push({
+              author: commentUser?.name || "Unknown",
+              body: comment.body,
+              createdAt: comment.createdAt
+            });
+          }
+        }
+
+        const parentState = await parent.state;
+        parentData._state = parentState?.name || "Unknown";
+
+        parentIssues.push(parentData);
+        currentIssue = parent;
+      }
+
+      if (parentIssues.length > 0) {
+        issueData.parents = parentIssues.reverse(); // Reverse to show oldest parent first
+      }
+    }
+
     // Always fetch state and estimate for markdown format
     const state = await issue.state;
     const assignee = await issue.assignee;
@@ -686,6 +787,49 @@ async function getIssueV2(issueId: string, options: {
           console.log(chalk.dim(`[${dateStr} ${timeStr}] ${comment.author}:`));
           console.log(comment.body);
           console.log("");
+        }
+      }
+
+      // Display parent issues if requested
+      if (requestedFields.includes("parents") && issueData.parents && issueData.parents.length > 0) {
+        console.log(chalk.bold.yellow("\n═══════════════════════════════════════════════════════════════"));
+        console.log(chalk.bold.yellow("PARENT ISSUES:"));
+        console.log(chalk.bold.yellow("═══════════════════════════════════════════════════════════════"));
+
+        for (let i = 0; i < issueData.parents.length; i++) {
+          const parent = issueData.parents[i];
+          const levelPrefix = "  ".repeat(i) + "↳ ";
+          console.log(chalk.yellow(`\n${levelPrefix}Parent Level ${i + 1}:`));
+
+          console.log(chalk.bold(`\n${levelPrefix}[${parent.identifier}] ${parent.title}`));
+          console.log(chalk.dim(`${levelPrefix}Status: ${parent._state}`));
+
+          if (requestedFields.includes("assignee") && parent.assignee) {
+            console.log(chalk.dim(`${levelPrefix}Assignee: ${parent.assignee}`));
+          }
+
+          if (requestedFields.includes("description") && parent.description) {
+            console.log(chalk.bold(`\n${levelPrefix}Description:`));
+            const descLines = parent.description.split('\n');
+            for (const line of descLines) {
+              console.log(`${levelPrefix}${line}`);
+            }
+          }
+
+          if (requestedFields.includes("comments") && parent.comments && parent.comments.length > 0) {
+            console.log(chalk.bold(`\n${levelPrefix}Comments:`));
+            for (const comment of parent.comments) {
+              const commentDate = new Date(comment.createdAt);
+              const dateStr = commentDate.toISOString().split("T")[0];
+              const timeStr = commentDate.toTimeString().split(" ")[0];
+              console.log(chalk.dim(`${levelPrefix}[${dateStr} ${timeStr}] ${comment.author}:`));
+              const commentLines = comment.body.split('\n');
+              for (const line of commentLines) {
+                console.log(`${levelPrefix}${line}`);
+              }
+              console.log("");
+            }
+          }
         }
       }
     }
@@ -982,7 +1126,7 @@ program
   .command("get-issue-v2 <id>")
   .description("Get a single issue with the same output format and field options as list-issues")
   .option("--output-format <format>", "Output format: markdown, json (compact), or rich-json (pretty)", "json")
-  .option("--fields <fields>", "Comma-separated fields to include: identifier,title,branch,assignee,description,comments", "identifier,title,branch")
+  .option("--fields <fields>", "Comma-separated fields to include: identifier,title,branch,assignee,description,comments,parents", "identifier,title,branch")
   .action(getIssueV2);
 
 program
@@ -1008,6 +1152,11 @@ program
   .action(addLink);
 
 program
+  .command("assign-to-me [id]")
+  .description("Assign an issue to yourself (ID optional if in git branch)")
+  .action(assignToMe);
+
+program
   .command("list-issues")
   .description("List and filter issues with advanced options")
   .option("--max-issues <number>", "Maximum number of issues to fetch", "10")
@@ -1028,7 +1177,7 @@ program
   .option("--zsh", "Generate Zsh completion script")
   .option("--fish", "Generate Fish completion script")
   .action((options) => {
-    const commands = ["my-issues", "list-issues", "get-issue", "get-issue-v2", "add-comment", "fetch-images", "update-status", "add-link", "completion", "help"];
+    const commands = ["my-issues", "list-issues", "get-issue", "get-issue-v2", "add-comment", "fetch-images", "update-status", "add-link", "assign-to-me", "completion", "help"];
 
     if (options.bash) {
       // Basic bash completion
@@ -1067,6 +1216,7 @@ _linear() {
     'fetch-images:Download all images from an issue'
     'update-status:Update the status of a Linear issue'
     'add-link:Add a link/attachment to a Linear issue'
+    'assign-to-me:Assign an issue to yourself'
     'completion:Generate shell completion script'
     'help:Display help for command'
   )
@@ -1121,6 +1271,7 @@ complete -c linear -n "__fish_use_subcommand" -a "add-comment" -d "Add a comment
 complete -c linear -n "__fish_use_subcommand" -a "fetch-images" -d "Download all images from an issue"
 complete -c linear -n "__fish_use_subcommand" -a "update-status" -d "Update the status of a Linear issue"
 complete -c linear -n "__fish_use_subcommand" -a "add-link" -d "Add a link/attachment to a Linear issue"
+complete -c linear -n "__fish_use_subcommand" -a "assign-to-me" -d "Assign an issue to yourself"
 complete -c linear -n "__fish_use_subcommand" -a "completion" -d "Generate shell completion script"
 complete -c linear -n "__fish_use_subcommand" -a "help" -d "Display help for command"
 
