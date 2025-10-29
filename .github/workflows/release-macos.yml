@@ -1,13 +1,13 @@
 name: Build macOS Release Artifacts
 
 on:
-  schedule:
-    # Run daily at 7am PT (3pm UTC during standard time, 2pm UTC during daylight saving)
-    - cron: "0 14 * * *"
+  #schedule:
+  # Run daily at 7am PT (3pm UTC during standard time, 2pm UTC during daylight saving)
+  #- cron: "0 14 * * *"
 
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'  # Matches v0.2.0, v1.0.0, etc.
+      - "v[0-9]+.[0-9]+.[0-9]+" # Matches v0.2.0, v1.0.0, etc.
 
   workflow_dispatch:
     inputs:
@@ -15,7 +15,7 @@ on:
         description: "Release version (e.g., 0.2.0). Leave empty to auto-increment patch version for stable builds."
         required: false
         type: string
-        default: ''
+        default: ""
       release_nightly:
         description: "Build and release a nightly build"
         required: false
