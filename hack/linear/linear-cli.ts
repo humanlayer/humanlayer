@@ -112,8 +112,8 @@ function getGitBranch(): string {
 }
 
 function extractIssueId(branchName: string): string | null {
-  // Match patterns like ENG-123, eng-123, etc.
-  const match = branchName.match(/[A-Za-z]+-\d+/);
+  // Match patterns like ENG-123, eng-123, B2BPROD-206, etc.
+  const match = branchName.match(/[A-Za-z0-9]+-\d+/);
   return match ? match[0].toUpperCase() : null;
 }
 
@@ -121,10 +121,10 @@ async function getIssueIdInteractively(defaultId: string | null = null): Promise
   const { issueId } = await inquirer.prompt({
     type: "input",
     name: "issueId",
-    message: "Enter Linear issue ID (e.g. ENG-123):",
+    message: "Enter Linear issue ID (e.g. ENG-123, B2BPROD-206):",
     default: defaultId,
     validate: (input) => {
-      return /^[A-Za-z]+-\d+$/i.test(input) ? true : "Please enter a valid issue ID (e.g. ENG-123)";
+      return /^[A-Za-z0-9]+-\d+$/i.test(input) ? true : "Please enter a valid issue ID (e.g. ENG-123, B2BPROD-206)";
     },
   });
   
@@ -133,7 +133,7 @@ async function getIssueIdInteractively(defaultId: string | null = null): Promise
 
 async function resolveIssueId(providedId?: string): Promise<string> {
   // If ID is provided as argument, use it
-  if (providedId && /^[A-Za-z]+-\d+$/i.test(providedId)) {
+  if (providedId && /^[A-Za-z0-9]+-\d+$/i.test(providedId)) {
     return providedId.toUpperCase();
   }
   
@@ -311,8 +311,8 @@ async function updateStatus(issueId: string, statusName: string): Promise<void> 
     }
 
     // Validate issue ID format
-    if (!issueId || !/^[A-Za-z]+-\d+$/i.test(issueId)) {
-      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123"));
+    if (!issueId || !/^[A-Za-z0-9]+-\d+$/i.test(issueId)) {
+      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123 or B2BPROD-206"));
       process.exit(1);
     }
 
@@ -373,8 +373,8 @@ async function addLink(issueId: string, url: string, options: { title?: string }
     }
 
     // Validate issue ID format
-    if (!issueId || !/^[A-Za-z]+-\d+$/i.test(issueId)) {
-      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123"));
+    if (!issueId || !/^[A-Za-z0-9]+-\d+$/i.test(issueId)) {
+      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123 or B2BPROD-206"));
       process.exit(1);
     }
 
@@ -435,8 +435,8 @@ async function fetchImages(issueId: string): Promise<void> {
     });
 
     // Validate issue ID format
-    if (!issueId || !/^[A-Za-z]+-\d+$/i.test(issueId)) {
-      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123"));
+    if (!issueId || !/^[A-Za-z0-9]+-\d+$/i.test(issueId)) {
+      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123 or B2BPROD-206"));
       process.exit(1);
     }
 
@@ -530,8 +530,8 @@ async function getIssueV2(issueId: string, options: {
     }
 
     // Validate issue ID format
-    if (!issueId || !/^[A-Za-z]+-\d+$/i.test(issueId)) {
-      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123"));
+    if (!issueId || !/^[A-Za-z0-9]+-\d+$/i.test(issueId)) {
+      console.error(chalk.red("Error: Invalid issue ID format. Expected format: ENG-123 or B2BPROD-206"));
       process.exit(1);
     }
 
