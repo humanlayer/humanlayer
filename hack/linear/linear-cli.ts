@@ -206,67 +206,99 @@ async function getIssue(issueId?: string) {
     if (!linear) {
       throw new Error("Linear client not initialized. Check your API key.");
     }
-    
+
     const resolvedId = await resolveIssueId(issueId);
     const issue = await linear.issue(resolvedId);
-    
+
     if (!issue) {
       console.error(chalk.red(`Issue ${resolvedId} not found.`));
       process.exit(1);
     }
-    
-    const comments = await issue.comments();
-    const assignee = await issue.assignee;
-    const state = await issue.state;
-    
-    // Format issue details with branch name in header
-    console.log(chalk.bold(`\n[${issue.identifier}] ${issue.title}`));
-    if (issue.branchName) {
-      console.log(chalk.dim(`Branch: ${issue.branchName}`));
-    }
-    console.log(chalk.dim(`Status: ${state?.name || "Unknown"}`));
-    
-    if (assignee) {
-      console.log(chalk.dim(`Assignee: ${assignee.name}`));
-    }
-    
-    if (issue.description) {
-      console.log(chalk.bold("\nDescription:"));
-      console.log(issue.description);
-    }
-    
-    // Format comments
-    if (comments.nodes.length > 0) {
-      console.log(chalk.bold("\nComments:"));
-      
-      // Reverse the comments array to show oldest first
-      const reversedComments = [...comments.nodes].reverse();
-      
-      for (const comment of reversedComments) {
-        let commentUser;
-        try {
-          commentUser = await comment.user;
-        } catch (error) {
-          // Handle case where user is null (bot comments, deleted users, etc.)
-          commentUser = null;
-        }
 
-        const commentDate = new Date(comment.createdAt);
-        const dateStr = commentDate.toISOString().split("T")[0];
-        const timeStr = commentDate.toTimeString().split(" ")[0]; // HH:MM:SS format
+    // Display main issue
+    await displayIssue(issue);
 
-        console.log(chalk.dim(`[${dateStr} ${timeStr}] ${commentUser?.name || "Unknown"}:`));
-        console.log(comment.body);
-        console.log(); // Empty line between comments
+    // Fetch and display parent issues
+    const parentIssues = [];
+    let currentIssue = issue;
+
+    while (true) {
+      const parent = await currentIssue.parent;
+      if (!parent) break;
+
+      parentIssues.push(parent);
+      currentIssue = parent;
+    }
+
+    // Display parent issues in reverse order (oldest parent first)
+    if (parentIssues.length > 0) {
+      console.log(chalk.bold.yellow("\n═══════════════════════════════════════════════════════════════"));
+      console.log(chalk.bold.yellow("PARENT ISSUES:"));
+      console.log(chalk.bold.yellow("═══════════════════════════════════════════════════════════════"));
+
+      for (let i = parentIssues.length - 1; i >= 0; i--) {
+        const levelPrefix = "  ".repeat(parentIssues.length - i - 1) + "↳ ";
+        console.log(chalk.yellow(`\n${levelPrefix}Parent Level ${parentIssues.length - i}:`));
+        await displayIssue(parentIssues[i], false);
       }
-    } else {
-      console.log(chalk.dim("\nNo comments on this issue."));
     }
-    
-    console.log(chalk.dim(`\nView in Linear: ${issue.url}`));
   } catch (error) {
     console.error(chalk.red("Error fetching issue:"), error instanceof Error ? error.message : String(error));
     process.exit(1);
+  }
+}
+
+async function displayIssue(issue: any, showLinearUrl: boolean = true) {
+  const comments = await issue.comments();
+  const assignee = await issue.assignee;
+  const state = await issue.state;
+
+  // Format issue details with branch name in header
+  console.log(chalk.bold(`\n[${issue.identifier}] ${issue.title}`));
+  if (issue.branchName) {
+    console.log(chalk.dim(`Branch: ${issue.branchName}`));
+  }
+  console.log(chalk.dim(`Status: ${state?.name || "Unknown"}`));
+
+  if (assignee) {
+    console.log(chalk.dim(`Assignee: ${assignee.name}`));
+  }
+
+  if (issue.description) {
+    console.log(chalk.bold("\nDescription:"));
+    console.log(issue.description);
+  }
+
+  // Format comments
+  if (comments.nodes.length > 0) {
+    console.log(chalk.bold("\nComments:"));
+
+    // Reverse the comments array to show oldest first
+    const reversedComments = [...comments.nodes].reverse();
+
+    for (const comment of reversedComments) {
+      let commentUser;
+      try {
+        commentUser = await comment.user;
+      } catch (error) {
+        // Handle case where user is null (bot comments, deleted users, etc.)
+        commentUser = null;
+      }
+
+      const commentDate = new Date(comment.createdAt);
+      const dateStr = commentDate.toISOString().split("T")[0];
+      const timeStr = commentDate.toTimeString().split(" ")[0]; // HH:MM:SS format
+
+      console.log(chalk.dim(`[${dateStr} ${timeStr}] ${commentUser?.name || "Unknown"}:`));
+      console.log(comment.body);
+      console.log(); // Empty line between comments
+    }
+  } else {
+    console.log(chalk.dim("\nNo comments on this issue."));
+  }
+
+  if (showLinearUrl) {
+    console.log(chalk.dim(`\nView in Linear: ${issue.url}`));
   }
 }
 
