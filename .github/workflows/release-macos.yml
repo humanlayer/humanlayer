@@ -315,8 +315,7 @@ jobs:
 
             ### Homebrew (Recommended)
             ```bash
-            brew tap humanlayer/humanlayer
-            brew install --cask codelayer${{ steps.version.outputs.is_nightly == 'true' && '-nightly' || '' }}
+            brew install --cask --no-quarantine humanlayer/humanlayer/codelayer${{ steps.version.outputs.is_nightly == 'true' && '-nightly' || '' }}
             ```
 
             ### Manual Installation
