@@ -910,7 +910,7 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
 
     useEffect(() => {
       placeholderRef.current = placeholder
-      editor?.commands.selectAll()
+      editor?.commands.focus()
     }, [editor, placeholder])
 
     // Handle editable state
