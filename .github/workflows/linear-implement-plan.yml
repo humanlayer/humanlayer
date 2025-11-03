@@ -1,10 +1,5 @@
 name: "Linear: Implement Plan for Task"
 on:
-  push:
-    branches:
-      - kyle/eng-2175-auto-create-worktree-and-checkout-for-linear
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       num_tickets:
