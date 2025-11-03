@@ -27,13 +27,8 @@ fn set_macos_window_background_color_rgb(window: &tauri::WebviewWindow, r: f64, 
 
     let ns_window = window.ns_window().unwrap() as id;
     unsafe {
-        let bg_color = NSColor::colorWithRed_green_blue_alpha_(
-            nil,
-            r / 255.0,
-            g / 255.0,
-            b / 255.0,
-            1.0,
-        );
+        let bg_color =
+            NSColor::colorWithRed_green_blue_alpha_(nil, r / 255.0, g / 255.0, b / 255.0, 1.0);
         ns_window.setBackgroundColor_(bg_color);
     }
 }
@@ -50,7 +45,7 @@ fn set_macos_window_appearance(window: &tauri::WebviewWindow, is_dark: bool) {
     }
 
     use cocoa::base::id;
-    use objc::{msg_send, sel, sel_impl, class};
+    use objc::{class, msg_send, sel, sel_impl};
 
     let ns_window = window.ns_window().unwrap() as id;
     unsafe {
@@ -59,9 +54,13 @@ fn set_macos_window_appearance(window: &tauri::WebviewWindow, is_dark: bool) {
     }
 }
 
-
 #[cfg(not(target_os = "macos"))]
-fn set_macos_window_background_color_rgb(_window: &tauri::WebviewWindow, _r: f64, _g: f64, _b: f64) {
+fn set_macos_window_background_color_rgb(
+    _window: &tauri::WebviewWindow,
+    _r: f64,
+    _g: f64,
+    _b: f64,
+) {
     // No-op on non-macOS platforms
 }
 
@@ -298,7 +297,10 @@ async fn get_log_directory() -> Result<String, String> {
         // Dev mode: return branch-based folder
         let branch_id = get_branch_id(is_dev, None);
         let home = dirs::home_dir().ok_or("Failed to get home directory")?;
-        let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{branch_id}"));
+        let log_dir = home
+            .join(".humanlayer")
+            .join("logs")
+            .join(format!("wui-{branch_id}"));
         Ok(log_dir.to_string_lossy().to_string())
     } else {
         // Production: use tauri API to get platform-specific log directory
@@ -308,10 +310,7 @@ async fn get_log_directory() -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn save_window_state(
-    app: tauri::AppHandle,
-    state: WindowState,
-) -> Result<(), String> {
+async fn save_window_state(app: tauri::AppHandle, state: WindowState) -> Result<(), String> {
     let is_dev = cfg!(debug_assertions);
     let branch_id = get_branch_id(is_dev, None);
     let store_path = get_store_path(is_dev, Some(&branch_id));
@@ -361,7 +360,7 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     let _window = WebviewWindowBuilder::new(
         &app,
         "quick-launcher",
-        WebviewUrl::App("index.html#/quick-launcher".into())
+        WebviewUrl::App("index.html#/quick-launcher".into()),
     )
     .title("")
     .inner_size(500.0, 185.0)
@@ -370,7 +369,7 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     .minimizable(false)
     .always_on_top(true)
     .skip_taskbar(true)
-    .decorations(false)  // Remove all window decorations including title bar
+    .decorations(false) // Remove all window decorations including title bar
     .center()
     .build()
     .map_err(|e| e.to_string())?;
@@ -378,58 +377,70 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// Open a directory in the specified editor
-/// 
+/// Open a directory in the specified editor using tauri-plugin-opener
+///
 /// # Arguments
+/// * `app` - Tauri app handle
 /// * `path` - The directory path to open
 /// * `editor` - Optional editor command (cursor, code, zed). If None, uses system default.
 #[tauri::command]
-async fn open_in_editor(path: String, editor: Option<String>) -> Result<(), String> {
-    use std::process::Command;
-    
+async fn open_in_editor(
+    app: tauri::AppHandle,
+    path: String,
+    editor: Option<String>,
+) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+
     let path_expanded = shellexpand::tilde(&path).to_string();
-    
+    let opener = app.opener();
+
     if let Some(editor_cmd) = editor {
-        // Open with specific editor
-        let result = match editor_cmd.as_str() {
-            "cursor" | "code" | "zed" => {
-                Command::new(&editor_cmd)
-                    .arg(&path_expanded)
-                    .spawn()
-                    .map_err(|e| format!("Failed to launch {}: {}", editor_cmd, e))?;
-                Ok(())
-            }
-            _ => Err(format!("Unsupported editor: {}", editor_cmd))
+        // Map editor preference to platform-specific app names
+        let app_name = match editor_cmd.as_str() {
+            "cursor" => get_cursor_app_name(),
+            "code" => get_vscode_app_name(),
+            "zed" => get_zed_app_name(),
+            _ => return Err(format!("Unsupported editor: {}", editor_cmd)),
         };
-        result
+
+        opener
+            .open_path(&path_expanded, app_name)
+            .map_err(|e| format!("Failed to open editor: {}", e))?;
     } else {
         // Use system default
-        #[cfg(target_os = "macos")]
-        {
-            Command::new("open")
-                .arg(&path_expanded)
-                .spawn()
-                .map_err(|e| format!("Failed to open with system default: {}", e))?;
-        }
-        
-        #[cfg(target_os = "linux")]
-        {
-            Command::new("xdg-open")
-                .arg(&path_expanded)
-                .spawn()
-                .map_err(|e| format!("Failed to open with system default: {}", e))?;
-        }
-        
-        #[cfg(target_os = "windows")]
-        {
-            Command::new("explorer")
-                .arg(&path_expanded)
-                .spawn()
-                .map_err(|e| format!("Failed to open with system default: {}", e))?;
-        }
-        
-        Ok(())
+        opener
+            .open_path(&path_expanded, None::<&str>)
+            .map_err(|e| format!("Failed to open with system default: {}", e))?;
     }
+
+    Ok(())
+}
+
+fn get_cursor_app_name() -> Option<&'static str> {
+    #[cfg(target_os = "macos")]
+    return Some("Cursor");
+    #[cfg(target_os = "windows")]
+    return Some("Cursor");
+    #[cfg(target_os = "linux")]
+    return Some("cursor");
+}
+
+fn get_vscode_app_name() -> Option<&'static str> {
+    #[cfg(target_os = "macos")]
+    return Some("Visual Studio Code");
+    #[cfg(target_os = "windows")]
+    return Some("Code");
+    #[cfg(target_os = "linux")]
+    return Some("code");
+}
+
+fn get_zed_app_name() -> Option<&'static str> {
+    #[cfg(target_os = "macos")]
+    return Some("Zed");
+    #[cfg(target_os = "windows")]
+    return Some("Zed");
+    #[cfg(target_os = "linux")]
+    return Some("zed");
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -455,7 +466,10 @@ pub fn run() {
             let log_targets = if is_dev {
                 // Dev mode: use branch-based folder in ~/.humanlayer/logs/
                 let home = dirs::home_dir().expect("Failed to get home directory");
-                let log_dir = home.join(".humanlayer").join("logs").join(format!("wui-{branch_id}"));
+                let log_dir = home
+                    .join(".humanlayer")
+                    .join("logs")
+                    .join(format!("wui-{branch_id}"));
 
                 // Create the directory if it doesn't exist
                 std::fs::create_dir_all(&log_dir).ok();
@@ -504,7 +518,9 @@ pub fn run() {
 
                 if let Ok(store) = app.store(&store_path) {
                     if let Some(window_state_value) = store.get("window_state") {
-                        if let Ok(window_state) = serde_json::from_value::<WindowState>(window_state_value) {
+                        if let Ok(window_state) =
+                            serde_json::from_value::<WindowState>(window_state_value)
+                        {
                             // Restore window size
                             if window_state.width > 0.0 && window_state.height > 0.0 {
                                 let _ = main_window.set_size(tauri::PhysicalSize::new(
@@ -517,8 +533,7 @@ pub fn run() {
                             if let (Some(x), Some(y)) = (window_state.x, window_state.y) {
                                 if x >= 0.0 && y >= 0.0 {
                                     let _ = main_window.set_position(tauri::PhysicalPosition::new(
-                                        x as i32,
-                                        y as i32,
+                                        x as i32, y as i32,
                                     ));
                                 }
                             }
@@ -581,7 +596,10 @@ pub fn run() {
                         .await
                     {
                         Ok(info) => {
-                            log::info!("[Tauri] Daemon started automatically on port {}", info.port);
+                            log::info!(
+                                "[Tauri] Daemon started automatically on port {}",
+                                info.port
+                            );
                         }
                         Err(e) => {
                             // Log error but don't interrupt user experience
@@ -619,7 +637,9 @@ pub fn run() {
     // Run the app with access to exit_daemon_manager
     app.run(move |_app, event| {
         match event {
-            tauri::RunEvent::ExitRequested {code: _, api: _, ..} => {
+            tauri::RunEvent::ExitRequested {
+                code: _, api: _, ..
+            } => {
                 log::info!("[Tauri] ExitRequested");
                 // Note: This doesn't fire on macOS due to Tauri bug
             }
@@ -628,8 +648,11 @@ pub fn run() {
 
                 // Get daemon info to update store
                 if let Some(info) = exit_daemon_manager.get_info() {
-                    log::info!("[Tauri] Found daemon on port {} with PID {:?}",
-                              info.port, info.pid);
+                    log::info!(
+                        "[Tauri] Found daemon on port {} with PID {:?}",
+                        info.port,
+                        info.pid
+                    );
 
                     // Determine store path
                     let is_dev = info.branch_id != "production";
@@ -642,15 +665,24 @@ pub fn run() {
 
                         // Read, update, and write store manually
                         if let Ok(store_content) = fs::read_to_string(&full_store_path) {
-                            if let Ok(mut store_json) = serde_json::from_str::<serde_json::Value>(&store_content) {
+                            if let Ok(mut store_json) =
+                                serde_json::from_str::<serde_json::Value>(&store_content)
+                            {
                                 if let Some(current_daemon) = store_json.get_mut("current_daemon") {
                                     if let Some(daemon_obj) = current_daemon.as_object_mut() {
-                                        daemon_obj.insert("is_running".to_string(), serde_json::json!(false));
+                                        daemon_obj.insert(
+                                            "is_running".to_string(),
+                                            serde_json::json!(false),
+                                        );
 
                                         // Write updated store back
-                                        if let Ok(updated_content) = serde_json::to_string_pretty(&store_json) {
+                                        if let Ok(updated_content) =
+                                            serde_json::to_string_pretty(&store_json)
+                                        {
                                             let _ = fs::write(&full_store_path, updated_content);
-                                            log::info!("[Tauri] Updated store to mark daemon as stopped");
+                                            log::info!(
+                                                "[Tauri] Updated store to mark daemon as stopped"
+                                            );
                                         }
                                     }
                                 }
