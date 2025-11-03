@@ -146,7 +146,7 @@ export const ActiveSessionActionButtons: FC<ActiveSessionActionButtonsProps> = (
             </TooltipTrigger>
             <TooltipContent>
               <p className="flex items-center gap-1">
-                Open in editor <KeyboardShortcut keyString="⌘+Shift+E" />
+                Open in editor <KeyboardShortcut keyString="⌘⇧E" />
               </p>
             </TooltipContent>
           </Tooltip>
