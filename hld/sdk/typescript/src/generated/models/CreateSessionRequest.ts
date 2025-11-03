@@ -159,6 +159,12 @@ export interface CreateSessionRequest {
      * @memberof CreateSessionRequest
      */
     draft?: boolean;
+    /**
+     * Create the working directory if it does not exist
+     * @type {boolean}
+     * @memberof CreateSessionRequest
+     */
+    createDirectoryIfNotExists?: boolean;
 }
 
 
@@ -213,6 +219,7 @@ export function CreateSessionRequestFromJSONTyped(json: any, ignoreDiscriminator
         'proxyModelOverride': json['proxy_model_override'] == null ? undefined : json['proxy_model_override'],
         'proxyApiKey': json['proxy_api_key'] == null ? undefined : json['proxy_api_key'],
         'draft': json['draft'] == null ? undefined : json['draft'],
+        'createDirectoryIfNotExists': json['createDirectoryIfNotExists'] == null ? undefined : json['createDirectoryIfNotExists'],
     };
 }
 
@@ -249,6 +256,7 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'proxy_model_override': value['proxyModelOverride'],
         'proxy_api_key': value['proxyApiKey'],
         'draft': value['draft'],
+        'createDirectoryIfNotExists': value['createDirectoryIfNotExists'],
     };
 }
 

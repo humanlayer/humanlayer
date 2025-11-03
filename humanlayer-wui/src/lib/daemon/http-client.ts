@@ -315,10 +315,43 @@ export class HTTPDaemonClient implements IDaemonClient {
     return { success: true }
   }
 
-  async launchDraftSession(sessionId: string, prompt: string): Promise<{ success: boolean }> {
+  async launchDraftSession(
+    sessionId: string,
+    prompt: string,
+    createDirectoryIfNotExists?: boolean,
+  ): Promise<{ success: boolean }> {
     await this.ensureConnected()
-    await this.client!.launchDraftSession(sessionId, prompt)
-    return { success: true }
+    try {
+      await this.client!.launchDraftSession(sessionId, prompt, createDirectoryIfNotExists)
+      return { success: true }
+    } catch (error: any) {
+      // The SDK throws a ResponseError with the response object
+      // We need to check error.response.status and read the body
+      const response = error.response
+
+      if (response && response.status === 422) {
+        // Read the JSON body from the response
+        let errorBody
+        try {
+          errorBody = await response.json()
+        } catch (jsonError) {
+          logger.error('[launchDraftSession] Failed to parse 422 response body:', jsonError)
+          throw error // Re-throw original error if JSON parsing fails
+        }
+
+        if (errorBody?.error === 'directory_not_found') {
+          // Re-throw with proper structure for UI to handle
+          throw {
+            status: 422,
+            data: errorBody,
+            message: errorBody.message,
+          }
+        }
+      }
+
+      // Re-throw other errors
+      throw error
+    }
   }
 
   async deleteDraftSession(sessionId: string): Promise<{ success: boolean }> {
@@ -403,11 +436,21 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
   }
 
+  async bulkRestoreDrafts(params: { session_ids: string[] }): Promise<{
+    success: boolean
+    failed_sessions?: string[]
+  }> {
+    await this.ensureConnected()
+    const response = await this.client!.bulkRestoreDrafts(params)
+    return response
+  }
+
   async updateSession(
     sessionId: string,
     updates: {
       model?: string
       title?: string
+      status?: string
       archived?: boolean
       autoAcceptEdits?: boolean
       dangerouslySkipPermissions?: boolean
@@ -431,6 +474,9 @@ export class HTTPDaemonClient implements IDaemonClient {
     }
     if (updates.title !== undefined) {
       sdkUpdates.title = updates.title
+    }
+    if (updates.status !== undefined) {
+      sdkUpdates.status = updates.status
     }
     if (updates.archived !== undefined) {
       sdkUpdates.archived = updates.archived
@@ -625,6 +671,18 @@ export class HTTPDaemonClient implements IDaemonClient {
   }): Promise<FuzzySearchFilesResponse> {
     await this.ensureConnected()
     const response = await this.client!.fuzzySearchFiles(params)
+    return response
+  }
+
+  async validateDirectory(path: string) {
+    await this.ensureConnected()
+    const response = await this.client!.validateDirectory(path)
+    return response
+  }
+
+  async createDirectory(path: string) {
+    await this.ensureConnected()
+    const response = await this.client!.createDirectory(path)
     return response
   }
 

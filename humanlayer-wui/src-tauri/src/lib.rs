@@ -179,8 +179,8 @@ pub fn get_branch_id(is_dev: bool, branch_override: Option<String>) -> String {
     }
 }
 
-// Helper to get store path based on dev mode and branch
-fn get_store_path(is_dev: bool, branch_id: Option<&str>) -> PathBuf {
+// Helper to get store path based on dev mode, nightly build, and branch
+fn get_store_path(is_dev: bool, branch_id: Option<&str>, is_nightly: bool) -> PathBuf {
     let home = dirs::home_dir().expect("Failed to get home directory");
     let humanlayer_dir = home.join(".humanlayer");
 
@@ -191,6 +191,8 @@ fn get_store_path(is_dev: bool, branch_id: Option<&str>) -> PathBuf {
         } else {
             humanlayer_dir.join("codelayer-dev.json")
         }
+    } else if is_nightly {
+        humanlayer_dir.join("codelayer-nightly.json")
     } else {
         humanlayer_dir.join("codelayer.json")
     }
@@ -208,7 +210,8 @@ async fn start_daemon(
         .await?;
 
     // Save to store using branch-specific path in dev mode
-    let store_path = get_store_path(is_dev, Some(&info.branch_id));
+    let is_nightly = app_handle.config().identifier.contains("nightly");
+    let store_path = get_store_path(is_dev, Some(&info.branch_id), is_nightly);
     let store = app_handle
         .store(&store_path)
         .map_err(|e| format!("Failed to access store: {e}"))?;
@@ -229,7 +232,8 @@ async fn stop_daemon(
     // Get daemon info before stopping to know which store to update
     if let Some(info) = daemon_manager.get_info() {
         let is_dev = info.branch_id != "production";
-        let store_path = get_store_path(is_dev, Some(&info.branch_id));
+        let is_nightly = app_handle.config().identifier.contains("nightly");
+        let store_path = get_store_path(is_dev, Some(&info.branch_id), is_nightly);
 
         // Stop the daemon
         daemon_manager.stop_daemon()?;
@@ -272,7 +276,8 @@ async fn get_daemon_info(
     }
 
     // Otherwise check store for last known daemon
-    let store_path = get_store_path(is_dev, None);
+    let is_nightly = app_handle.config().identifier.contains("nightly");
+    let store_path = get_store_path(is_dev, None, is_nightly);
     let store = app_handle
         .store(&store_path)
         .map_err(|e| format!("Failed to access store: {e}"))?;
@@ -310,10 +315,69 @@ async fn get_log_directory() -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn save_window_state(app: tauri::AppHandle, state: WindowState) -> Result<(), String> {
+async fn read_last_log_lines(n: usize, log_path: Option<String>) -> Result<String, String> {
+    use std::fs::File;
+    use std::io::{BufReader, BufRead};
+    use std::collections::VecDeque;
+
+    let log_file = if let Some(path) = log_path {
+        // Use provided path (for production)
+        PathBuf::from(path)
+    } else {
+        // Use dev mode path
+        if !cfg!(debug_assertions) {
+            return Err("Log path must be provided in production mode".to_string());
+        }
+
+        let branch_id = get_branch_id(true, None);
+        let home = dirs::home_dir().ok_or("Failed to get home directory")?;
+        home.join(".humanlayer")
+            .join("logs")
+            .join(format!("wui-{}", branch_id))
+            .join("codelayer.log")
+    };
+
+    // Check if file exists
+    if !log_file.exists() {
+        return Ok(String::new()); // Return empty string if no log file yet
+    }
+
+    // Read file and get last n lines
+    let file = File::open(&log_file)
+        .map_err(|e| format!("Failed to open log file: {}", e))?;
+    let reader = BufReader::new(file);
+
+    // Use a deque to keep only the last n lines in memory
+    let mut lines = VecDeque::with_capacity(n);
+
+    for line in reader.lines() {
+        match line {
+            Ok(line_content) => {
+                if lines.len() == n {
+                    lines.pop_front();
+                }
+                lines.push_back(line_content);
+            }
+            Err(e) => {
+                // Log the error but continue reading
+                eprintln!("Error reading line: {}", e);
+            }
+        }
+    }
+
+    // Join lines back together
+    Ok(lines.into_iter().collect::<Vec<_>>().join("\n"))
+}
+
+#[tauri::command]
+async fn save_window_state(
+    app: tauri::AppHandle,
+    state: WindowState,
+) -> Result<(), String> {
     let is_dev = cfg!(debug_assertions);
     let branch_id = get_branch_id(is_dev, None);
-    let store_path = get_store_path(is_dev, Some(&branch_id));
+    let is_nightly = app.config().identifier.contains("nightly");
+    let store_path = get_store_path(is_dev, Some(&branch_id), is_nightly);
 
     let store = app
         .store(&store_path)
@@ -333,7 +397,8 @@ async fn save_window_state(app: tauri::AppHandle, state: WindowState) -> Result<
 async fn load_window_state(app: tauri::AppHandle) -> Result<Option<WindowState>, String> {
     let is_dev = cfg!(debug_assertions);
     let branch_id = get_branch_id(is_dev, None);
-    let store_path = get_store_path(is_dev, Some(&branch_id));
+    let is_nightly = app.config().identifier.contains("nightly");
+    let store_path = get_store_path(is_dev, Some(&branch_id), is_nightly);
 
     let store = app
         .store(&store_path)
@@ -514,7 +579,8 @@ pub fn run() {
             if let Some(main_window) = app.get_webview_window("main") {
                 let is_dev = cfg!(debug_assertions);
                 let branch_id = get_branch_id(is_dev, None);
-                let store_path = get_store_path(is_dev, Some(&branch_id));
+                let is_nightly = app.config().identifier.contains("nightly");
+                let store_path = get_store_path(is_dev, Some(&branch_id), is_nightly);
 
                 if let Ok(store) = app.store(&store_path) {
                     if let Some(window_state_value) = store.get("window_state") {
@@ -559,19 +625,6 @@ pub fn run() {
                 shortcut.on_shortcut("cmd+shift+h", move |_app, _shortcut, _event| {
                     // Show quick launcher window
                     let _ = show_quick_launcher(app_handle.clone());
-                })?;
-
-                // Register refresh shortcut (cmd+r / ctrl+r)
-                let app_handle_refresh = app.handle().clone();
-                shortcut.on_shortcut("CommandOrControl+r", move |_app, _shortcut, _event| {
-                    // Refresh the main window
-                    if let Some(window) = app_handle_refresh.get_webview_window("main") {
-                        let _ = window.reload();
-                    }
-                    // Also refresh quick launcher if it's open
-                    if let Some(window) = app_handle_refresh.get_webview_window("quick-launcher") {
-                        let _ = window.reload();
-                    }
                 })?;
             }
 
@@ -624,6 +677,7 @@ pub fn run() {
             get_daemon_info,
             is_daemon_running,
             get_log_directory,
+            read_last_log_lines,
             show_quick_launcher,
             open_in_editor,
             set_window_background_color,
@@ -656,7 +710,9 @@ pub fn run() {
 
                     // Determine store path
                     let is_dev = info.branch_id != "production";
-                    let store_path = get_store_path(is_dev, Some(&info.branch_id));
+                    // Check if it's a nightly build based on the socket path
+                    let is_nightly = info.socket_path.contains("nightly");
+                    let store_path = get_store_path(is_dev, Some(&info.branch_id), is_nightly);
 
                     // Update store to mark daemon as not running
                     // Note: We can't access app_handle here, so we update store directly

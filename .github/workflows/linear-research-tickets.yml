@@ -16,6 +16,8 @@ on:
 jobs:
   fetch-tickets:
     runs-on: ubuntu-latest
+    env:
+      RESEARCH_WIP_LIMIT: 5  # Configurable WIP limit
     outputs:
       ticket_ids: ${{ steps.fetch-tickets.outputs.ticket_ids }}
     steps:
@@ -28,12 +30,79 @@ jobs:
         run: |
           cd hack/linear && npm install && npm install -g .
 
+      - name: "Check research in review WIP capacity"
+        id: check-wip
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          # Count tickets currently in "research in review" status
+          review_json=$(linear list-issues --max-issues 100 --status 'research in review' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)
+
+          # Check if linear command succeeded
+          if [ $? -ne 0 ]; then
+            echo "Error: Failed to query tickets in review. Defaulting to no capacity."
+            echo "review_count=999" >> "$GITHUB_OUTPUT"
+            echo "available_slots=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Count tickets using jq
+          review_count=$(echo "$review_json" | jq 'length')
+
+          # Validate jq output is a number
+          if ! [[ "$review_count" =~ ^[0-9]+$ ]]; then
+            echo "Error: Invalid count result. Defaulting to no capacity."
+            echo "review_count=999" >> "$GITHUB_OUTPUT"
+            echo "available_slots=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "review_count=$review_count" >> "$GITHUB_OUTPUT"
+
+          # Calculate available slots
+          available_slots=$((${{ env.RESEARCH_WIP_LIMIT }} - review_count))
+
+          # Ensure available_slots is not negative
+          if [ "$available_slots" -lt 0 ]; then
+            available_slots=0
+          fi
+
+          echo "available_slots=$available_slots" >> "$GITHUB_OUTPUT"
+
+          # Enhanced logging for monitoring
+          echo "::notice title=WIP Status::$review_count/${{ env.RESEARCH_WIP_LIMIT }} tickets in review, $available_slots slots available"
+
+          # Log warning when approaching limit
+          if [ "$available_slots" -le 1 ] && [ "$available_slots" -gt 0 ]; then
+            echo "::warning title=Approaching WIP Limit::Only $available_slots slot(s) remaining before WIP limit"
+          elif [ "$available_slots" -eq 0 ]; then
+            echo "::warning title=WIP Limit Reached::No capacity for new tickets (WIP limit: ${{ env.RESEARCH_WIP_LIMIT }})"
+          fi
+
       - name: "Get researchable tickets"
         env:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
         id: fetch-tickets
-        run: >
-          echo "ticket_ids=$(linear list-issues --max-issues ${{ inputs.num_tickets || 10 }} --status 'research needed' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
+        run: |
+          available_slots=${{ steps.check-wip.outputs.available_slots }}
+
+          if [ "$available_slots" -eq 0 ]; then
+            echo "WIP limit reached - no capacity for new tickets"
+            echo "ticket_ids=[]" >> "$GITHUB_OUTPUT"
+          else
+            # Fetch tickets up to available capacity
+            max_tickets=${{ inputs.num_tickets || 10 }}
+
+            # Use the smaller of available_slots or max_tickets
+            if [ "$available_slots" -lt "$max_tickets" ]; then
+              fetch_limit=$available_slots
+            else
+              fetch_limit=$max_tickets
+            fi
+
+            echo "Fetching up to $fetch_limit tickets (capacity: $available_slots, requested: $max_tickets)"
+            echo "ticket_ids=$(linear list-issues --max-issues $fetch_limit --status 'research needed' --assignee 'LinearLayer (Claude)' --ids-only --output-format json)" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: "Output Ids"
         run: echo ${{steps.fetch-tickets.outputs.ticket_ids}}
@@ -129,7 +198,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: >
-          cd humanlayer && claude --dangerously-skip-permissions --model opus -p '/research_codebase ${{ env.TICKET_FILE_PATH }} 
+          cd humanlayer && claude --dangerously-skip-permissions --model opus -p '/research_codebase ${{ env.TICKET_FILE_PATH }}
             Start by reading the ticket and all of the comments.
             Pay extra code attention to the comments - if you (LinearLayer/claude) are mentioned in a comment you should treat that comment as an instruction.
             Also check /thoughts/shared/images/${{matrix.ticket_id}} for any relevant images and read any you find.
@@ -138,9 +207,17 @@ jobs:
             **DO NOT ASK THE USER FOR DIRECTIONS OR CLARIFICATION. Simply proceed to the research based on the information you have been provided with, and then write your research document. **
 
             If there is already a research document for this ticket and there are comments on the ticket, use the comments as instructions for updating the research document.
-            When referencing the research document that you created in thoughts/ to the user once you finish, always provide GitHub markdown-style links:
-            - thoughts/shared/research/... → [LINK TITLE HERE](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/research/...)
-              
+
+            CRITICAL: After completing all your research and writing the document, your FINAL output must be EXACTLY in this format (nothing else):
+
+            research completed - [thoughts/shared/YYYY-MM-DD-ENG-XXXX-description.md](https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/research/YYYY-MM-DD-ENG-XXXX-description.md)
+
+            ### open questions
+            1. [First open question from your research document]
+            2. [Second open question from your research document]
+            3. [Continue for all open questions, or write "None at this time" if there are no open questions]
+
+            Output ONLY this message as your final response, nothing else. Do not include any other text, explanations, or conversation before or after this format.
             ' 2>&1 | tee CLAUDE_ANSWER.md
 
       - name: Sync research to thoughts

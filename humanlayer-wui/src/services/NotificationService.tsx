@@ -9,6 +9,7 @@ import { formatError } from '@/utils/errors'
 import { logger } from '@/lib/logging'
 import { CodeLayerToastButtons } from '@/components/internal/CodeLayerToastButtons'
 import React from 'react'
+import { useStore } from '@/AppStore'
 
 // Types for generic notification system
 export type NotificationType =
@@ -373,7 +374,7 @@ class NotificationService {
     logger.error(context || 'Error:', error)
 
     // Format the error message
-    const formattedMessage = formatError(error)
+    const formattedMessage = await formatError(error)
 
     // Add context if provided
     const body = context ? `${context}: ${formattedMessage}` : formattedMessage
@@ -458,6 +459,8 @@ class NotificationService {
             </span>
           ),
           onClick: () => {
+            // Clear stale session detail before navigating to ensure clean state
+            useStore.getState().clearActiveSessionDetail()
             window.location.hash = `/sessions/${sessionId}`
             // Dismiss the toast when user clicks to jump to session
             toast.dismiss(toastId)

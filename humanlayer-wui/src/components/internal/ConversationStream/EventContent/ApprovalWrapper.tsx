@@ -39,7 +39,7 @@ export function ApprovalWrapper({
 
       {/* Show approval/deny buttons for pending approvals */}
       {showApprovalUI && (
-        <div className="mt-4 flex gap-2 justify-end">
+        <div className="mt-4 flex gap-2 justify-start">
           {!isDenying ? (
             <>
               <Button

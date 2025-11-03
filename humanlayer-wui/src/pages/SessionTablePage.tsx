@@ -7,6 +7,7 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useKeyboardNavigationProtection } from '@/hooks'
 import { useSessionLauncher } from '@/hooks/useSessionLauncher'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { DangerouslySkipPermissionsDialog } from '@/components/internal/SessionDetail/DangerouslySkipPermissionsDialog'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
@@ -332,7 +333,7 @@ export function SessionTablePage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <nav className="sticky top-0 z-10">
+      <nav className="sticky top-0 z-10 flex items-center justify-between gap-4">
         <Tabs
           className="w-[400px]"
           value={viewMode}
@@ -354,6 +355,19 @@ export function SessionTablePage() {
             <TabsTrigger value={ViewMode.Archived}>Archived</TabsTrigger>
           </TabsList>
         </Tabs>
+
+        {/* Only show Create button when not in empty state for normal/drafts view */}
+        {(viewMode === ViewMode.Archived || sessions.length > 0) && (
+          <Button
+            onClick={() => {
+              navigate('/sessions/draft')
+            }}
+            size="sm"
+            variant="outline"
+          >
+            Create <kbd className="ml-1 px-1 py-0.5 text-xs bg-muted/50 rounded">c</kbd>
+          </Button>
+        )}
       </nav>
       <div ref={tableRef} tabIndex={-1} className="focus:outline-none">
         <SessionTable

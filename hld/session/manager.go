@@ -273,6 +273,57 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 		}
 	}
 
+	// Handle working directory validation and creation
+	// Skip validation for drafts - allow any path to be set, validate later when launching
+	if claudeConfig.WorkingDir != "" && !isDraft {
+		// Expand ~ if present
+		if strings.HasPrefix(claudeConfig.WorkingDir, "~") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get home directory: %w", err)
+			}
+			claudeConfig.WorkingDir = filepath.Join(home, strings.TrimPrefix(claudeConfig.WorkingDir, "~"))
+		}
+
+		// Check directory status
+		info, err := os.Stat(claudeConfig.WorkingDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Directory doesn't exist
+				if config.CreateDirectoryIfNotExists {
+					slog.Info("Creating working directory",
+						"path", claudeConfig.WorkingDir,
+						"session_id", sessionID)
+
+					// Create with parent directories
+					if err := os.MkdirAll(claudeConfig.WorkingDir, 0755); err != nil {
+						return nil, fmt.Errorf("failed to create working directory %s: %w",
+							claudeConfig.WorkingDir, err)
+					}
+
+					slog.Info("Successfully created working directory",
+						"path", claudeConfig.WorkingDir)
+				} else {
+					// Return specific error that client can handle
+					return nil, &DirectoryNotFoundError{
+						Path:    claudeConfig.WorkingDir,
+						Message: fmt.Sprintf("working directory does not exist: %s", claudeConfig.WorkingDir),
+					}
+				}
+			} else {
+				// Other error (permissions, etc.)
+				return nil, fmt.Errorf("error accessing working directory %s: %w",
+					claudeConfig.WorkingDir, err)
+			}
+		} else {
+			// Path exists - verify it's a directory
+			if !info.IsDir() {
+				return nil, fmt.Errorf("working directory path exists but is not a directory: %s",
+					claudeConfig.WorkingDir)
+			}
+		}
+	}
+
 	// Create session record directly in database
 	startTime := time.Now()
 
@@ -977,6 +1028,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 				EventType:       store.EventTypeSystem,
 				Role:            "system",
 				Content:         fmt.Sprintf("Session created with ID: %s", event.SessionID),
+				ParentToolUseID: event.ParentToolUseID,
 			}
 			if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 				return err
@@ -987,12 +1039,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 				m.eventBus.Publish(bus.Event{
 					Type: bus.EventConversationUpdated,
 					Data: map[string]interface{}{
-						"session_id":        sessionID,
-						"claude_session_id": claudeSessionID,
-						"event_type":        "system",
-						"subtype":           event.Subtype,
-						"content":           fmt.Sprintf("Session created with ID: %s", event.SessionID),
-						"content_type":      "system",
+						"session_id":         sessionID,
+						"claude_session_id":  claudeSessionID,
+						"event_type":         "system",
+						"subtype":            event.Subtype,
+						"content":            fmt.Sprintf("Session created with ID: %s", event.SessionID),
+						"content_type":       "system",
+						"parent_tool_use_id": event.ParentToolUseID,
 					},
 				})
 			}
@@ -1074,6 +1127,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						EventType:       store.EventTypeMessage,
 						Role:            event.Message.Role,
 						Content:         content.Text,
+						ParentToolUseID: event.ParentToolUseID,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -1087,12 +1141,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						m.eventBus.Publish(bus.Event{
 							Type: bus.EventConversationUpdated,
 							Data: map[string]interface{}{
-								"session_id":        sessionID,
-								"claude_session_id": claudeSessionID,
-								"event_type":        "message",
-								"role":              event.Message.Role,
-								"content":           content.Text,
-								"content_type":      "text",
+								"session_id":         sessionID,
+								"claude_session_id":  claudeSessionID,
+								"event_type":         "message",
+								"role":               event.Message.Role,
+								"content":            content.Text,
+								"content_type":       "text",
+								"parent_tool_use_id": event.ParentToolUseID,
 							},
 						})
 					}
@@ -1153,6 +1208,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						Role:              "user",
 						ToolResultForID:   content.ToolUseID,
 						ToolResultContent: content.Content.Value,
+						ParentToolUseID:   event.ParentToolUseID,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -1177,6 +1233,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 								"tool_result_for_id":  content.ToolUseID,
 								"tool_result_content": content.Content.Value,
 								"content_type":        "tool_result",
+								"parent_tool_use_id":  event.ParentToolUseID,
 							},
 						})
 					}
@@ -1198,6 +1255,7 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						EventType:       store.EventTypeThinking,
 						Role:            event.Message.Role,
 						Content:         content.Thinking,
+						ParentToolUseID: event.ParentToolUseID,
 					}
 					if err := m.store.AddConversationEvent(ctx, convEvent); err != nil {
 						return err
@@ -1211,12 +1269,13 @@ func (m *Manager) processStreamEvent(ctx context.Context, sessionID string, clau
 						m.eventBus.Publish(bus.Event{
 							Type: bus.EventConversationUpdated,
 							Data: map[string]interface{}{
-								"session_id":        sessionID,
-								"claude_session_id": claudeSessionID,
-								"event_type":        "thinking",
-								"role":              event.Message.Role,
-								"content":           content.Thinking,
-								"content_type":      "thinking",
+								"session_id":         sessionID,
+								"claude_session_id":  claudeSessionID,
+								"event_type":         "thinking",
+								"role":               event.Message.Role,
+								"content":            content.Thinking,
+								"content_type":       "thinking",
+								"parent_tool_use_id": event.ParentToolUseID,
 							},
 						})
 					}
@@ -2023,7 +2082,7 @@ func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID st
 }
 
 // LaunchDraftSession launches a draft session by transitioning it to running state
-func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prompt string) error {
+func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prompt string, createDirectoryIfNotExists bool) error {
 	// Get the session from store
 	sess, err := m.store.GetSession(ctx, sessionID)
 	if err != nil {
@@ -2033,6 +2092,56 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 	// Check if session is in draft state
 	if sess.Status != store.SessionStatusDraft {
 		return fmt.Errorf("session is not in draft state: current status is %s", sess.Status)
+	}
+
+	// Validate and potentially create working directory BEFORE updating status
+	// This keeps the session in draft state if validation fails
+	if sess.WorkingDir != "" {
+		// Expand ~ if present
+		workingDir := sess.WorkingDir
+		if strings.HasPrefix(workingDir, "~") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("failed to get home directory: %w", err)
+			}
+			workingDir = strings.Replace(workingDir, "~", home, 1)
+		}
+
+		// Check directory status
+		info, err := os.Stat(workingDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Directory doesn't exist
+				if createDirectoryIfNotExists {
+					slog.Info("Creating working directory for draft session",
+						"path", workingDir,
+						"session_id", sessionID)
+
+					// Create with parent directories
+					if err := os.MkdirAll(workingDir, 0755); err != nil {
+						return fmt.Errorf("failed to create working directory %s: %w", workingDir, err)
+					}
+
+					slog.Info("Successfully created working directory for draft session",
+						"path", workingDir,
+						"session_id", sessionID)
+				} else {
+					// Return specific error that client can handle (422)
+					return &DirectoryNotFoundError{
+						Path:    workingDir,
+						Message: fmt.Sprintf("working directory does not exist: %s", workingDir),
+					}
+				}
+			} else {
+				// Other error (permissions, etc.)
+				return fmt.Errorf("error accessing working directory %s: %w", workingDir, err)
+			}
+		} else {
+			// Path exists - verify it's a directory
+			if !info.IsDir() {
+				return fmt.Errorf("working directory path exists but is not a directory: %s", workingDir)
+			}
+		}
 	}
 
 	// Update the query with the actual prompt and clear editor state

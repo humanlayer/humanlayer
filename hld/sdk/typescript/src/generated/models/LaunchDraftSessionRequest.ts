@@ -25,6 +25,12 @@ export interface LaunchDraftSessionRequest {
      * @memberof LaunchDraftSessionRequest
      */
     prompt: string;
+    /**
+     * Create working directory if it doesn't exist
+     * @type {boolean}
+     * @memberof LaunchDraftSessionRequest
+     */
+    createDirectoryIfNotExists?: boolean;
 }
 
 /**
@@ -46,6 +52,7 @@ export function LaunchDraftSessionRequestFromJSONTyped(json: any, ignoreDiscrimi
     return {
         
         'prompt': json['prompt'],
+        'createDirectoryIfNotExists': json['createDirectoryIfNotExists'] == null ? undefined : json['createDirectoryIfNotExists'],
     };
 }
 
@@ -61,6 +68,7 @@ export function LaunchDraftSessionRequestToJSONTyped(value?: LaunchDraftSessionR
     return {
         
         'prompt': value['prompt'],
+        'createDirectoryIfNotExists': value['createDirectoryIfNotExists'],
     };
 }
 

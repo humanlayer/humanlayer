@@ -11,6 +11,8 @@ import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { showUndoToast } from '@/utils/undoToast'
+import { TOAST_IDS } from '@/constants/toastIds'
 
 // Import extracted components
 import { ConversationStream } from '../../ConversationStream/ConversationStream'
@@ -304,6 +306,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
 
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
   const lastTodo = events
     ?.toReversed()
@@ -536,10 +539,32 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         await useStore.getState().archiveSession(session.id, isArchiving)
         setConfirmingArchive(false)
 
-        toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-          description: session.summary || 'Untitled session',
-          duration: 3000,
-        })
+        // Show undo toast for archive operation
+        if (isArchiving) {
+          showUndoToast({
+            title: 'Session archived',
+            description: session.title || session.summary || 'Untitled session',
+            toastId: TOAST_IDS.archiveUndo(session.id),
+            onUndo: async () => {
+              await useStore.getState().archiveSession(session.id, false)
+              // Focus the unarchived session
+              const sessions = await daemonClient.listSessions()
+              const restoredSession = sessions.find(s => s.id === session.id)
+              if (restoredSession) {
+                // Session already focused in detail view
+              }
+            },
+          })
+        } else {
+          showUndoToast({
+            title: 'Session unarchived',
+            description: session.title || session.summary || 'Untitled session',
+            toastId: TOAST_IDS.unarchiveUndo(session.id),
+            onUndo: async () => {
+              await useStore.getState().archiveSession(session.id, true)
+            },
+          })
+        }
 
         onClose()
       } catch (error) {
@@ -553,7 +578,15 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       preventDefault: true,
       scopes: [detailScope],
     },
-    [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive],
+    [
+      session.id,
+      session.archived,
+      session.title,
+      session.summary,
+      session.status,
+      onClose,
+      confirmingArchive,
+    ],
   )
 
   // Fork view hotkey (Meta+Y)
@@ -599,10 +632,32 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       await useStore.getState().archiveSession(session.id, isArchiving)
       setConfirmingArchive(false)
 
-      toast.success(isArchiving ? 'Session archived' : 'Session unarchived', {
-        description: session.summary || 'Untitled session',
-        duration: 3000,
-      })
+      // Show undo toast for archive operation
+      if (isArchiving) {
+        showUndoToast({
+          title: 'Session archived',
+          description: session.title || session.summary || 'Untitled session',
+          toastId: TOAST_IDS.archiveUndo(session.id),
+          onUndo: async () => {
+            await useStore.getState().archiveSession(session.id, false)
+            // Focus the unarchived session
+            const sessions = await daemonClient.listSessions()
+            const restoredSession = sessions.find(s => s.id === session.id)
+            if (restoredSession) {
+              // Session already focused in detail view
+            }
+          },
+        })
+      } else {
+        showUndoToast({
+          title: 'Session unarchived',
+          description: session.title || session.summary || 'Untitled session',
+          toastId: TOAST_IDS.unarchiveUndo(session.id),
+          onUndo: async () => {
+            await useStore.getState().archiveSession(session.id, true)
+          },
+        })
+      }
 
       onClose()
     } catch (error) {
@@ -611,7 +666,15 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       })
       setConfirmingArchive(false)
     }
-  }, [session.id, session.archived, session.summary, session.status, onClose, confirmingArchive])
+  }, [
+    session.id,
+    session.archived,
+    session.title,
+    session.summary,
+    session.status,
+    onClose,
+    confirmingArchive,
+  ])
 
   // Vim navigation hotkeys
   useHotkeys(
@@ -708,8 +771,12 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   useEffect(() => {
     const checkPendingApprovalVisibility = () => {
       if (session.status === SessionStatus.WaitingInput) {
-        const pendingEvent = events.find(e => e.approvalStatus === ApprovalStatus.Pending)
-        if (pendingEvent) {
+        const pendingEvents = events.filter(e => e.approvalStatus === ApprovalStatus.Pending)
+        setPendingApprovalsCount(pendingEvents.length)
+
+        if (pendingEvents.length > 0) {
+          // Check visibility of the first pending approval
+          const pendingEvent = pendingEvents[0]
           const container = document.querySelector('[data-conversation-container]')
           const element = container?.querySelector(`[data-event-id="${pendingEvent.id}"]`)
           if (container && element) {
@@ -734,6 +801,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
           setHasPendingApprovalsOutOfView(false)
         }
       } else {
+        setPendingApprovalsCount(0)
         setHasPendingApprovalsOutOfView(false)
       }
     }
@@ -856,7 +924,11 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
               }}
             >
               <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-                <span>Pending Approval</span>
+                <span>
+                  {pendingApprovalsCount === 1
+                    ? 'Pending Approval'
+                    : `${pendingApprovalsCount} Pending Approvals`}
+                </span>
                 <ChevronDown className="w-3 h-3 animate-bounce" />
               </div>
             </div>

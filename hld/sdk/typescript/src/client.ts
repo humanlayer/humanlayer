@@ -135,10 +135,13 @@ export class HLDClient {
     }
 
     // Launch draft session
-    async launchDraftSession(id: string, prompt: string): Promise<void> {
+    async launchDraftSession(id: string, prompt: string, createDirectoryIfNotExists?: boolean): Promise<void> {
         await this.sessionsApi.launchDraftSession({
             id,
-            launchDraftSessionRequest: { prompt }
+            launchDraftSessionRequest: {
+                prompt,
+                createDirectoryIfNotExists
+            }
         });
     }
 
@@ -155,6 +158,17 @@ export class HLDClient {
         // The response contains 'success' and optional 'failedSessions'
         // For the test plan, we'll return a simplified response
         return { archived: sessionIds.filter(id => !response.data.failedSessions?.includes(id)) };
+    }
+
+    // Bulk restore drafts
+    async bulkRestoreDrafts(params: { session_ids: string[] }): Promise<{ success: boolean; failed_sessions?: string[] }> {
+        const response = await this.sessionsApi.bulkRestoreDrafts({
+            bulkRestoreDraftsRequest: { sessionIds: params.session_ids }
+        });
+        return {
+            success: response.data.success,
+            failed_sessions: response.data.failedSessions
+        };
     }
 
     // Update session settings
@@ -300,6 +314,22 @@ export class HLDClient {
     }): Promise<FuzzySearchFilesResponse> {
         const response = await this.filesApi.fuzzySearchFiles({
             fuzzySearchFilesRequest: params
+        });
+        return response;
+    }
+
+    // Validate directory existence
+    async validateDirectory(path: string) {
+        const response = await this.filesApi.validateDirectory({
+            validateDirectoryRequest: { path }
+        });
+        return response;
+    }
+
+    // Create directory
+    async createDirectory(path: string) {
+        const response = await this.filesApi.createDirectory({
+            createDirectoryRequest: { path }
         });
         return response;
     }

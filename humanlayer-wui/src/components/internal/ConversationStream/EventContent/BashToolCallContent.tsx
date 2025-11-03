@@ -2,6 +2,7 @@ import { CommandToken } from '../../CommandToken'
 import { BashToolCallContentProps } from './types'
 import { StatusBadge } from './StatusBadge'
 import { getApprovalStatusColor } from './utils/formatters'
+import { ApprovalStatus } from '@humanlayer/hld-sdk'
 
 export function BashToolCallContent({
   toolInput,
@@ -23,6 +24,7 @@ export function BashToolCallContent({
   }
 
   const formattedResult = toolResultContent ? formatToolResult(toolResultContent) : null
+  const isDenied = approvalStatus === ApprovalStatus.Denied
 
   const approvalStatusColor = getApprovalStatusColor(approvalStatus)
   let statusColor =
@@ -56,11 +58,15 @@ export function BashToolCallContent({
       )}
 
       {formattedResult && (
-        <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
-          <span className="text-muted-foreground/50">⎿</span>
+        <div
+          className={`mt-1 text-sm ${isDenied ? 'text-[var(--terminal-error)]' : 'text-muted-foreground'} font-mono flex items-start gap-1`}
+        >
+          <span className={isDenied ? 'text-[var(--terminal-error)]/50' : 'text-muted-foreground/50'}>
+            ⎿
+          </span>
           <span>
-            {formattedResult}
-            {isFocused && (
+            {isDenied ? `Denial Reason: ${formattedResult}` : formattedResult}
+            {isFocused && !isDenied && (
               <span className="text-xs text-muted-foreground/50 ml-2">
                 <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
               </span>

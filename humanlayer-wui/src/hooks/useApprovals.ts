@@ -30,7 +30,7 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
 
       setApprovals(approvalsResponse)
     } catch (err) {
-      setError(formatError(err))
+      setError(await formatError(err))
     } finally {
       setLoading(false)
     }
@@ -49,7 +49,7 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
         // Refresh the list after approval
         await fetchApprovals()
       } catch (err) {
-        throw new Error(formatError(err))
+        throw new Error(await formatError(err))
       }
     },
     [fetchApprovals],
@@ -63,7 +63,7 @@ export function useApprovals(sessionId?: string): UseApprovalsReturn {
         // Refresh the list after denial
         await fetchApprovals()
       } catch (err) {
-        throw new Error(formatError(err))
+        throw new Error(await formatError(err))
       }
     },
     [fetchApprovals],

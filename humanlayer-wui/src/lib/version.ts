@@ -100,3 +100,13 @@ export function isNightlyBuild(): boolean {
   const version = getAppVersion()
   return version.includes('-nightly')
 }
+
+/**
+ * Get the build type for analytics
+ */
+export function getBuildType(): 'nightly' | 'stable' | 'development' {
+  if (import.meta.env.DEV) {
+    return 'development'
+  }
+  return isNightlyBuild() ? 'nightly' : 'stable'
+}

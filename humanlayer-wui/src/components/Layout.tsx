@@ -45,6 +45,8 @@ import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 import { useDebugStore } from '@/stores/useDebugStore'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
 export function Layout() {
   const [approvals, setApprovals] = useState<any[]>([])
@@ -56,6 +58,7 @@ export function Layout() {
   const navigate = useNavigate()
   const isSettingsDialogOpen = useStore(state => state.isSettingsDialogOpen)
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
+  const clearActiveSessionDetail = useStore(state => state.clearActiveSessionDetail)
   const [showTelemetryModal, setShowTelemetryModal] = useState(false)
 
   // Use the daemon connection hook for all connection management
@@ -63,6 +66,9 @@ export function Layout() {
 
   // Hotkey panel state from store
   const { isHotkeyPanelOpen, setHotkeyPanelOpen } = useStore()
+
+  // PostHog tracking
+  const { trackEvent } = usePostHogTracking()
 
   // Session launcher state
   const { isOpen, close } = useSessionLauncher()
@@ -126,6 +132,33 @@ export function Layout() {
     {
       scopes: [HOTKEY_SCOPES.ROOT],
       enableOnFormTags: true,
+    },
+  )
+
+  // Refresh window hotkey (app-scoped, not global)
+  useHotkeys(
+    'meta+r, ctrl+r',
+    () => {
+      window.location.reload()
+    },
+    {
+      enableOnContentEditable: true,
+      enableOnFormTags: true,
+      preventDefault: true,
+    },
+  )
+
+  // Force refresh window hotkey (cmd+shift+r)
+  useHotkeys(
+    'meta+shift+r, ctrl+shift+r',
+    () => {
+      // @ts-ignore - reload(true) is non-standard but works in Tauri's WebKit
+      window.location.reload(true)
+    },
+    {
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+      preventDefault: true,
     },
   )
 
@@ -244,6 +277,8 @@ export function Layout() {
               // Wait another 100ms before dismissing toast
               setTimeout(() => {
                 toast.dismiss(toastId)
+                // Clear stale session detail before navigating to ensure clean state
+                clearActiveSessionDetail()
                 // Navigate to the session with approval parameter
                 navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
               }, 100)
@@ -254,9 +289,13 @@ export function Layout() {
 
           // Fallback: if button not found, just dismiss immediately and navigate
           toast.dismiss(toastId)
+          // Clear stale session detail before navigating to ensure clean state
+          clearActiveSessionDetail()
           navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
         } else {
           // Navigate immediately since there's no toast
+          // Clear stale session detail before navigating to ensure clean state
+          clearActiveSessionDetail()
           navigate(`/sessions/${targetApproval.sessionId}?approval=${targetApproval.id}`)
         }
       } catch (error) {
@@ -270,6 +309,83 @@ export function Layout() {
       preventDefault: true,
     },
     [navigate],
+  )
+
+  // Undo hotkey handler
+  useHotkeys(
+    'z',
+    async () => {
+      try {
+        // Get all visible toasts
+        // @ts-ignore - getToasts might not be in type definitions
+        const visibleToasts = toast.getToasts ? toast.getToasts() : []
+        const undoableToasts = visibleToasts.filter(
+          t =>
+            typeof t.id === 'string' &&
+            (t.id.includes('archive_undo') ||
+              t.id.includes('draft_delete_undo') ||
+              t.id.includes('unarchive_undo') ||
+              t.id.includes('bulk_archive_undo') ||
+              t.id.includes('bulk_draft_delete_undo') ||
+              t.id.includes('bulk_unarchive_undo')),
+        )
+
+        if (undoableToasts.length === 0) {
+          // No undoable operations - do nothing (no error toast per requirements)
+          return
+        }
+
+        // Pick the most recent undoable toast (last in array)
+        const mostRecentToast = undoableToasts[undoableToasts.length - 1]
+        const toastId = mostRecentToast.id as string
+
+        // Find the undo button using the toastId data attribute
+        const escapedToastId = CSS.escape(toastId)
+        const buttonElement = document.querySelector(
+          `[data-toast-id="${escapedToastId}"][data-button][data-action]`,
+        ) as HTMLElement
+
+        if (buttonElement) {
+          // Apply flash effect (100ms)
+          buttonElement.classList.add('!bg-[var(--terminal-accent)]', '!text-background')
+
+          // Flash all child elements for proper contrast
+          const childElements = buttonElement.querySelectorAll('*')
+          childElements.forEach(child => {
+            ;(child as HTMLElement).classList.add('!text-background')
+          })
+
+          // Remove flash after 100ms
+          setTimeout(() => {
+            buttonElement.classList.remove('!bg-[var(--terminal-accent)]', '!text-background')
+            childElements.forEach(child => {
+              ;(child as HTMLElement).classList.remove('!text-background')
+            })
+
+            // Wait another 100ms then trigger the click
+            setTimeout(() => {
+              // Trigger the button's onClick handler
+              buttonElement.click()
+              // Dismiss the toast after triggering the action
+              toast.dismiss(toastId)
+            }, 100)
+          }, 100)
+        } else {
+          // Fallback: toast exists but button not found, try to trigger anyway
+          // This shouldn't happen but provides resilience
+          console.warn('Undo toast found but button element not located:', toastId)
+        }
+      } catch (error) {
+        console.error('Failed to trigger undo:', error)
+        // No error toast per requirements - fail silently
+      }
+    },
+    {
+      scopes: [HOTKEY_SCOPES.ROOT],
+      enableOnFormTags: false,
+      preventDefault: true,
+    },
+    [],
   )
 
   // Get store actions
@@ -415,6 +531,13 @@ export function Layout() {
         return
       }
 
+      // Track approval received event
+      // Extract generic tool type from tool name (e.g., "bash", "edit", "write")
+      const toolType = toolName?.split('_')[0] || 'unknown'
+      trackEvent(POSTHOG_EVENTS.APPROVAL_RECEIVED, {
+        tool_type: toolType,
+      })
+
       const conversation = await daemonClient.getConversation({ session_id: sessionId })
       const approval = conversation.find(
         event => event.approvalStatus === ApprovalStatus.Pending && event.approvalId === approvalId,
@@ -426,8 +549,6 @@ export function Layout() {
 
       const toolInputJson = approval.toolInputJson
 
-      console.log('approval', approval)
-
       const notificationId = `approval_required:${sessionId}:${approvalId}`
       if (isItemNotified(notificationId)) {
         return
@@ -437,9 +558,9 @@ export function Layout() {
       // This handles auto-approved cases where both events fire in quick succession
       await new Promise(resolve => setTimeout(resolve, 100))
 
-      // // Check if this approval was already resolved (auto-approved)
+      // Check if this approval was already resolved (auto-approved)
       if (isRecentResolvedApproval(approvalId)) {
-        console.log('Skipping notification for auto-approved item', { sessionId, approvalId })
+        logger.debug('Skipping notification for auto-approved item', { sessionId, approvalId })
         return
       }
 
@@ -560,7 +681,12 @@ export function Layout() {
   useHotkeys(
     '?',
     () => {
-      setHotkeyPanelOpen(!isHotkeyPanelOpen)
+      const newState = !isHotkeyPanelOpen
+      if (newState) {
+        // Track hotkey helper viewed event when opening
+        trackEvent(POSTHOG_EVENTS.HOTKEY_HELPER_VIEWED, {})
+      }
+      setHotkeyPanelOpen(newState)
     },
     {
       scopes: [HOTKEY_SCOPES.ROOT],
@@ -576,7 +702,6 @@ export function Layout() {
   useHotkeys(
     'g>s',
     e => {
-      console.log('[Layout] g>s fired')
       e.stopPropagation()
       // Navigate to sessions (normal view)
       if (useStore.getState().getViewMode() !== ViewMode.Normal) {
@@ -595,7 +720,6 @@ export function Layout() {
   useHotkeys(
     'g>e',
     e => {
-      console.log('[Layout] g>e fired')
       e.stopPropagation()
       // Navigate to archived sessions
       if (useStore.getState().getViewMode() !== ViewMode.Archived) {
@@ -614,7 +738,6 @@ export function Layout() {
   useHotkeys(
     'g>i',
     e => {
-      console.log('[Layout] g>i fired (alias for g>s)')
       e.stopPropagation()
       // Navigate to sessions (normal view)
       if (useStore.getState().getViewMode() !== ViewMode.Normal) {
@@ -633,7 +756,6 @@ export function Layout() {
   useHotkeys(
     'g>d',
     e => {
-      console.log('[Layout] g>d fired')
       e.stopPropagation()
       // Navigate to drafts view
       if (useStore.getState().getViewMode() !== ViewMode.Drafts) {
@@ -736,6 +858,8 @@ export function Layout() {
     const handleSessionCreated = async (payload: { sessionId: string }) => {
       const { sessionId } = payload
       if (sessionId) {
+        // Clear stale session detail before navigating to ensure clean state
+        clearActiveSessionDetail()
         // Navigate to the new session silently
         navigate(`/sessions/${sessionId}`)
 
@@ -905,7 +1029,11 @@ export function Layout() {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => setHotkeyPanelOpen(true)}
+                onClick={() => {
+                  // Track hotkey helper viewed event when opening
+                  trackEvent(POSTHOG_EVENTS.HOTKEY_HELPER_VIEWED, {})
+                  setHotkeyPanelOpen(true)
+                }}
                 className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono border border-border bg-background text-foreground hover:bg-accent/10 transition-colors focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none"
               >
                 <HelpCircle className="w-3 h-3" />

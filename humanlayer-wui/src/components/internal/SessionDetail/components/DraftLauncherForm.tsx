@@ -5,6 +5,8 @@ import { useHotkeys } from 'react-hotkeys-hook'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useStore } from '@/AppStore'
+import { usePostHogTracking } from '@/hooks/usePostHogTracking'
+import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 import { SearchInput } from '@/components/FuzzySearchInput'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { Input } from '@/components/ui/input'
@@ -15,8 +17,10 @@ import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { daemonClient } from '@/lib/daemon'
 import { type Session, ViewMode } from '@/lib/daemon/types'
 import { logger } from '@/lib/logging'
+import { formatError } from '@/utils/errors'
 import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
 import { DiscardDraftDialog } from './DiscardDraftDialog'
+import { CreateDirectoryDialog } from './CreateDirectoryDialog'
 import { DraftLauncherInput } from './DraftLauncherInput'
 
 interface DraftLauncherFormProps {
@@ -29,6 +33,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const { trackEvent } = usePostHogTracking()
 
   // Core Form State
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -97,6 +102,8 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const [isLaunchingDraft, setIsLaunchingDraft] = useState(false)
   const [showDiscardDraftDialog, setShowDiscardDraftDialog] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
+  const [showCreateDirectoryDialog, setShowCreateDirectoryDialog] = useState(false)
+  const [directoryToCreate, setDirectoryToCreate] = useState<string | null>(null)
   // Sync timer for debouncing updates
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -433,7 +440,10 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
   // Handle launching a draft session
   const handleLaunchDraft = useCallback(
-    async (settings: { autoAcceptEdits: boolean; dangerouslySkipPermissions: boolean }) => {
+    async (
+      settings: { autoAcceptEdits: boolean; dangerouslySkipPermissions: boolean },
+      createDirectoryIfNotExists = false,
+    ) => {
       if (isLaunchingDraft) return
 
       // Validate that we have a session
@@ -491,7 +501,18 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         await daemonClient.updateSession(sessionId, updatePayload)
 
         // Launch the draft session with the prompt
-        await daemonClient.launchDraftSession(sessionId, currentPrompt)
+        await daemonClient.launchDraftSession(sessionId, currentPrompt, createDirectoryIfNotExists)
+
+        // Track session creation event (from draft)
+        trackEvent(POSTHOG_EVENTS.SESSION_CREATED, {
+          model: model || proxyModelOverride || undefined,
+          provider: proxyEnabled
+            ? proxyBaseUrl?.includes('baseten')
+              ? 'baseten'
+              : 'openrouter'
+            : 'anthropic',
+          from_draft: true,
+        })
 
         // Store working directory in localStorage
         localStorage.setItem('humanlayer-last-working-dir', workingDir)
@@ -506,15 +527,34 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
         // Navigate directly to the launched session
         navigate(`/sessions/${sessionId}`)
-      } catch (error) {
+      } catch (error: any) {
+        // Check if it's a 422 directory not found error
+        if (error.status === 422 && error.data?.error === 'directory_not_found') {
+          setDirectoryToCreate(error.data.path)
+          setShowCreateDirectoryDialog(true)
+          setIsLaunchingDraft(false)
+          return // Don't show error toast, let user decide via dialog
+        }
+
+        // Other errors
         toast.error('Failed to launch draft session', {
-          description: error instanceof Error ? error.message : 'Unknown error',
+          description: await formatError(error),
         })
-      } finally {
         setIsLaunchingDraft(false)
       }
     },
-    [sessionId, workingDirectory, isLaunchingDraft, navigate, savedBypassTimeout],
+    [
+      sessionId,
+      workingDirectory,
+      isLaunchingDraft,
+      navigate,
+      savedBypassTimeout,
+      trackEvent,
+      model,
+      proxyModelOverride,
+      proxyEnabled,
+      proxyBaseUrl,
+    ],
   )
 
   // Handle discard draft
@@ -527,16 +567,30 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     if (hasContent) {
       setShowDiscardDraftDialog(true)
     } else {
+      // Track draft launcher exited event (no content to save)
+      trackEvent(POSTHOG_EVENTS.DRAFT_LAUNCHER_EXITED, {})
       // Refresh sessions before navigating back
       await refreshSessions()
       navigate(-1)
     }
-  }, [navigate, title, refreshSessions])
+  }, [navigate, title, refreshSessions, trackEvent])
 
   const confirmDiscardDraft = useCallback(async () => {
     try {
       if (sessionId) {
         await daemonClient.deleteDraftSession(sessionId)
+
+        // Track draft deletion event
+        trackEvent(POSTHOG_EVENTS.DRAFT_DELETED, {
+          had_content: true, // We know there was content if this confirmation was triggered
+          lifetime_seconds: session?.createdAt
+            ? Math.floor((Date.now() - new Date(session.createdAt).getTime()) / 1000)
+            : undefined,
+        })
+
+        // Also track draft launcher exited (user chose to discard and exit)
+        trackEvent(POSTHOG_EVENTS.DRAFT_LAUNCHER_EXITED, {})
+
         localStorage.removeItem(`response-input.${sessionId}`)
         await refreshSessions()
       }
@@ -546,7 +600,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }, [sessionId, navigate, refreshSessions])
+  }, [sessionId, navigate, refreshSessions, trackEvent, session?.createdAt])
 
   // Handle toggling auto-accept
   const handleToggleAutoAccept = useCallback(() => {
@@ -575,6 +629,20 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
     },
     [setDefaultDangerouslyBypassPermissionsSetting],
   )
+
+  // Handle directory creation confirmation - retry launch with directory creation enabled
+  const handleConfirmCreateDirectory = useCallback(() => {
+    setShowCreateDirectoryDialog(false)
+    setDirectoryToCreate(null)
+    // Retry the launch with the same settings but directory creation enabled
+    handleLaunchDraft(
+      {
+        autoAcceptEdits: defaultAutoAcceptEditsSetting,
+        dangerouslySkipPermissions: defaultDangerouslyBypassPermissionsSetting,
+      },
+      true, // createDirectoryIfNotExists
+    )
+  }, [handleLaunchDraft, defaultAutoAcceptEditsSetting, defaultDangerouslyBypassPermissionsSetting])
 
   // ======== HOTKEYS ========
 
@@ -791,6 +859,17 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
           open={dangerousSkipPermissionsDialogOpen}
           onOpenChange={setDangerousSkipPermissionsDialogOpen}
           onConfirm={handleDangerousSkipPermissionsConfirm}
+        />
+
+        {/* Create Directory Dialog */}
+        <CreateDirectoryDialog
+          open={showCreateDirectoryDialog}
+          directoryPath={directoryToCreate}
+          onConfirm={handleConfirmCreateDirectory}
+          onCancel={() => {
+            setShowCreateDirectoryDialog(false)
+            setDirectoryToCreate(null)
+          }}
         />
       </div>
     </HotkeyScopeBoundary>

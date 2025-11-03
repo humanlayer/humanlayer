@@ -212,9 +212,14 @@ func TestGetSlashCommands(t *testing.T) {
 	// Override HOME to avoid picking up real global commands
 	tempHomeDir := t.TempDir()
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	_ = os.Unsetenv("CLAUDE_CONFIG_DIR") // Ensure we don't pick up real config
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 
 	// Create directory structure with test commands
@@ -364,13 +369,18 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 
 	// Create a temp home directory for global commands
 	tempHomeDir := t.TempDir()
-	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
+	globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands")
 
 	// Set HOME env var temporarily for this test
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	_ = os.Unsetenv("CLAUDE_CONFIG_DIR") // Use default location
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 
 	// Create directory structures
@@ -520,13 +530,18 @@ func TestGetSlashCommandsGlobalOverridesLocal(t *testing.T) {
 
 	// Create a temp home directory for global commands
 	tempHomeDir := t.TempDir()
-	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
+	globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands")
 
 	// Set HOME env var temporarily for this test
 	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
 	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	_ = os.Unsetenv("CLAUDE_CONFIG_DIR") // Use default location
 	defer func() {
 		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
 	}()
 
 	// Create directory structures with nested folders
@@ -635,4 +650,162 @@ func TestExpandTilde(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestGetSlashCommandsRespectsCLAUDE_CONFIG_DIR(t *testing.T) {
+	ctx := context.Background()
+
+	// Create temporary directories
+	tempDir := t.TempDir()
+	tempHomeDir := t.TempDir()
+	customConfigDir := t.TempDir()
+
+	// Set up directory structure for custom config directory
+	customCommandsDir := filepath.Join(customConfigDir, "commands")
+	assert.NoError(t, os.MkdirAll(customCommandsDir, 0755))
+
+	// Create test commands in custom config dir
+	customCommands := map[string]string{
+		"custom_command.md":     "# Custom Command from CLAUDE_CONFIG_DIR",
+		"replicated_command.md": "# Replicated Command",
+		"another_custom.md":     "# Another Custom Command",
+	}
+
+	for path, content := range customCommands {
+		fullPath := filepath.Join(customCommandsDir, path)
+		assert.NoError(t, os.WriteFile(fullPath, []byte(content), 0644))
+	}
+
+	// Save original env vars
+	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
+
+	// Set environment variables
+	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	assert.NoError(t, os.Setenv("CLAUDE_CONFIG_DIR", customConfigDir))
+
+	// Cleanup
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		} else {
+			_ = os.Unsetenv("CLAUDE_CONFIG_DIR")
+		}
+	}()
+
+	// Create mock store
+	mockStore := new(MockStore)
+	handler := &SessionHandlers{
+		store: mockStore,
+	}
+
+	// Make request
+	req := api.GetSlashCommandsRequestObject{
+		Params: api.GetSlashCommandsParams{
+			WorkingDir: tempDir,
+		},
+	}
+
+	resp, err := handler.GetSlashCommands(ctx, req)
+	assert.NoError(t, err)
+
+	jsonResp, ok := resp.(api.GetSlashCommands200JSONResponse)
+	assert.True(t, ok, "expected 200 response")
+
+	// Verify we got commands from CLAUDE_CONFIG_DIR
+	expectedCommands := map[string]api.SlashCommandSource{
+		"/custom_command":     api.SlashCommandSourceGlobal,
+		"/replicated_command": api.SlashCommandSourceGlobal,
+		"/another_custom":     api.SlashCommandSourceGlobal,
+	}
+
+	assert.Len(t, jsonResp.Data, len(expectedCommands),
+		"should have exactly %d commands from CLAUDE_CONFIG_DIR", len(expectedCommands))
+
+	for _, cmd := range jsonResp.Data {
+		expectedSource, exists := expectedCommands[cmd.Name]
+		assert.True(t, exists, "unexpected command: %s (should be from CLAUDE_CONFIG_DIR)", cmd.Name)
+		assert.Equal(t, expectedSource, cmd.Source,
+			"command %s should be from global source", cmd.Name)
+	}
+
+	mockStore.AssertExpectations(t)
+}
+
+func TestGetSlashCommandsFallsBackToDefaultWhenCLAUDE_CONFIG_DIRNotSet(t *testing.T) {
+	ctx := context.Background()
+
+	// Create temporary directories
+	tempDir := t.TempDir()
+	tempHomeDir := t.TempDir()
+
+	// Set up directory structure in default location (~/.config/claude-code/commands)
+	defaultConfigDir := filepath.Join(tempHomeDir, ".config", "claude-code")
+	defaultCommandsDir := filepath.Join(defaultConfigDir, "commands")
+	assert.NoError(t, os.MkdirAll(defaultCommandsDir, 0755))
+
+	// Create test commands in default location
+	defaultCommands := map[string]string{
+		"default_command.md": "# Default Command",
+		"fallback_cmd.md":    "# Fallback Command",
+	}
+
+	for path, content := range defaultCommands {
+		fullPath := filepath.Join(defaultCommandsDir, path)
+		assert.NoError(t, os.WriteFile(fullPath, []byte(content), 0644))
+	}
+
+	// Save original env vars
+	originalHome := os.Getenv("HOME")
+	originalClaudeConfigDir := os.Getenv("CLAUDE_CONFIG_DIR")
+
+	// Set HOME but NOT CLAUDE_CONFIG_DIR
+	assert.NoError(t, os.Setenv("HOME", tempHomeDir))
+	_ = os.Unsetenv("CLAUDE_CONFIG_DIR")
+
+	// Cleanup
+	defer func() {
+		_ = os.Setenv("HOME", originalHome)
+		if originalClaudeConfigDir != "" {
+			_ = os.Setenv("CLAUDE_CONFIG_DIR", originalClaudeConfigDir)
+		}
+	}()
+
+	// Create mock store
+	mockStore := new(MockStore)
+	handler := &SessionHandlers{
+		store: mockStore,
+	}
+
+	// Make request
+	req := api.GetSlashCommandsRequestObject{
+		Params: api.GetSlashCommandsParams{
+			WorkingDir: tempDir,
+		},
+	}
+
+	resp, err := handler.GetSlashCommands(ctx, req)
+	assert.NoError(t, err)
+
+	jsonResp, ok := resp.(api.GetSlashCommands200JSONResponse)
+	assert.True(t, ok, "expected 200 response")
+
+	// Verify we got commands from default location
+	expectedCommands := map[string]api.SlashCommandSource{
+		"/default_command": api.SlashCommandSourceGlobal,
+		"/fallback_cmd":    api.SlashCommandSourceGlobal,
+	}
+
+	assert.Len(t, jsonResp.Data, len(expectedCommands),
+		"should have exactly %d commands from default location", len(expectedCommands))
+
+	for _, cmd := range jsonResp.Data {
+		expectedSource, exists := expectedCommands[cmd.Name]
+		assert.True(t, exists, "unexpected command: %s (should be from default location)", cmd.Name)
+		assert.Equal(t, expectedSource, cmd.Source,
+			"command %s should be from global source", cmd.Name)
+	}
+
+	mockStore.AssertExpectations(t)
 }

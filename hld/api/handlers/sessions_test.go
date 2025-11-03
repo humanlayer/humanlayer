@@ -759,7 +759,7 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 
 		// Mock launching the draft session
 		mockManager.EXPECT().
-			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt", false).
 			Return(nil).
 			Times(1)
 
@@ -816,7 +816,7 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 
 		// Mock launching the draft session
 		mockManager.EXPECT().
-			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt", false).
 			Return(nil).
 			Times(1)
 
@@ -874,7 +874,7 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 
 		// Mock launching the draft session
 		mockManager.EXPECT().
-			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt").
+			LaunchDraftSession(gomock.Any(), sessionID, "Test prompt", false).
 			Return(nil).
 			Times(1)
 
@@ -904,6 +904,133 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 		assertJSONResponse(t, w, 200, &resp)
 
 		assert.Equal(t, sessionID, resp.Data.Id)
+	})
+}
+
+func TestSessionHandlers_BulkRestoreDrafts(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockManager := session.NewMockSessionManager(ctrl)
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
+
+	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
+	router := setupTestRouter(t, handlers, nil, nil)
+
+	t.Run("restores multiple discarded drafts", func(t *testing.T) {
+		// Setup test with discarded drafts
+		sessionIDs := []string{"sess-draft-1", "sess-draft-2", "sess-draft-3"}
+
+		// Mock each session as discarded and update to draft
+		for _, sessionID := range sessionIDs {
+			sess := &store.Session{
+				ID:             sessionID,
+				Status:         store.SessionStatusDiscarded,
+				Query:          "Discarded draft",
+				LastActivityAt: time.Now().Add(-1 * time.Hour),
+			}
+
+			mockStore.EXPECT().
+				GetSession(gomock.Any(), sessionID).
+				Return(sess, nil)
+
+			mockStore.EXPECT().
+				UpdateSession(gomock.Any(), sessionID, gomock.Any()).
+				DoAndReturn(func(ctx context.Context, id string, update store.SessionUpdate) error {
+					// Verify we're updating to draft status
+					require.NotNil(t, update.Status)
+					assert.Equal(t, string(store.SessionStatusDraft), *update.Status)
+					return nil
+				})
+		}
+
+		// Make the bulk restore request
+		restoreReq := api.BulkRestoreDraftsRequest{
+			SessionIds: sessionIDs,
+		}
+		w := makeRequest(t, router, "POST", "/api/v1/sessions/restore", restoreReq)
+
+		var resp struct {
+			Data struct {
+				Success        bool     `json:"success"`
+				FailedSessions []string `json:"failed_sessions,omitempty"`
+			} `json:"data"`
+		}
+		assertJSONResponse(t, w, 200, &resp)
+
+		assert.True(t, resp.Data.Success)
+		assert.Empty(t, resp.Data.FailedSessions)
+	})
+
+	t.Run("handles partial failure gracefully", func(t *testing.T) {
+		// Setup with mix of discarded and non-discarded sessions
+		sessionIDs := []string{"sess-discarded-1", "sess-active-1", "sess-not-found-1"}
+
+		// First session is discarded and should be restored
+		discardedSess := &store.Session{
+			ID:             "sess-discarded-1",
+			Status:         store.SessionStatusDiscarded,
+			Query:          "Discarded draft",
+			LastActivityAt: time.Now().Add(-1 * time.Hour),
+		}
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-discarded-1").
+			Return(discardedSess, nil)
+		mockStore.EXPECT().
+			UpdateSession(gomock.Any(), "sess-discarded-1", gomock.Any()).
+			Return(nil)
+
+		// Second session is active (not discarded) - should fail
+		activeSess := &store.Session{
+			ID:             "sess-active-1",
+			Status:         store.SessionStatusRunning,
+			Query:          "Active session",
+			LastActivityAt: time.Now(),
+		}
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-active-1").
+			Return(activeSess, nil)
+
+		// Third session doesn't exist - should fail
+		mockStore.EXPECT().
+			GetSession(gomock.Any(), "sess-not-found-1").
+			Return(nil, sql.ErrNoRows)
+
+		// Make the bulk restore request
+		restoreReq := api.BulkRestoreDraftsRequest{
+			SessionIds: sessionIDs,
+		}
+		w := makeRequest(t, router, "POST", "/api/v1/sessions/restore", restoreReq)
+
+		var resp struct {
+			Data struct {
+				Success        bool     `json:"success"`
+				FailedSessions []string `json:"failed_sessions,omitempty"`
+			} `json:"data"`
+		}
+		assertJSONResponse(t, w, 207, &resp)
+
+		assert.False(t, resp.Data.Success)
+		assert.Len(t, resp.Data.FailedSessions, 2)
+		assert.Contains(t, resp.Data.FailedSessions, "sess-active-1")
+		assert.Contains(t, resp.Data.FailedSessions, "sess-not-found-1")
+	})
+
+	t.Run("validates empty session_ids", func(t *testing.T) {
+		// Call with empty array
+		restoreReq := api.BulkRestoreDraftsRequest{
+			SessionIds: []string{},
+		}
+		w := makeRequest(t, router, "POST", "/api/v1/sessions/restore", restoreReq)
+
+		var resp struct {
+			Error api.ErrorDetail `json:"error"`
+		}
+		assertJSONResponse(t, w, 400, &resp)
+
+		assert.Equal(t, "HLD-3002", resp.Error.Code)
+		assert.Contains(t, resp.Error.Message, "session_ids is required and must not be empty")
 	})
 }
 

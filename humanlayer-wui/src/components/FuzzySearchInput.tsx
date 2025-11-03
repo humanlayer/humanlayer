@@ -190,6 +190,7 @@ export function SearchInput({
         entries = await readDir(pathToRead)
         const dirs = entries.filter(entry => entry.isDirectory)
         setAllDirectories(dirs)
+        entries = dirs // Use filtered directories for fuzzy search
         setLastValidPath(basePath)
         setIsInvalidPath(false)
       } catch {
