@@ -21,6 +21,7 @@ import type { UnlistenFn } from '@tauri-apps/api/event'
 import { Card, CardContent } from '@/components/ui/card'
 import { invoke } from '@tauri-apps/api/core'
 import { getPreferredEditor, EDITOR_OPTIONS, EditorType } from '@/lib/preferences'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface ActiveSessionInputProps {
   session: Session
@@ -403,7 +404,11 @@ export const ActiveSessionInput = forwardRef<
           handleOpenInEditor()
         }
       },
-      { enableOnFormTags: true },
+      {
+        scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+      },
     )
 
     // Wrapped handlers that blur editor when opening modals
