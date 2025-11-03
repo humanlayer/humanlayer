@@ -1,10 +1,5 @@
 name: "Linear: Research Task"
 on:
-  push:
-    branches:
-      - kyle/eng-2175-auto-create-worktree-and-checkout-for-linear
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       num_tickets:
@@ -17,7 +12,7 @@ jobs:
   fetch-tickets:
     runs-on: ubuntu-latest
     env:
-      RESEARCH_WIP_LIMIT: 5  # Configurable WIP limit
+      RESEARCH_WIP_LIMIT: 5 # Configurable WIP limit
     outputs:
       ticket_ids: ${{ steps.fetch-tickets.outputs.ticket_ids }}
     steps:
