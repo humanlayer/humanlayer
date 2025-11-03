@@ -439,7 +439,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
               <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">Default Editor:</span>
                 <Select value={preferredEditor} onValueChange={handleEditorChange}>
-                  <SelectTrigger className="w-[200px] h-8">
+                  <SelectTrigger className="w-[200px] h-8 px-2.5">
                     <div className="flex items-center gap-1.5">
                       <span>{EDITOR_OPTIONS.find(e => e.value === preferredEditor)?.label}</span>
                       <Pencil className="h-3 w-3" />
@@ -451,7 +451,9 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium">{editor.label}</span>
                           {editor.description && (
-                            <span className="text-xs text-muted-foreground">{editor.description}</span>
+                            <span className="text-xs opacity-70 group-data-[state=checked]:opacity-100">
+                              {editor.description}
+                            </span>
                           )}
                         </div>
                       </SelectItem>
@@ -461,7 +463,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
               </div>
               <p className="text-xs text-muted-foreground">
                 Set your default editor for opening session directories. You can also choose a different
-                editor each time using the dropdown menu on the button (⌘+Shift+E for default).
+                editor each time using the dropdown menu on the button (⌘⇧E for default).
               </p>
             </div>
 
