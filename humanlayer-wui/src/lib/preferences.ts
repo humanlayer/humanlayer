@@ -39,7 +39,7 @@ export const setArchiveOnForkPreference = (value: boolean): void => {
 
 export const getPreferredEditor = (): EditorType => {
   const stored = localStorage.getItem(PREFERRED_EDITOR_KEY)
-  return (stored as EditorType) || 'cursor' // Default to Cursor
+  return (stored as EditorType) || 'code' // Default to VS Code
 }
 
 export const setPreferredEditor = (editor: EditorType): void => {

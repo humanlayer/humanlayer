@@ -40,7 +40,7 @@ export const ActiveSessionActionButtons: FC<ActiveSessionActionButtonsProps> = (
   sessionStatus,
   isArchived,
   workingDir,
-  preferredEditor = 'cursor',
+  preferredEditor = 'code',
   onToggleFork,
   onToggleBypass,
   onToggleAutoAccept,

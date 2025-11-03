@@ -51,7 +51,9 @@ impl DaemonManager {
         }
 
         // Check if we should skip auto-launch
-        if env::var("HUMANLAYER_WUI_AUTOLAUNCH_DAEMON").map(|v| v.trim().to_ascii_lowercase()) == Ok("false".to_string()) {
+        if env::var("HUMANLAYER_WUI_AUTOLAUNCH_DAEMON").map(|v| v.trim().to_ascii_lowercase())
+            == Ok("false".to_string())
+        {
             // Don't auto-launch daemon, expect it to be managed externally
             log::info!("[Tauri] Auto-launch disabled via HUMANLAYER_WUI_AUTOLAUNCH_DAEMON=false");
 
@@ -64,11 +66,12 @@ impl DaemonManager {
                         .unwrap_or_else(|_| "~/.humanlayer/daemon.db".to_string());
 
                     // Get branch from environment or git
-                    let branch_id = if let Ok(version) = env::var("HUMANLAYER_DAEMON_VERSION_OVERRIDE") {
-                        version
-                    } else {
-                        get_branch_id(is_dev, branch_override)
-                    };
+                    let branch_id =
+                        if let Ok(version) = env::var("HUMANLAYER_DAEMON_VERSION_OVERRIDE") {
+                            version
+                        } else {
+                            get_branch_id(is_dev, branch_override)
+                        };
 
                     let info = DaemonInfo {
                         port,

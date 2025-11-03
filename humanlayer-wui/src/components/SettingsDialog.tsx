@@ -3,7 +3,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import { useState, useEffect } from 'react'
 import { useStore } from '@/AppStore'
 import { logger } from '@/lib/logging'
@@ -346,26 +346,30 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="preferred-editor" className="text-sm font-medium">
-                Default Editor
-              </Label>
-              <Select value={preferredEditor} onValueChange={handleEditorChange}>
-                <SelectTrigger id="preferred-editor" className="w-full">
-                  <SelectValue placeholder="Select an editor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {EDITOR_OPTIONS.map(editor => (
-                    <SelectItem key={editor.value} value={editor.value}>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium">{editor.label}</span>
-                        {editor.description && (
-                          <span className="text-xs text-muted-foreground">{editor.description}</span>
-                        )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-sm font-medium">Default Editor</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Default Editor:</span>
+                <Select value={preferredEditor} onValueChange={handleEditorChange}>
+                  <SelectTrigger className="w-[200px] h-8">
+                    <div className="flex items-center gap-1.5">
+                      <span>{EDITOR_OPTIONS.find(e => e.value === preferredEditor)?.label}</span>
+                      <Pencil className="h-3 w-3" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITOR_OPTIONS.map(editor => (
+                      <SelectItem key={editor.value} value={editor.value}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium">{editor.label}</span>
+                          {editor.description && (
+                            <span className="text-xs text-muted-foreground">{editor.description}</span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Set your default editor for opening session directories. You can also choose a different
                 editor each time using the dropdown menu on the button (⌘+Shift+E for default).
