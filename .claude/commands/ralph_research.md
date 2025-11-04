@@ -34,7 +34,7 @@ think deeply about the research needs
 2f. Be unbiased - don't think too much about an ideal implementation plan, just document all related files and how the systems work today
 2g. document findings in a new thoughts document: `thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md`
    - Format: `YYYY-MM-DD-ENG-XXXX-description.md` where:
-     - YYYY-MM-DD is today's date
+     - YYYY-MM-DD is today's date (get with `date +"%Y-%m-%d"`)
      - ENG-XXXX is the ticket number (omit if no ticket)
      - description is a brief kebab-case description of the research topic
    - Examples:

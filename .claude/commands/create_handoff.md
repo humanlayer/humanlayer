@@ -11,7 +11,7 @@ You are tasked with writing a handoff document to hand off your work to another 
 ### 1. Filepath & Metadata
 Use the following information to understand how to create your document:
     - create your file under `thoughts/shared/handoffs/ENG-XXXX/YYYY-MM-DD_HH-MM-SS_ENG-ZZZZ_description.md`, where:
-        - YYYY-MM-DD is today's date
+        - YYYY-MM-DD is today's date (get with `date +"%Y-%m-%d"`)
         - HH-MM-SS is the hours, minutes and seconds based on the current time, in 24-hour format (i.e. use `13:00` for `1:00 pm`)
         - ENG-XXXX is the ticket number (replace with `general` if no ticket)
         - ENG-ZZZZ is the ticket number (omit if no ticket)
