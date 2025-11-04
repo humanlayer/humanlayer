@@ -323,7 +323,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
 
   // Escape key handler
   useHotkeys(
-    'escape',
+    'escape, ctrl+[',
     ev => {
       if ((ev.target as HTMLElement)?.dataset.slot === 'dialog-close') {
         logger.warn('Ignoring onClose triggered by dialog-close in ActiveSession')
