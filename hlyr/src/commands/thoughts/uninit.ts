@@ -2,7 +2,13 @@ import fs from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import chalk from 'chalk'
-import { loadThoughtsConfig, saveThoughtsConfig, getCurrentRepoPath } from '../../thoughtsConfig.js'
+import {
+  loadThoughtsConfig,
+  saveThoughtsConfig,
+  getCurrentRepoPath,
+  getRepoNameFromMapping,
+  getProfileNameFromMapping,
+} from '../../thoughtsConfig.js'
 
 interface UninitOptions {
   force?: boolean
@@ -27,7 +33,10 @@ export async function thoughtsUninitCommand(options: UninitOptions): Promise<voi
       process.exit(1)
     }
 
-    const mappedName = config.repoMappings[currentRepo]
+    const mapping = config.repoMappings[currentRepo]
+    const mappedName = getRepoNameFromMapping(mapping)
+    const profileName = getProfileNameFromMapping(mapping)
+
     if (!mappedName && !options.force) {
       console.error(chalk.red('Error: This repository is not in the thoughts configuration.'))
       console.error(chalk.yellow('Use --force to remove the thoughts directory anyway.'))
@@ -74,7 +83,15 @@ export async function thoughtsUninitCommand(options: UninitOptions): Promise<voi
     if (mappedName) {
       console.log('')
       console.log(chalk.gray('Note: Your thoughts content remains safe in:'))
-      console.log(chalk.gray(`  ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`))
+
+      if (profileName && config.profiles && config.profiles[profileName]) {
+        const profile = config.profiles[profileName]
+        console.log(chalk.gray(`  ${profile.thoughtsRepo}/${profile.reposDir}/${mappedName}`))
+        console.log(chalk.gray(`  (profile: ${profileName})`))
+      } else {
+        console.log(chalk.gray(`  ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`))
+      }
+
       console.log(chalk.gray('Only the local symlinks and configuration were removed.'))
     }
   } catch (error) {
