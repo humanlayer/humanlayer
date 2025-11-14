@@ -7,6 +7,17 @@ import { getInvocationName, getDefaultSocketPath } from './utils/invocation.js'
 // Load environment variables
 dotenv.config()
 
+export type RepoMappingObject = {
+  repo: string
+  profile?: string
+}
+
+export type ProfileConfig = {
+  thoughtsRepo: string
+  reposDir: string
+  globalDir: string
+}
+
 export type ConfigFile = {
   www_base_url?: string
   daemon_socket?: string
@@ -16,7 +27,8 @@ export type ConfigFile = {
     reposDir: string
     globalDir: string
     user: string
-    repoMappings: Record<string, string>
+    repoMappings: Record<string, string | RepoMappingObject>
+    profiles?: Record<string, ProfileConfig>
   }
 }
 

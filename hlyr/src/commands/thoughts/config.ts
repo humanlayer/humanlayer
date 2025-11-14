@@ -1,6 +1,10 @@
 import { spawn } from 'child_process'
 import chalk from 'chalk'
-import { loadThoughtsConfig } from '../../thoughtsConfig.js'
+import {
+  loadThoughtsConfig,
+  getRepoNameFromMapping,
+  getProfileNameFromMapping,
+} from '../../thoughtsConfig.js'
 import { getDefaultConfigPath } from '../../config.js'
 
 interface ConfigOptions {
@@ -54,9 +58,30 @@ export async function thoughtsConfigCommand(options: ConfigOptions): Promise<voi
     if (mappings.length === 0) {
       console.log(chalk.gray('  No repositories mapped yet'))
     } else {
-      mappings.forEach(([repo, thoughtsDir]) => {
+      mappings.forEach(([repo, mapping]) => {
+        const repoName = getRepoNameFromMapping(mapping)
+        const profileName = getProfileNameFromMapping(mapping)
+
         console.log(`  ${chalk.cyan(repo)}`)
-        console.log(`    → ${chalk.green(`${config.reposDir}/${thoughtsDir}`)}`)
+        console.log(`    → ${chalk.green(`${config.reposDir}/${repoName}`)}`)
+
+        if (profileName) {
+          console.log(`    Profile: ${chalk.yellow(profileName)}`)
+        } else {
+          console.log(`    Profile: ${chalk.gray('(default)')}`)
+        }
+      })
+    }
+
+    console.log('')
+
+    // Add profiles section
+    console.log(chalk.yellow('Profiles:'))
+    if (!config.profiles || Object.keys(config.profiles).length === 0) {
+      console.log(chalk.gray('  No profiles configured'))
+    } else {
+      Object.keys(config.profiles).forEach(name => {
+        console.log(`  ${chalk.cyan(name)}`)
       })
     }
 

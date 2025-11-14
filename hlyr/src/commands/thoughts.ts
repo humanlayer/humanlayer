@@ -4,6 +4,10 @@ import { thoughtsUninitCommand } from './thoughts/uninit.js'
 import { thoughtsSyncCommand } from './thoughts/sync.js'
 import { thoughtsStatusCommand } from './thoughts/status.js'
 import { thoughtsConfigCommand } from './thoughts/config.js'
+import { profileCreateCommand } from './thoughts/profile/create.js'
+import { profileListCommand } from './thoughts/profile/list.js'
+import { profileShowCommand } from './thoughts/profile/show.js'
+import { profileDeleteCommand } from './thoughts/profile/delete.js'
 
 export function thoughtsCommand(program: Command): void {
   const thoughts = program.command('thoughts').description('Manage developer thoughts and notes')
@@ -14,6 +18,7 @@ export function thoughtsCommand(program: Command): void {
     .option('--force', 'Force reconfiguration even if already set up')
     .option('--config-file <path>', 'Path to config file')
     .option('--directory <name>', 'Specify the repository directory name (skips interactive prompt)')
+    .option('--profile <name>', 'Use a specific thoughts profile')
     .action(thoughtsInitCommand)
 
   thoughts
@@ -43,4 +48,37 @@ export function thoughtsCommand(program: Command): void {
     .option('--json', 'Output configuration as JSON')
     .option('--config-file <path>', 'Path to config file')
     .action(thoughtsConfigCommand)
+
+  // Profile management commands
+  const profile = thoughts.command('profile').description('Manage thoughts profiles')
+
+  profile
+    .command('create <name>')
+    .description('Create a new thoughts profile')
+    .option('--repo <path>', 'Thoughts repository path')
+    .option('--repos-dir <name>', 'Repos directory name')
+    .option('--global-dir <name>', 'Global directory name')
+    .option('--config-file <path>', 'Path to config file')
+    .action(profileCreateCommand)
+
+  profile
+    .command('list')
+    .description('List all thoughts profiles')
+    .option('--json', 'Output as JSON')
+    .option('--config-file <path>', 'Path to config file')
+    .action(profileListCommand)
+
+  profile
+    .command('show <name>')
+    .description('Show details of a specific profile')
+    .option('--json', 'Output as JSON')
+    .option('--config-file <path>', 'Path to config file')
+    .action(profileShowCommand)
+
+  profile
+    .command('delete <name>')
+    .description('Delete a thoughts profile')
+    .option('--force', 'Force deletion even if in use')
+    .option('--config-file <path>', 'Path to config file')
+    .action(profileDeleteCommand)
 }

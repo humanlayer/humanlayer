@@ -7,6 +7,8 @@ import {
   getCurrentRepoPath,
   expandPath,
   updateSymlinksForNewUsers,
+  resolveProfileForRepo,
+  getRepoNameFromMapping,
 } from '../../thoughtsConfig.js'
 
 interface SyncOptions {
@@ -213,17 +215,14 @@ export async function thoughtsSyncCommand(options: SyncOptions): Promise<void> {
       process.exit(1)
     }
 
-    // Get current repo mapping
-    const mappedName = config.repoMappings[currentRepo]
+    // Get current repo mapping and resolve profile
+    const mapping = config.repoMappings[currentRepo]
+    const mappedName = getRepoNameFromMapping(mapping)
+    const profileConfig = resolveProfileForRepo(config, currentRepo)
+
     if (mappedName) {
-      // Update symlinks for any new users
-      const newUsers = updateSymlinksForNewUsers(
-        currentRepo,
-        config.thoughtsRepo,
-        config.reposDir,
-        mappedName,
-        config.user,
-      )
+      // Update symlinks for any new users using profile config
+      const newUsers = updateSymlinksForNewUsers(currentRepo, profileConfig, mappedName, config.user)
 
       if (newUsers.length > 0) {
         console.log(chalk.green(`✓ Added symlinks for new users: ${newUsers.join(', ')}`))
@@ -234,9 +233,9 @@ export async function thoughtsSyncCommand(options: SyncOptions): Promise<void> {
     console.log(chalk.blue('Creating searchable index...'))
     createSearchDirectory(thoughtsDir)
 
-    // Sync the thoughts repository
+    // Sync the thoughts repository using profile's thoughtsRepo
     console.log(chalk.blue('Syncing thoughts...'))
-    syncThoughts(config.thoughtsRepo, options.message || '')
+    syncThoughts(profileConfig.thoughtsRepo, options.message || '')
   } catch (error) {
     console.error(chalk.red(`Error during thoughts sync: ${error}`))
     process.exit(1)
