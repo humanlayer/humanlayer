@@ -1,249 +1,249 @@
 ---
-description: Iterate on existing implementation plans with thorough research and updates
+description: 透過徹底研究與更新來迭代現有實作計畫
 model: opus
 ---
 
-# Iterate Implementation Plan
+# 迭代實作計畫
 
-You are tasked with updating existing implementation plans based on user feedback. You should be skeptical, thorough, and ensure changes are grounded in actual codebase reality.
+您的任務是根據使用者回饋更新現有的實作計畫。您應該抱持懷疑態度、徹底,並確保變更基於實際的程式碼庫現實。
 
-## Initial Response
+## 初始回應
 
-When this command is invoked:
+當此指令被執行時:
 
-1. **Parse the input to identify**:
-   - Plan file path (e.g., `thoughts/shared/plans/2025-10-16-feature.md`)
-   - Requested changes/feedback
+1. **解析輸入以識別**:
+   - 計畫檔案路徑(例如:`thoughts/shared/plans/2025-10-16-feature.md`)
+   - 請求的變更/回饋
 
-2. **Handle different input scenarios**:
+2. **處理不同的輸入情境**:
 
-   **If NO plan file provided**:
+   **如果未提供計畫檔案**:
    ```
-   I'll help you iterate on an existing implementation plan.
+   我將協助您迭代現有的實作計畫。
 
-   Which plan would you like to update? Please provide the path to the plan file (e.g., `thoughts/shared/plans/2025-10-16-feature.md`).
+   您想要更新哪個計畫?請提供計畫檔案的路徑(例如:`thoughts/shared/plans/2025-10-16-feature.md`)。
 
-   Tip: You can list recent plans with `ls -lt thoughts/shared/plans/ | head`
+   提示: 您可以使用 `ls -lt thoughts/shared/plans/ | head` 列出最近的計畫
    ```
-   Wait for user input, then re-check for feedback.
+   等待使用者輸入,然後重新檢查回饋。
 
-   **If plan file provided but NO feedback**:
+   **如果提供了計畫檔案但未提供回饋**:
    ```
-   I've found the plan at [path]. What changes would you like to make?
+   我已找到位於 [path] 的計畫。您想要做什麼變更?
 
-   For example:
-   - "Add a phase for migration handling"
-   - "Update the success criteria to include performance tests"
-   - "Adjust the scope to exclude feature X"
-   - "Split Phase 2 into two separate phases"
+   例如:
+   - 「新增處理遷移的階段」
+   - 「更新成功準則以包含效能測試」
+   - 「調整範圍以排除功能 X」
+   - 「將階段 2 拆分為兩個獨立階段」
    ```
-   Wait for user input.
+   等待使用者輸入。
 
-   **If BOTH plan file AND feedback provided**:
-   - Proceed immediately to Step 1
-   - No preliminary questions needed
+   **如果同時提供了計畫檔案和回饋**:
+   - 立即繼續至步驟 1
+   - 不需要初步問題
 
-## Process Steps
+## 流程步驟
 
-### Step 1: Read and Understand Current Plan
+### 步驟 1: 讀取並理解目前計畫
 
-1. **Read the existing plan file COMPLETELY**:
-   - Use the Read tool WITHOUT limit/offset parameters
-   - Understand the current structure, phases, and scope
-   - Note the success criteria and implementation approach
+1. **完整讀取現有計畫檔案**:
+   - 使用 Read 工具時「不要」使用 limit/offset 參數
+   - 理解目前的結構、階段和範圍
+   - 記錄成功準則和實作方法
 
-2. **Understand the requested changes**:
-   - Parse what the user wants to add/modify/remove
-   - Identify if changes require codebase research
-   - Determine scope of the update
+2. **理解請求的變更**:
+   - 解析使用者想要新增/修改/移除的內容
+   - 識別變更是否需要程式碼庫研究
+   - 確定更新的範圍
 
-### Step 2: Research If Needed
+### 步驟 2: 必要時進行研究
 
-**Only spawn research tasks if the changes require new technical understanding.**
+**只有在變更需要新的技術理解時才產生研究任務。**
 
-If the user's feedback requires understanding new code patterns or validating assumptions:
+如果使用者的回饋需要理解新的程式碼模式或驗證假設:
 
-1. **Create a research todo list** using TodoWrite
+1. **建立研究待辦清單**,使用 TodoWrite
 
-2. **Spawn parallel sub-tasks for research**:
-   Use the right agent for each type of research:
+2. **產生並行子任務進行研究**:
+   針對每種研究類型使用正確的代理:
 
-   **For code investigation:**
-   - **codebase-locator** - To find relevant files
-   - **codebase-analyzer** - To understand implementation details
-   - **codebase-pattern-finder** - To find similar patterns
+   **對於程式碼調查:**
+   - **codebase-locator** - 尋找相關檔案
+   - **codebase-analyzer** - 理解實作細節
+   - **codebase-pattern-finder** - 尋找類似模式
 
-   **For historical context:**
-   - **thoughts-locator** - To find related research or decisions
-   - **thoughts-analyzer** - To extract insights from documents
+   **對於歷史脈絡:**
+   - **thoughts-locator** - 尋找相關的研究或決策
+   - **thoughts-analyzer** - 從文件中提取見解
 
-   **Be EXTREMELY specific about directories**:
-   - If the change involves "WUI", specify `humanlayer-wui/` directory
-   - If it involves "daemon", specify `hld/` directory
-   - Include full path context in prompts
+   **對目錄要「極其」明確**:
+   - 如果變更涉及「WUI」,請指定 `humanlayer-wui/` 目錄
+   - 如果涉及「daemon」,請指定 `hld/` 目錄
+   - 在提示中包含完整路徑上下文
 
-3. **Read any new files identified by research**:
-   - Read them FULLY into the main context
-   - Cross-reference with the plan requirements
+3. **讀取研究識別的任何新檔案**:
+   - 將它們完整讀入主要上下文
+   - 與計畫需求交叉參照
 
-4. **Wait for ALL sub-tasks to complete** before proceeding
+4. **等待所有子任務完成**後再繼續
 
-### Step 3: Present Understanding and Approach
+### 步驟 3: 呈現理解與方法
 
-Before making changes, confirm your understanding:
+在進行變更前,確認您的理解:
 
 ```
-Based on your feedback, I understand you want to:
-- [Change 1 with specific detail]
-- [Change 2 with specific detail]
+根據您的回饋,我了解您想要:
+- [具體細節的變更 1]
+- [具體細節的變更 2]
 
-My research found:
-- [Relevant code pattern or constraint]
-- [Important discovery that affects the change]
+我的研究發現:
+- [相關的程式碼模式或限制條件]
+- [影響變更的重要發現]
 
-I plan to update the plan by:
-1. [Specific modification to make]
-2. [Another modification]
+我計畫透過以下方式更新計畫:
+1. [要進行的特定修改]
+2. [另一個修改]
 
-Does this align with your intent?
+這是否符合您的意圖?
 ```
 
-Get user confirmation before proceeding.
+在繼續前獲得使用者確認。
 
-### Step 4: Update the Plan
+### 步驟 4: 更新計畫
 
-1. **Make focused, precise edits** to the existing plan:
-   - Use the Edit tool for surgical changes
-   - Maintain the existing structure unless explicitly changing it
-   - Keep all file:line references accurate
-   - Update success criteria if needed
+1. **對現有計畫進行聚焦、精確的編輯**:
+   - 使用 Edit 工具進行精準變更
+   - 除非明確變更,否則維持現有結構
+   - 保持所有 file:line 參考準確
+   - 必要時更新成功準則
 
-2. **Ensure consistency**:
-   - If adding a new phase, ensure it follows the existing pattern
-   - If modifying scope, update "What We're NOT Doing" section
-   - If changing approach, update "Implementation Approach" section
-   - Maintain the distinction between automated vs manual success criteria
+2. **確保一致性**:
+   - 如果新增新階段,確保遵循現有模式
+   - 如果修改範圍,更新「我們不做的事情」章節
+   - 如果變更方法,更新「實作方法」章節
+   - 維持自動化與手動成功準則的區分
 
-3. **Preserve quality standards**:
-   - Include specific file paths and line numbers for new content
-   - Write measurable success criteria
-   - Use `make` commands for automated verification
-   - Keep language clear and actionable
+3. **保持品質標準**:
+   - 為新內容包含特定的檔案路徑和行號
+   - 撰寫可測量的成功準則
+   - 對自動化驗證使用 `make` 指令
+   - 保持語言清晰且可執行
 
-### Step 5: Sync and Review
+### 步驟 5: 同步與審查
 
-1. **Sync the updated plan**:
-   - Run `humanlayer thoughts sync`
-   - This ensures changes are properly indexed
+1. **同步更新的計畫**:
+   - 執行 `humanlayer thoughts sync`
+   - 這確保變更被正確索引
 
-2. **Present the changes made**:
+2. **呈現所做的變更**:
    ```
-   I've updated the plan at `thoughts/shared/plans/[filename].md`
+   我已更新位於 `thoughts/shared/plans/[filename].md` 的計畫
 
-   Changes made:
-   - [Specific change 1]
-   - [Specific change 2]
+   所做的變更:
+   - [特定變更 1]
+   - [特定變更 2]
 
-   The updated plan now:
-   - [Key improvement]
-   - [Another improvement]
+   更新後的計畫現在:
+   - [關鍵改進]
+   - [另一個改進]
 
-   Would you like any further adjustments?
+   您是否需要進一步調整?
    ```
 
-3. **Be ready to iterate further** based on feedback
+3. **準備根據回饋進一步迭代**
 
-## Important Guidelines
+## 重要指引
 
-1. **Be Skeptical**:
-   - Don't blindly accept change requests that seem problematic
-   - Question vague feedback - ask for clarification
-   - Verify technical feasibility with code research
-   - Point out potential conflicts with existing plan phases
+1. **保持懷疑**:
+   - 不要盲目接受看似有問題的變更請求
+   - 質疑模糊的回饋 - 尋求澄清
+   - 透過程式碼研究驗證技術可行性
+   - 指出與現有計畫階段的潛在衝突
 
-2. **Be Surgical**:
-   - Make precise edits, not wholesale rewrites
-   - Preserve good content that doesn't need changing
-   - Only research what's necessary for the specific changes
-   - Don't over-engineer the updates
+2. **保持精準**:
+   - 進行精確編輯,而非全面重寫
+   - 保留不需要變更的優質內容
+   - 只研究特定變更所需的內容
+   - 不要過度設計更新
 
-3. **Be Thorough**:
-   - Read the entire existing plan before making changes
-   - Research code patterns if changes require new technical understanding
-   - Ensure updated sections maintain quality standards
-   - Verify success criteria are still measurable
+3. **保持徹底**:
+   - 在進行變更前讀取整個現有計畫
+   - 如果變更需要新的技術理解,則研究程式碼模式
+   - 確保更新的章節維持品質標準
+   - 驗證成功準則仍然可測量
 
-4. **Be Interactive**:
-   - Confirm understanding before making changes
-   - Show what you plan to change before doing it
-   - Allow course corrections
-   - Don't disappear into research without communicating
+4. **保持互動**:
+   - 在進行變更前確認理解
+   - 在執行前展示您計畫變更的內容
+   - 允許調整方向
+   - 不要在沒有溝通的情況下消失於研究中
 
-5. **Track Progress**:
-   - Use TodoWrite to track update tasks if complex
-   - Update todos as you complete research
-   - Mark tasks complete when done
+5. **追蹤進度**:
+   - 如果複雜則使用 TodoWrite 追蹤更新任務
+   - 完成研究時更新待辦事項
+   - 完成時標記任務
 
-6. **No Open Questions**:
-   - If the requested change raises questions, ASK
-   - Research or get clarification immediately
-   - Do NOT update the plan with unresolved questions
-   - Every change must be complete and actionable
+6. **無開放性問題**:
+   - 如果請求的變更引發問題,請詢問
+   - 立即研究或獲得澄清
+   - 「不要」在有未解決問題的情況下更新計畫
+   - 每個變更都必須完整且可執行
 
-## Success Criteria Guidelines
+## 成功準則指引
 
-When updating success criteria, always maintain the two-category structure:
+更新成功準則時,始終維持兩類結構:
 
-1. **Automated Verification** (can be run by execution agents):
-   - Commands that can be run: `make test`, `npm run lint`, etc.
-   - Prefer `make` commands: `make -C humanlayer-wui check` instead of `cd humanlayer-wui && bun run fmt`
-   - Specific files that should exist
-   - Code compilation/type checking
+1. **自動化驗證**(可由執行代理執行):
+   - 可執行的指令: `make test`、`npm run lint` 等
+   - 偏好 `make` 指令: `make -C humanlayer-wui check` 而非 `cd humanlayer-wui && bun run fmt`
+   - 應該存在的特定檔案
+   - 程式碼編譯/型別檢查
 
-2. **Manual Verification** (requires human testing):
-   - UI/UX functionality
-   - Performance under real conditions
-   - Edge cases that are hard to automate
-   - User acceptance criteria
+2. **手動驗證**(需要人工測試):
+   - UI/UX 功能
+   - 真實條件下的效能
+   - 難以自動化的邊界情況
+   - 使用者驗收準則
 
-## Sub-task Spawning Best Practices
+## 子任務產生最佳實踐
 
-When spawning research sub-tasks:
+產生研究子任務時:
 
-1. **Only spawn if truly needed** - don't research for simple changes
-2. **Spawn multiple tasks in parallel** for efficiency
-3. **Each task should be focused** on a specific area
-4. **Provide detailed instructions** including:
-   - Exactly what to search for
-   - Which directories to focus on
-   - What information to extract
-   - Expected output format
-5. **Request specific file:line references** in responses
-6. **Wait for all tasks to complete** before synthesizing
-7. **Verify sub-task results** - if something seems off, spawn follow-up tasks
+1. **只有在真正需要時才產生** - 不要為簡單變更進行研究
+2. **並行產生多個任務**以提高效率
+3. **每個任務應該專注**於特定領域
+4. **提供詳細指示**包括:
+   - 確切要搜尋的內容
+   - 要專注的目錄
+   - 要提取的資訊
+   - 預期的輸出格式
+5. **要求回應中包含特定的 file:line 參考**
+6. **等待所有任務完成**後再進行整合
+7. **驗證子任務結果** - 如果有問題,產生後續任務
 
-## Example Interaction Flows
+## 互動流程範例
 
-**Scenario 1: User provides everything upfront**
+**情境 1: 使用者預先提供所有資訊**
 ```
-User: /iterate_plan thoughts/shared/plans/2025-10-16-feature.md - add phase for error handling
-Assistant: [Reads plan, researches error handling patterns, updates plan]
-```
-
-**Scenario 2: User provides just plan file**
-```
-User: /iterate_plan thoughts/shared/plans/2025-10-16-feature.md
-Assistant: I've found the plan. What changes would you like to make?
-User: Split Phase 2 into two phases - one for backend, one for frontend
-Assistant: [Proceeds with update]
+使用者: /iterate_plan thoughts/shared/plans/2025-10-16-feature.md - 新增錯誤處理階段
+助理: [讀取計畫,研究錯誤處理模式,更新計畫]
 ```
 
-**Scenario 3: User provides no arguments**
+**情境 2: 使用者只提供計畫檔案**
 ```
-User: /iterate_plan
-Assistant: Which plan would you like to update? Please provide the path...
-User: thoughts/shared/plans/2025-10-16-feature.md
-Assistant: I've found the plan. What changes would you like to make?
-User: Add more specific success criteria
-Assistant: [Proceeds with update]
+使用者: /iterate_plan thoughts/shared/plans/2025-10-16-feature.md
+助理: 我已找到該計畫。您想要做什麼變更?
+使用者: 將階段 2 拆分為兩個階段 - 一個用於後端,一個用於前端
+助理: [繼續更新]
+```
+
+**情境 3: 使用者未提供參數**
+```
+使用者: /iterate_plan
+助理: 您想要更新哪個計畫?請提供路徑...
+使用者: thoughts/shared/plans/2025-10-16-feature.md
+助理: 我已找到該計畫。您想要做什麼變更?
+使用者: 新增更具體的成功準則
+助理: [繼續更新]
 ```

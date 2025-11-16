@@ -1,34 +1,34 @@
 ---
-description: Create git commits for session changes with clear, atomic messages
+description: 為會話變更建立清晰、原子性的 git commit
 ---
 
-# Commit Changes
+# 提交變更
 
-You are tasked with creating git commits for the changes made during this session.
+您的任務是為本次會話中所做的變更建立 git commit。
 
-## Process:
+## 流程：
 
-1. **Think about what changed:**
-   - Review the conversation history and understand what was accomplished
-   - Run `git status` to see current changes
-   - Run `git diff` to understand the modifications
-   - Consider whether changes should be one commit or multiple logical commits
+1. **思考變更內容：**
+   - 回顧對話歷史並理解已完成的工作
+   - 執行 `git status` 查看當前變更
+   - 執行 `git diff` 了解修改內容
+   - 考慮變更應該是單一 commit 還是多個邏輯 commit
 
-2. **Plan your commit(s):**
-   - Identify which files belong together
-   - Draft clear, descriptive commit messages
-   - Use imperative mood in commit messages
-   - Focus on why the changes were made, not just what
+2. **規劃您的 commit：**
+   - 識別哪些檔案應該歸為一組
+   - 起草清晰、描述性的 commit 訊息
+   - 在 commit 訊息中使用祈使語氣
+   - 專注於變更的原因，而非僅是變更內容
 
-3. **Execute upon confirmation:**
-   - Use `git add` with specific files (never use `-A` or `.`)
-   - Never commit the `thoughts/` directory or anything inside it!
-   - Never commit dummy files, test scripts, or other files which you created or which appear to have been created but which were not part of your changes or directly caused by them (e.g. generated code)
-   - Create commits with your planned messages until all of your changes are committed with `git commit -m`
+3. **確認後執行：**
+   - 使用 `git add` 加入特定檔案（絕不使用 `-A` 或 `.`）
+   - 絕不提交 `thoughts/` 目錄或其內部任何內容！
+   - 絕不提交您建立的測試檔案、測試腳本或其他非您變更的一部分或並非直接由變更產生的檔案（例如產生的程式碼）
+   - 使用 `git commit -m` 以您規劃的訊息建立 commit，直到所有變更都已提交
 
-## Remember:
-- You have the full context of what was done in this session
-- Group related changes together
-- Keep commits focused and atomic when possible
-- The user trusts your judgment - they asked you to commit
-- **IMPORTANT**: - never stop and ask for feedback from the user. 
+## 記住：
+- 您擁有本次會話中所有工作的完整脈絡
+- 將相關變更組合在一起
+- 盡可能保持 commit 專注且原子化
+- 使用者信任您的判斷 - 他們要求您進行提交
+- **重要**：絕不停下來向使用者尋求回饋。 

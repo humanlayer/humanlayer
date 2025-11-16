@@ -75,10 +75,49 @@
 - [x] scripts/README.md
 - [x] test-slash-commands.md
 
+### .claude/agents (6)
+- [x] .claude/agents/codebase-analyzer.md
+- [x] .claude/agents/codebase-locator.md
+- [x] .claude/agents/codebase-pattern-finder.md
+- [x] .claude/agents/thoughts-analyzer.md
+- [x] .claude/agents/thoughts-locator.md
+- [x] .claude/agents/web-search-researcher.md
+
+### .claude/commands (27)
+- [x] .claude/commands/ci_commit.md
+- [x] .claude/commands/ci_describe_pr.md
+- [x] .claude/commands/commit.md
+- [x] .claude/commands/create_handoff.md
+- [x] .claude/commands/create_plan.md
+- [x] .claude/commands/create_plan_generic.md
+- [x] .claude/commands/create_plan_nt.md
+- [x] .claude/commands/create_worktree.md
+- [x] .claude/commands/debug.md
+- [x] .claude/commands/describe_pr.md
+- [x] .claude/commands/describe_pr_nt.md
+- [x] .claude/commands/founder_mode.md
+- [x] .claude/commands/implement_plan.md
+- [x] .claude/commands/iterate_plan.md
+- [x] .claude/commands/iterate_plan_nt.md
+- [x] .claude/commands/linear.md
+- [x] .claude/commands/local_review.md
+- [x] .claude/commands/oneshot.md
+- [x] .claude/commands/oneshot_plan.md
+- [x] .claude/commands/ralph_impl.md
+- [x] .claude/commands/ralph_plan.md
+- [x] .claude/commands/ralph_research.md
+- [x] .claude/commands/research_codebase.md
+- [x] .claude/commands/research_codebase_generic.md
+- [x] .claude/commands/research_codebase_nt.md
+- [x] .claude/commands/resume_handoff.md
+- [x] .claude/commands/validate_plan.md
+
 ## 翻譯進度
 
-42/42 完成（100%）✅
+75/75 完成（100%）✅
 
 ## 完成時間
 
 2025-11-16
+
+所有 Markdown 檔案（包含 .claude 資料夾）已全部翻譯完成！

@@ -1,81 +1,81 @@
 ---
-description: Research highest priority Linear ticket needing investigation
+description: 研究需要調查的最高優先級 Linear 工作項目
 ---
 
-## PART I - IF A LINEAR TICKET IS MENTIONED
+## 第一部分 - 如果提到 LINEAR 工作項目
 
-0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md
-0d. read the ticket and all comments to understand what research is needed and any previous attempts
+0c. 使用 `linear` CLI 將所選項目擷取到想法中，包含工作項目編號 - ./thoughts/shared/tickets/ENG-xxxx.md
+0d. 閱讀工作項目和所有留言以了解需要哪些研究以及任何先前的嘗試
 
-## PART I - IF NO TICKET IS MENTIONED
+## 第一部分 - 如果未提到工作項目
 
-0.  read .claude/commands/linear.md
-0a. fetch the top 10 priority items from linear in status "research needed" using the MCP tools, noting all items in the `links` section
-0b. select the highest priority SMALL or XS issue from the list (if no SMALL or XS issues exist, EXIT IMMEDIATELY and inform the user)
-0c. use `linear` cli to fetch the selected item into thoughts with the ticket number - ./thoughts/shared/tickets/ENG-xxxx.md
-0d. read the ticket and all comments to understand what research is needed and any previous attempts
+0.  閱讀 .claude/commands/linear.md
+0a. 使用 MCP 工具從 linear 擷取狀態為「research needed」的前 10 個優先級項目，記錄 `links` 區段中的所有項目
+0b. 從清單中選擇最高優先級的 SMALL 或 XS 問題（如果沒有 SMALL 或 XS 問題存在，立即退出並通知使用者）
+0c. 使用 `linear` CLI 將所選項目擷取到想法中，包含工作項目編號 - ./thoughts/shared/tickets/ENG-xxxx.md
+0d. 閱讀工作項目和所有留言以了解需要哪些研究以及任何先前的嘗試
 
-## PART II - NEXT STEPS
+## 第二部分 - 後續步驟
 
-think deeply
+深入思考
 
-1. move the item to "research in progress" using the MCP tools
-1a. read any linked documents in the `links` section to understand context
-1b. if insufficient information to conduct research, add a comment asking for clarification and move back to "research needed"
+1. 使用 MCP 工具將項目移至「research in progress」
+1a. 閱讀 `links` 區段中的任何連結文件以了解上下文
+1b. 如果資訊不足以進行研究，新增留言要求澄清並移回「research needed」
 
-think deeply about the research needs
+深入思考研究需求
 
-2. conduct the research:
-2a. read .claude/commands/research_codebase.md for guidance on effective codebase research
-2b. if the linear comments suggest web research is needed, use WebSearch to research external solutions, APIs, or best practices
-2c. search the codebase for relevant implementations and patterns
-2d. examine existing similar features or related code
-2e. identify technical constraints and opportunities
-2f. Be unbiased - don't think too much about an ideal implementation plan, just document all related files and how the systems work today
-2g. document findings in a new thoughts document: `thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md`
-   - Format: `YYYY-MM-DD-ENG-XXXX-description.md` where:
-     - YYYY-MM-DD is today's date
-     - ENG-XXXX is the ticket number (omit if no ticket)
-     - description is a brief kebab-case description of the research topic
-   - Examples:
-     - With ticket: `2025-01-08-ENG-1478-parent-child-tracking.md`
-     - Without ticket: `2025-01-08-error-handling-patterns.md`
+2. 進行研究：
+2a. 閱讀 .claude/commands/research_codebase.md 以獲取有效程式碼庫研究的指導
+2b. 如果 linear 留言建議需要網路研究，使用 WebSearch 研究外部解決方案、API 或最佳實踐
+2c. 在程式碼庫中搜尋相關的實作和模式
+2d. 檢查現有的類似功能或相關程式碼
+2e. 識別技術限制和機會
+2f. 保持客觀 - 不要過度思考理想的實作計畫，只需記錄所有相關檔案以及系統今天的工作方式
+2g. 在新的想法文件中記錄發現：`thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md`
+   - 格式：`YYYY-MM-DD-ENG-XXXX-description.md`，其中：
+     - YYYY-MM-DD 是今天的日期
+     - ENG-XXXX 是工作項目編號（如果沒有工作項目則省略）
+     - description 是研究主題的簡短 kebab-case 描述
+   - 範例：
+     - 有工作項目：`2025-01-08-ENG-1478-parent-child-tracking.md`
+     - 無工作項目：`2025-01-08-error-handling-patterns.md`
 
-think deeply about the findings
+深入思考發現
 
-3. synthesize research into actionable insights:
-3a. summarize key findings and technical decisions
-3b. identify potential implementation approaches
-3c. note any risks or concerns discovered
-3d. run `humanlayer thoughts sync` to save the research
+3. 將研究綜合成可操作的見解：
+3a. 總結關鍵發現和技術決策
+3b. 識別潛在的實作方法
+3c. 記錄發現的任何風險或疑慮
+3d. 執行 `humanlayer thoughts sync` 以儲存研究
 
-4. update the ticket:
-4a. attach the research document to the ticket using the MCP tools with proper link formatting
-4b. add a comment summarizing the research outcomes
-4c. move the item to "research in review" using the MCP tools
+4. 更新工作項目：
+4a. 使用 MCP 工具將研究文件附加到工作項目，並使用正確的連結格式
+4b. 新增留言總結研究結果
+4c. 使用 MCP 工具將項目移至「research in review」
 
-think deeply, use TodoWrite to track your tasks. When fetching from linear, get the top 10 items by priority but only work on ONE item - specifically the highest priority issue.
+深入思考，使用 TodoWrite 追蹤你的任務。從 linear 擷取時，按優先級取得前 10 個項目，但只處理一個項目 - 特別是最高優先級的問題。
 
-## PART III - When you're done
+## 第三部分 - 當你完成時
 
-Print a message for the user (replace placeholders with actual values):
+為使用者列印訊息（將佔位符替換為實際值）：
 
 ```
-✅ Completed research for ENG-XXXX: [ticket title]
+✅ 已完成 ENG-XXXX 的研究：[工作項目標題]
 
-Research topic: [research topic description]
+研究主題：[研究主題描述]
 
-The research has been:
+研究已經：
 
-Created at thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md
-Synced to thoughts repository
-Attached to the Linear ticket
-Ticket moved to "research in review" status
+建立於 thoughts/shared/research/YYYY-MM-DD-ENG-XXXX-description.md
+同步到想法儲存庫
+附加到 Linear 工作項目
+工作項目已移至「research in review」狀態
 
-Key findings:
-- [Major finding 1]
-- [Major finding 2]
-- [Major finding 3]
+關鍵發現：
+- [主要發現 1]
+- [主要發現 2]
+- [主要發現 3]
 
-View the ticket: https://linear.app/humanlayer/issue/ENG-XXXX/[ticket-slug]
+檢視工作項目：https://linear.app/humanlayer/issue/ENG-XXXX/[ticket-slug]
 ```

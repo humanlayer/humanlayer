@@ -1,84 +1,84 @@
 ---
-description: Implement technical plans from thoughts/shared/plans with verification
+description: 從 thoughts/shared/plans 實作技術計畫並進行驗證
 ---
 
-# Implement Plan
+# 實作計畫
 
-You are tasked with implementing an approved technical plan from `thoughts/shared/plans/`. These plans contain phases with specific changes and success criteria.
+您的任務是實作來自 `thoughts/shared/plans/` 的已核准技術計畫。這些計畫包含具有特定變更和成功標準的階段。
 
-## Getting Started
+## 開始使用
 
-When given a plan path:
-- Read the plan completely and check for any existing checkmarks (- [x])
-- Read the original ticket and all files mentioned in the plan
-- **Read files fully** - never use limit/offset parameters, you need complete context
-- Think deeply about how the pieces fit together
-- Create a todo list to track your progress
-- Start implementing if you understand what needs to be done
+當提供計畫路徑時：
+- 完整閱讀計畫並檢查任何現有的核取標記（- [x]）
+- 閱讀原始票證和計畫中提到的所有檔案
+- **完整讀取檔案** - 絕不使用 limit/offset 參數，您需要完整的脈絡
+- 深入思考各個部分如何組合在一起
+- 建立待辦事項清單以追蹤您的進度
+- 如果您了解需要做什麼，就開始實作
 
-If no plan path provided, ask for one.
+如果未提供計畫路徑，請詢問。
 
-## Implementation Philosophy
+## 實作理念
 
-Plans are carefully designed, but reality can be messy. Your job is to:
-- Follow the plan's intent while adapting to what you find
-- Implement each phase fully before moving to the next
-- Verify your work makes sense in the broader codebase context
-- Update checkboxes in the plan as you complete sections
+計畫是經過精心設計的，但現實可能很複雜。您的工作是：
+- 遵循計畫的意圖，同時適應您發現的情況
+- 在進入下一階段之前完整實作每個階段
+- 驗證您的工作在更廣泛的程式碼庫脈絡中是否合理
+- 在完成章節時更新計畫中的核取方塊
 
-When things don't match the plan exactly, think about why and communicate clearly. The plan is your guide, but your judgment matters too.
+當事情與計畫不完全匹配時，思考原因並清楚溝通。計畫是您的指南，但您的判斷也很重要。
 
-If you encounter a mismatch:
-- STOP and think deeply about why the plan can't be followed
-- Present the issue clearly:
+如果您遇到不匹配：
+- 停下來深入思考為什麼計畫無法遵循
+- 清楚地呈現問題：
   ```
-  Issue in Phase [N]:
-  Expected: [what the plan says]
-  Found: [actual situation]
-  Why this matters: [explanation]
+  階段 [N] 的問題：
+  預期：[計畫說的內容]
+  發現：[實際情況]
+  為什麼這很重要：[說明]
 
-  How should I proceed?
-  ```
-
-## Verification Approach
-
-After implementing a phase:
-- Run the success criteria checks (usually `make check test` covers everything)
-- Fix any issues before proceeding
-- Update your progress in both the plan and your todos
-- Check off completed items in the plan file itself using Edit
-- **Pause for human verification**: After completing all automated verification for a phase, pause and inform the human that the phase is ready for manual testing. Use this format:
-  ```
-  Phase [N] Complete - Ready for Manual Verification
-
-  Automated verification passed:
-  - [List automated checks that passed]
-
-  Please perform the manual verification steps listed in the plan:
-  - [List manual verification items from the plan]
-
-  Let me know when manual testing is complete so I can proceed to Phase [N+1].
+  我應該如何繼續？
   ```
 
-If instructed to execute multiple phases consecutively, skip the pause until the last phase. Otherwise, assume you are just doing one phase.
+## 驗證方法
 
-do not check off items in the manual testing steps until confirmed by the user.
+在實作階段後：
+- 執行成功標準檢查（通常 `make check test` 涵蓋所有內容）
+- 在繼續之前修復任何問題
+- 在計畫和您的待辦事項中更新您的進度
+- 使用 Edit 在計畫檔案本身中勾選已完成的項目
+- **暫停以進行人工驗證**：在完成階段的所有自動驗證後，暫停並通知人類該階段已準備好進行手動測試。使用此格式：
+  ```
+  階段 [N] 完成 - 準備進行手動驗證
+
+  自動驗證已通過：
+  - [列出已通過的自動檢查]
+
+  請執行計畫中列出的手動驗證步驟：
+  - [列出計畫中的手動驗證項目]
+
+  手動測試完成後請告訴我，以便我可以繼續進行階段 [N+1]。
+  ```
+
+如果被指示連續執行多個階段，則跳過暫停直到最後一個階段。否則，假設您只執行一個階段。
+
+在使用者確認之前，不要勾選手動測試步驟中的項目。
 
 
-## If You Get Stuck
+## 如果遇到困難
 
-When something isn't working as expected:
-- First, make sure you've read and understood all the relevant code
-- Consider if the codebase has evolved since the plan was written
-- Present the mismatch clearly and ask for guidance
+當某些事情未如預期運作時：
+- 首先，確保您已閱讀並理解所有相關程式碼
+- 考慮程式碼庫自計畫撰寫以來是否已演進
+- 清楚地呈現不匹配並尋求指導
 
-Use sub-tasks sparingly - mainly for targeted debugging or exploring unfamiliar territory.
+謹慎使用子任務 - 主要用於有針對性的除錯或探索不熟悉的領域。
 
-## Resuming Work
+## 恢復工作
 
-If the plan has existing checkmarks:
-- Trust that completed work is done
-- Pick up from the first unchecked item
-- Verify previous work only if something seems off
+如果計畫有現有的核取標記：
+- 相信已完成的工作已完成
+- 從第一個未勾選的項目開始
+- 僅當某些事情似乎不對時才驗證先前的工作
 
-Remember: You're implementing a solution, not just checking boxes. Keep the end goal in mind and maintain forward momentum.
+記住：您正在實作解決方案，而不僅僅是勾選方塊。牢記最終目標並保持前進動力。

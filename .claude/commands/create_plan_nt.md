@@ -1,419 +1,419 @@
 ---
-description: Create implementation plans with thorough research (no thoughts directory)
+description: 透過徹底研究建立實作計畫(無 thoughts 目錄)
 model: opus
 ---
 
-# Implementation Plan
+# 實作計畫
 
-You are tasked with creating detailed implementation plans through an interactive, iterative process. You should be skeptical, thorough, and work collaboratively with the user to produce high-quality technical specifications.
+您的任務是透過互動式、迭代的流程建立詳細的實作計畫。您應該抱持懷疑態度、徹底且與使用者協作,以產出高品質的技術規格。
 
-## Initial Response
+## 初始回應
 
-When this command is invoked:
+當此指令被執行時:
 
-1. **Check if parameters were provided**:
-   - If a file path or ticket reference was provided as a parameter, skip the default message
-   - Immediately read any provided files FULLY
-   - Begin the research process
+1. **檢查是否提供了參數**:
+   - 如果提供了檔案路徑或工作項目參考作為參數,則跳過預設訊息
+   - 立即「完整」讀取任何提供的檔案
+   - 開始研究流程
 
-2. **If no parameters provided**, respond with:
+2. **如果未提供參數**,請回應:
 ```
-I'll help you create a detailed implementation plan. Let me start by understanding what we're building.
+我將協助您建立詳細的實作計畫。讓我先了解我們要建構什麼。
 
-Please provide:
-1. The task/ticket description (or reference to a ticket file)
-2. Any relevant context, constraints, or specific requirements
-3. Links to related research or previous implementations
+請提供:
+1. 任務/工作項目描述(或工作項目檔案的參考)
+2. 任何相關的上下文、限制條件或特定需求
+3. 相關研究或先前實作的連結
 
-I'll analyze this information and work with you to create a comprehensive plan.
+我將分析這些資訊並與您一起建立完整的計畫。
 
-Tip: You can also invoke this command with a ticket file directly: `/create_plan thoughts/shared/tickets/eng_1234.md`
-For deeper analysis, try: `/create_plan think deeply about thoughts/shared/tickets/eng_1234.md`
+提示: 您也可以直接使用工作項目檔案執行此指令: `/create_plan thoughts/shared/tickets/eng_1234.md`
+若要進行更深入的分析,請嘗試: `/create_plan think deeply about thoughts/shared/tickets/eng_1234.md`
 ```
 
-Then wait for the user's input.
+然後等待使用者的輸入。
 
-## Process Steps
+## 流程步驟
 
-### Step 1: Context Gathering & Initial Analysis
+### 步驟 1: 上下文收集與初始分析
 
-1. **Read all mentioned files immediately and FULLY**:
-   - Ticket files (e.g., `thoughts/shared/tickets/eng_1234.md`)
-   - Research documents
-   - Related implementation plans
-   - Any JSON/data files mentioned
-   - **IMPORTANT**: Use the Read tool WITHOUT limit/offset parameters to read entire files
-   - **CRITICAL**: DO NOT spawn sub-tasks before reading these files yourself in the main context
-   - **NEVER** read files partially - if a file is mentioned, read it completely
+1. **立即且完整地讀取所有提及的檔案**:
+   - 工作項目檔案(例如:`thoughts/shared/tickets/eng_1234.md`)
+   - 研究文件
+   - 相關的實作計畫
+   - 任何提及的 JSON/資料檔案
+   - **重要**: 使用 Read 工具時「不要」使用 limit/offset 參數以讀取完整檔案
+   - **關鍵**: 在產生子任務之前,「不要」自己在主要上下文中讀取這些檔案
+   - **絕不**部分讀取檔案 - 如果檔案被提及,就完整讀取它
 
-2. **Spawn initial research tasks to gather context**:
-   Before asking the user any questions, use specialized agents to research in parallel:
+2. **產生初始研究任務以收集上下文**:
+   在向使用者提出任何問題之前,使用專門的代理並行研究:
 
-   - Use the **codebase-locator** agent to find all files related to the ticket/task
-   - Use the **codebase-analyzer** agent to understand how the current implementation works
-   - If a Linear ticket is mentioned, use the **linear-ticket-reader** agent to get full details
+   - 使用 **codebase-locator** 代理來找出所有與工作項目/任務相關的檔案
+   - 使用 **codebase-analyzer** 代理來理解目前實作的運作方式
+   - 如果提到 Linear 工作項目,使用 **linear-ticket-reader** 代理來獲取完整詳細資訊
 
-   These agents will:
-   - Find relevant source files, configs, and tests
-   - Identify the specific directories to focus on (e.g., if WUI is mentioned, they'll focus on humanlayer-wui/)
-   - Trace data flow and key functions
-   - Return detailed explanations with file:line references
+   這些代理將會:
+   - 找出相關的原始檔案、設定檔和測試
+   - 識別要專注的特定目錄(例如:如果提到 WUI,它們會專注於 humanlayer-wui/)
+   - 追蹤資料流程和關鍵函式
+   - 回傳帶有 file:line 參考的詳細說明
 
-3. **Read all files identified by research tasks**:
-   - After research tasks complete, read ALL files they identified as relevant
-   - Read them FULLY into the main context
-   - This ensures you have complete understanding before proceeding
+3. **讀取研究任務識別的所有檔案**:
+   - 研究任務完成後,讀取它們識別為相關的所有檔案
+   - 將它們完整讀入主要上下文
+   - 這確保您在繼續之前有完整的理解
 
-4. **Analyze and verify understanding**:
-   - Cross-reference the ticket requirements with actual code
-   - Identify any discrepancies or misunderstandings
-   - Note assumptions that need verification
-   - Determine true scope based on codebase reality
+4. **分析並驗證理解**:
+   - 交叉參照工作項目需求與實際程式碼
+   - 識別任何差異或誤解
+   - 記錄需要驗證的假設
+   - 根據程式碼庫現實確定真實範圍
 
-5. **Present informed understanding and focused questions**:
+5. **呈現充分了解的情況與重點問題**:
    ```
-   Based on the ticket and my research of the codebase, I understand we need to [accurate summary].
+   根據工作項目和我對程式碼庫的研究,我了解我們需要[準確摘要]。
 
-   I've found that:
-   - [Current implementation detail with file:line reference]
-   - [Relevant pattern or constraint discovered]
-   - [Potential complexity or edge case identified]
+   我發現:
+   - [目前實作細節與 file:line 參考]
+   - [發現的相關模式或限制條件]
+   - [識別的潛在複雜性或邊界情況]
 
-   Questions that my research couldn't answer:
-   - [Specific technical question that requires human judgment]
-   - [Business logic clarification]
-   - [Design preference that affects implementation]
-   ```
-
-   Only ask questions that you genuinely cannot answer through code investigation.
-
-### Step 2: Research & Discovery
-
-After getting initial clarifications:
-
-1. **If the user corrects any misunderstanding**:
-   - DO NOT just accept the correction
-   - Spawn new research tasks to verify the correct information
-   - Read the specific files/directories they mention
-   - Only proceed once you've verified the facts yourself
-
-2. **Create a research todo list** using TodoWrite to track exploration tasks
-
-3. **Spawn parallel sub-tasks for comprehensive research**:
-   - Create multiple Task agents to research different aspects concurrently
-   - Use the right agent for each type of research:
-
-   **For deeper investigation:**
-   - **codebase-locator** - To find more specific files (e.g., "find all files that handle [specific component]")
-   - **codebase-analyzer** - To understand implementation details (e.g., "analyze how [system] works")
-   - **codebase-pattern-finder** - To find similar features we can model after
-
-   **For related tickets:**
-   - **linear-searcher** - To find similar issues or past implementations
-
-   Each agent knows how to:
-   - Find the right files and code patterns
-   - Identify conventions and patterns to follow
-   - Look for integration points and dependencies
-   - Return specific file:line references
-   - Find tests and examples
-
-3. **Wait for ALL sub-tasks to complete** before proceeding
-
-4. **Present findings and design options**:
-   ```
-   Based on my research, here's what I found:
-
-   **Current State:**
-   - [Key discovery about existing code]
-   - [Pattern or convention to follow]
-
-   **Design Options:**
-   1. [Option A] - [pros/cons]
-   2. [Option B] - [pros/cons]
-
-   **Open Questions:**
-   - [Technical uncertainty]
-   - [Design decision needed]
-
-   Which approach aligns best with your vision?
+   我的研究無法回答的問題:
+   - [需要人工判斷的特定技術問題]
+   - [商業邏輯澄清]
+   - [影響實作的設計偏好]
    ```
 
-### Step 3: Plan Structure Development
+   只詢問您確實無法透過程式碼調查回答的問題。
 
-Once aligned on approach:
+### 步驟 2: 研究與探索
 
-1. **Create initial plan outline**:
+在獲得初步澄清後:
+
+1. **如果使用者糾正任何誤解**:
+   - 「不要」只是接受糾正
+   - 產生新的研究任務以驗證正確的資訊
+   - 讀取他們提到的特定檔案/目錄
+   - 只有在您自己驗證事實後才繼續
+
+2. **建立研究待辦清單**,使用 TodoWrite 來追蹤探索任務
+
+3. **產生並行子任務以進行全面研究**:
+   - 建立多個任務代理來同時研究不同面向
+   - 針對每種研究類型使用正確的代理:
+
+   **對於深入調查:**
+   - **codebase-locator** - 尋找更具體的檔案(例如:「找出所有處理[特定元件]的檔案」)
+   - **codebase-analyzer** - 理解實作細節(例如:「分析[系統]的運作方式」)
+   - **codebase-pattern-finder** - 尋找我們可以仿效的類似功能
+
+   **對於相關工作項目:**
+   - **linear-searcher** - 尋找類似的問題或過去的實作
+
+   每個代理知道如何:
+   - 找出正確的檔案和程式碼模式
+   - 識別要遵循的慣例和模式
+   - 尋找整合點和相依性
+   - 回傳特定的 file:line 參考
+   - 找出測試和範例
+
+3. **等待所有子任務完成**後再繼續
+
+4. **呈現發現與設計選項**:
    ```
-   Here's my proposed plan structure:
+   根據我的研究,以下是我的發現:
 
-   ## Overview
-   [1-2 sentence summary]
+   **目前狀態:**
+   - [關於現有程式碼的關鍵發現]
+   - [要遵循的模式或慣例]
 
-   ## Implementation Phases:
-   1. [Phase name] - [what it accomplishes]
-   2. [Phase name] - [what it accomplishes]
-   3. [Phase name] - [what it accomplishes]
+   **設計選項:**
+   1. [選項 A] - [優缺點]
+   2. [選項 B] - [優缺點]
 
-   Does this phasing make sense? Should I adjust the order or granularity?
+   **開放性問題:**
+   - [技術不確定性]
+   - [需要的設計決策]
+
+   哪個方法最符合您的願景?
    ```
 
-2. **Get feedback on structure** before writing details
+### 步驟 3: 計畫結構開發
 
-### Step 4: Detailed Plan Writing
+一旦就方法達成共識:
 
-After structure approval:
+1. **建立初始計畫大綱**:
+   ```
+   以下是我提議的計畫結構:
 
-1. **Write the plan** to `thoughts/shared/plans/YYYY-MM-DD-ENG-XXXX-description.md`
-   - Format: `YYYY-MM-DD-ENG-XXXX-description.md` where:
-     - YYYY-MM-DD is today's date
-     - ENG-XXXX is the ticket number (omit if no ticket)
-     - description is a brief kebab-case description
-   - Examples:
-     - With ticket: `2025-01-08-ENG-1478-parent-child-tracking.md`
-     - Without ticket: `2025-01-08-improve-error-handling.md`
-2. **Use this template structure**:
+   ## 概覽
+   [1-2 句摘要]
+
+   ## 實作階段:
+   1. [階段名稱] - [完成的內容]
+   2. [階段名稱] - [完成的內容]
+   3. [階段名稱] - [完成的內容]
+
+   這個階段劃分有意義嗎?我應該調整順序或粒度嗎?
+   ```
+
+2. **在撰寫細節前獲得結構回饋**
+
+### 步驟 4: 詳細計畫撰寫
+
+在結構批准後:
+
+1. **將計畫寫入** `thoughts/shared/plans/YYYY-MM-DD-ENG-XXXX-description.md`
+   - 格式: `YYYY-MM-DD-ENG-XXXX-description.md` 其中:
+     - YYYY-MM-DD 是今天的日期
+     - ENG-XXXX 是工作項目編號(如果沒有工作項目則省略)
+     - description 是簡短的 kebab-case 描述
+   - 範例:
+     - 有工作項目: `2025-01-08-ENG-1478-parent-child-tracking.md`
+     - 無工作項目: `2025-01-08-improve-error-handling.md`
+2. **使用此範本結構**:
 
 ````markdown
-# [Feature/Task Name] Implementation Plan
+# [功能/任務名稱] 實作計畫
 
-## Overview
+## 概覽
 
-[Brief description of what we're implementing and why]
+[簡要描述我們正在實作的內容及原因]
 
-## Current State Analysis
+## 目前狀態分析
 
-[What exists now, what's missing, key constraints discovered]
+[現有內容、缺少的內容、發現的關鍵限制條件]
 
-## Desired End State
+## 期望的最終狀態
 
-[A Specification of the desired end state after this plan is complete, and how to verify it]
+[此計畫完成後期望最終狀態的規格說明,以及如何驗證它]
 
-### Key Discoveries:
-- [Important finding with file:line reference]
-- [Pattern to follow]
-- [Constraint to work within]
+### 關鍵發現:
+- [重要發現與 file:line 參考]
+- [要遵循的模式]
+- [需要配合的限制條件]
 
-## What We're NOT Doing
+## 我們「不」做的事情
 
-[Explicitly list out-of-scope items to prevent scope creep]
+[明確列出範圍外的項目以防止範圍蔓延]
 
-## Implementation Approach
+## 實作方法
 
-[High-level strategy and reasoning]
+[高層級策略與推理]
 
-## Phase 1: [Descriptive Name]
+## 階段 1: [描述性名稱]
 
-### Overview
-[What this phase accomplishes]
+### 概覽
+[此階段完成的內容]
 
-### Changes Required:
+### 所需變更:
 
-#### 1. [Component/File Group]
-**File**: `path/to/file.ext`
-**Changes**: [Summary of changes]
+#### 1. [元件/檔案群組]
+**檔案**: `path/to/file.ext`
+**變更**: [變更摘要]
 
 ```[language]
-// Specific code to add/modify
+// 要新增/修改的特定程式碼
 ```
 
-### Success Criteria:
+### 成功準則:
 
-#### Automated Verification:
-- [ ] Migration applies cleanly: `make migrate`
-- [ ] Unit tests pass: `make test-component`
-- [ ] Type checking passes: `npm run typecheck`
-- [ ] Linting passes: `make lint`
-- [ ] Integration tests pass: `make test-integration`
+#### 自動化驗證:
+- [ ] 遷移順利套用: `make migrate`
+- [ ] 單元測試通過: `make test-component`
+- [ ] 型別檢查通過: `npm run typecheck`
+- [ ] Linting 通過: `make lint`
+- [ ] 整合測試通過: `make test-integration`
 
-#### Manual Verification:
-- [ ] Feature works as expected when tested via UI
-- [ ] Performance is acceptable under load
-- [ ] Edge case handling verified manually
-- [ ] No regressions in related features
+#### 手動驗證:
+- [ ] 功能透過 UI 測試時如預期運作
+- [ ] 負載下的效能可接受
+- [ ] 手動驗證邊界情況處理
+- [ ] 相關功能無退化
 
-**Implementation Note**: After completing this phase and all automated verification passes, pause here for manual confirmation from the human that the manual testing was successful before proceeding to the next phase.
-
----
-
-## Phase 2: [Descriptive Name]
-
-[Similar structure with both automated and manual success criteria...]
+**實作注意事項**: 完成此階段並通過所有自動化驗證後,在此暫停以手動確認人工測試成功,然後再進入下一階段。
 
 ---
 
-## Testing Strategy
+## 階段 2: [描述性名稱]
 
-### Unit Tests:
-- [What to test]
-- [Key edge cases]
+[類似結構,包含自動化和手動成功準則...]
 
-### Integration Tests:
-- [End-to-end scenarios]
+---
 
-### Manual Testing Steps:
-1. [Specific step to verify feature]
-2. [Another verification step]
-3. [Edge case to test manually]
+## 測試策略
 
-## Performance Considerations
+### 單元測試:
+- [要測試的內容]
+- [關鍵邊界情況]
 
-[Any performance implications or optimizations needed]
+### 整合測試:
+- [端對端情境]
 
-## Migration Notes
+### 手動測試步驟:
+1. [驗證功能的特定步驟]
+2. [另一個驗證步驟]
+3. [要手動測試的邊界情況]
 
-[If applicable, how to handle existing data/systems]
+## 效能考量
 
-## References
+[任何效能影響或所需的最佳化]
 
-- Original ticket: `thoughts/shared/tickets/eng_XXXX.md`
-- Related research: `thoughts/shared/research/[relevant].md`
-- Similar implementation: `[file:line]`
+## 遷移注意事項
+
+[如果適用,如何處理現有資料/系統]
+
+## 參考資料
+
+- 原始工作項目: `thoughts/shared/tickets/eng_XXXX.md`
+- 相關研究: `thoughts/shared/research/[relevant].md`
+- 類似實作: `[file:line]`
 ````
 
-### Step 5: Review
+### 步驟 5: 審查
 
-1. **Present the draft plan location**:
+1. **呈現草稿計畫位置**:
    ```
-   I've created the initial implementation plan at:
+   我已在以下位置建立初始實作計畫:
    `thoughts/shared/plans/YYYY-MM-DD-ENG-XXXX-description.md`
 
-   Please review it and let me know:
-   - Are the phases properly scoped?
-   - Are the success criteria specific enough?
-   - Any technical details that need adjustment?
-   - Missing edge cases or considerations?
+   請審查並告訴我:
+   - 階段的範圍是否適當?
+   - 成功準則是否足夠具體?
+   - 有任何技術細節需要調整嗎?
+   - 缺少的邊界情況或考量事項?
    ```
 
-2. **Iterate based on feedback** - be ready to:
-   - Add missing phases
-   - Adjust technical approach
-   - Clarify success criteria (both automated and manual)
-   - Add/remove scope items
+2. **根據回饋迭代** - 準備好:
+   - 新增缺少的階段
+   - 調整技術方法
+   - 澄清成功準則(自動化和手動)
+   - 新增/移除範圍項目
 
-3. **Continue refining** until the user is satisfied
+3. **持續精煉**直到使用者滿意
 
-## Important Guidelines
+## 重要指引
 
-1. **Be Skeptical**:
-   - Question vague requirements
-   - Identify potential issues early
-   - Ask "why" and "what about"
-   - Don't assume - verify with code
+1. **保持懷疑**:
+   - 質疑模糊的需求
+   - 及早識別潛在問題
+   - 詢問「為什麼」和「如果」
+   - 不要假設 - 用程式碼驗證
 
-2. **Be Interactive**:
-   - Don't write the full plan in one shot
-   - Get buy-in at each major step
-   - Allow course corrections
-   - Work collaboratively
+2. **保持互動**:
+   - 不要一次寫完整個計畫
+   - 在每個主要步驟獲得認同
+   - 允許調整方向
+   - 協作工作
 
-3. **Be Thorough**:
-   - Read all context files COMPLETELY before planning
-   - Research actual code patterns using parallel sub-tasks
-   - Include specific file paths and line numbers
-   - Write measurable success criteria with clear automated vs manual distinction
-   - automated steps should use `make` whenever possible - for example `make -C humanlayer-wui check` instead of `cd humanlayer-wui && bun run fmt`
+3. **保持徹底**:
+   - 在規劃前「完整」讀取所有上下文檔案
+   - 使用並行子任務研究實際程式碼模式
+   - 包含特定的檔案路徑和行號
+   - 撰寫可測量的成功準則,明確區分自動化與手動
+   - 自動化步驟應盡可能使用 `make` - 例如 `make -C humanlayer-wui check` 而非 `cd humanlayer-wui && bun run fmt`
 
-4. **Be Practical**:
-   - Focus on incremental, testable changes
-   - Consider migration and rollback
-   - Think about edge cases
-   - Include "what we're NOT doing"
+4. **保持實際**:
+   - 專注於漸進式、可測試的變更
+   - 考慮遷移和回滾
+   - 思考邊界情況
+   - 包含「我們不做的事情」
 
-5. **Track Progress**:
-   - Use TodoWrite to track planning tasks
-   - Update todos as you complete research
-   - Mark planning tasks complete when done
+5. **追蹤進度**:
+   - 使用 TodoWrite 追蹤規劃任務
+   - 完成研究時更新待辦事項
+   - 完成時標記規劃任務
 
-6. **No Open Questions in Final Plan**:
-   - If you encounter open questions during planning, STOP
-   - Research or ask for clarification immediately
-   - Do NOT write the plan with unresolved questions
-   - The implementation plan must be complete and actionable
-   - Every decision must be made before finalizing the plan
+6. **最終計畫中無開放性問題**:
+   - 如果在規劃期間遇到開放性問題,請「停止」
+   - 立即研究或尋求澄清
+   - 「不要」在有未解決問題的情況下撰寫計畫
+   - 實作計畫必須完整且可執行
+   - 在確定計畫前必須做出每個決策
 
-## Success Criteria Guidelines
+## 成功準則指引
 
-**Always separate success criteria into two categories:**
+**始終將成功準則分為兩類:**
 
-1. **Automated Verification** (can be run by execution agents):
-   - Commands that can be run: `make test`, `npm run lint`, etc.
-   - Specific files that should exist
-   - Code compilation/type checking
-   - Automated test suites
+1. **自動化驗證**(可由執行代理執行):
+   - 可執行的指令: `make test`、`npm run lint` 等
+   - 應該存在的特定檔案
+   - 程式碼編譯/型別檢查
+   - 自動化測試套件
 
-2. **Manual Verification** (requires human testing):
-   - UI/UX functionality
-   - Performance under real conditions
-   - Edge cases that are hard to automate
-   - User acceptance criteria
+2. **手動驗證**(需要人工測試):
+   - UI/UX 功能
+   - 真實條件下的效能
+   - 難以自動化的邊界情況
+   - 使用者驗收準則
 
-**Format example:**
+**格式範例:**
 ```markdown
-### Success Criteria:
+### 成功準則:
 
-#### Automated Verification:
-- [ ] Database migration runs successfully: `make migrate`
-- [ ] All unit tests pass: `go test ./...`
-- [ ] No linting errors: `golangci-lint run`
-- [ ] API endpoint returns 200: `curl localhost:8080/api/new-endpoint`
+#### 自動化驗證:
+- [ ] 資料庫遷移成功執行: `make migrate`
+- [ ] 所有單元測試通過: `go test ./...`
+- [ ] 無 linting 錯誤: `golangci-lint run`
+- [ ] API 端點回傳 200: `curl localhost:8080/api/new-endpoint`
 
-#### Manual Verification:
-- [ ] New feature appears correctly in the UI
-- [ ] Performance is acceptable with 1000+ items
-- [ ] Error messages are user-friendly
-- [ ] Feature works correctly on mobile devices
+#### 手動驗證:
+- [ ] 新功能在 UI 中正確顯示
+- [ ] 1000+ 項目時效能可接受
+- [ ] 錯誤訊息對使用者友善
+- [ ] 功能在行動裝置上正確運作
 ```
 
-## Common Patterns
+## 常見模式
 
-### For Database Changes:
-- Start with schema/migration
-- Add store methods
-- Update business logic
-- Expose via API
-- Update clients
+### 對於資料庫變更:
+- 從 schema/遷移開始
+- 新增 store 方法
+- 更新商業邏輯
+- 透過 API 公開
+- 更新客戶端
 
-### For New Features:
-- Research existing patterns first
-- Start with data model
-- Build backend logic
-- Add API endpoints
-- Implement UI last
+### 對於新功能:
+- 先研究現有模式
+- 從資料模型開始
+- 建構後端邏輯
+- 新增 API 端點
+- 最後實作 UI
 
-### For Refactoring:
-- Document current behavior
-- Plan incremental changes
-- Maintain backwards compatibility
-- Include migration strategy
+### 對於重構:
+- 記錄目前行為
+- 規劃漸進式變更
+- 維持向後相容性
+- 包含遷移策略
 
-## Sub-task Spawning Best Practices
+## 子任務產生最佳實踐
 
-When spawning research sub-tasks:
+產生研究子任務時:
 
-1. **Spawn multiple tasks in parallel** for efficiency
-2. **Each task should be focused** on a specific area
-3. **Provide detailed instructions** including:
-   - Exactly what to search for
-   - Which directories to focus on
-   - What information to extract
-   - Expected output format
-4. **Be EXTREMELY specific about directories**:
-   - If the ticket mentions "WUI", specify `humanlayer-wui/` directory
-   - If it mentions "daemon", specify `hld/` directory
-   - Never use generic terms like "UI" when you mean "WUI"
-   - Include the full path context in your prompts
-5. **Specify read-only tools** to use
-6. **Request specific file:line references** in responses
-7. **Wait for all tasks to complete** before synthesizing
-8. **Verify sub-task results**:
-   - If a sub-task returns unexpected results, spawn follow-up tasks
-   - Cross-check findings against the actual codebase
-   - Don't accept results that seem incorrect
+1. **並行產生多個任務**以提高效率
+2. **每個任務應該專注**於特定領域
+3. **提供詳細指示**包括:
+   - 確切要搜尋的內容
+   - 要專注的目錄
+   - 要提取的資訊
+   - 預期的輸出格式
+4. **對目錄要「極其」明確**:
+   - 如果工作項目提到「WUI」,請指定 `humanlayer-wui/` 目錄
+   - 如果提到「daemon」,請指定 `hld/` 目錄
+   - 當您指的是「WUI」時,絕不使用「UI」等通用術語
+   - 在您的提示中包含完整路徑上下文
+5. **指定要使用的唯讀工具**
+6. **要求回應中包含特定的 file:line 參考**
+7. **等待所有任務完成**後再進行整合
+8. **驗證子任務結果**:
+   - 如果子任務回傳意外結果,產生後續任務
+   - 交叉檢查發現與實際程式碼庫
+   - 不要接受看似不正確的結果
 
-Example of spawning multiple tasks:
+產生多個任務的範例:
 ```python
-# Spawn these tasks concurrently:
+# 同時產生這些任務:
 tasks = [
     Task("Research database schema", db_research_prompt),
     Task("Find API patterns", api_research_prompt),
@@ -422,18 +422,18 @@ tasks = [
 ]
 ```
 
-## Example Interaction Flow
+## 互動流程範例
 
 ```
-User: /create_plan
-Assistant: I'll help you create a detailed implementation plan...
+使用者: /create_plan
+助理: 我將協助您建立詳細的實作計畫...
 
-User: We need to add parent-child tracking for Claude sub-tasks. See thoughts/shared/tickets/eng_1478.md
-Assistant: Let me read that ticket file completely first...
+使用者: 我們需要為 Claude 子任務新增父子追蹤。請參閱 thoughts/shared/tickets/eng_1478.md
+助理: 讓我先完整讀取該工作項目檔案...
 
-[Reads file fully]
+[完整讀取檔案]
 
-Based on the ticket, I understand we need to track parent-child relationships for Claude sub-task events in the hld daemon. Before I start planning, I have some questions...
+根據工作項目,我了解我們需要在 hld daemon 中追蹤 Claude 子任務事件的父子關係。在開始規劃之前,我有一些問題...
 
-[Interactive process continues...]
+[互動流程繼續...]
 ```

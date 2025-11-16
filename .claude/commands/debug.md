@@ -1,200 +1,200 @@
 ---
-description: Debug issues by investigating logs, database state, and git history
+description: 透過調查日誌、資料庫狀態和 git 歷史來除錯問題
 ---
 
 # Debug
 
-You are tasked with helping debug issues during manual testing or implementation. This command allows you to investigate problems by examining logs, database state, and git history without editing files. Think of this as a way to bootstrap a debugging session without using the primary window's context.
+您的任務是協助在手動測試或實作期間除錯問題。此指令允許您透過檢查日誌、資料庫狀態和 git 歷史來調查問題，而無需編輯檔案。將此視為在不使用主視窗脈絡的情況下啟動除錯會話的方法。
 
-## Initial Response
+## 初始回應
 
-When invoked WITH a plan/ticket file:
+當使用計畫/票證檔案調用時：
 ```
-I'll help debug issues with [file name]. Let me understand the current state.
+我將協助除錯 [file name] 的問題。讓我了解當前狀態。
 
-What specific problem are you encountering?
-- What were you trying to test/implement?
-- What went wrong?
-- Any error messages?
+您遇到什麼具體問題？
+- 您試圖測試/實作什麼？
+- 出了什麼問題？
+- 有任何錯誤訊息嗎？
 
-I'll investigate the logs, database, and git state to help figure out what's happening.
-```
-
-When invoked WITHOUT parameters:
-```
-I'll help debug your current issue.
-
-Please describe what's going wrong:
-- What are you working on?
-- What specific problem occurred?
-- When did it last work?
-
-I can investigate logs, database state, and recent changes to help identify the issue.
+我將調查日誌、資料庫和 git 狀態以協助找出發生了什麼。
 ```
 
-## Environment Information
-
-You have access to these key locations and tools:
-
-**Logs** (automatically created by `make daemon` and `make wui`):
-- MCP logs: `~/.humanlayer/logs/mcp-claude-approvals-*.log`
-- Combined WUI/Daemon logs: `~/.humanlayer/logs/wui-${BRANCH_NAME}/codelayer.log`
-- First line shows: `[timestamp] starting [service] in [directory]`
-
-**Database**:
-- Location: `~/.humanlayer/daemon-{BRANCH_NAME}.db`
-- SQLite database with sessions, events, approvals, etc.
-- Can query directly with `sqlite3`
-
-**Git State**:
-- Check current branch, recent commits, uncommitted changes
-- Similar to how `commit` and `describe_pr` commands work
-
-**Service Status**:
-- Check if daemon is running: `ps aux | grep hld`
-- Check if WUI is running: `ps aux | grep wui`
-- Socket exists: `~/.humanlayer/daemon.sock`
-
-## Process Steps
-
-### Step 1: Understand the Problem
-
-After the user describes the issue:
-
-1. **Read any provided context** (plan or ticket file):
-   - Understand what they're implementing/testing
-   - Note which phase or step they're on
-   - Identify expected vs actual behavior
-
-2. **Quick state check**:
-   - Current git branch and recent commits
-   - Any uncommitted changes
-   - When the issue started occurring
-
-### Step 2: Investigate the Issue
-
-Spawn parallel Task agents for efficient investigation:
-
+當不帶參數調用時：
 ```
-Task 1 - Check Recent Logs:
-Find and analyze the most recent logs for errors:
-1. Find latest daemon log: ls -t ~/.humanlayer/logs/daemon-*.log | head -1
-2. Find latest WUI log: ls -t ~/.humanlayer/logs/wui-*.log | head -1
-3. Search for errors, warnings, or issues around the problem timeframe
-4. Note the working directory (first line of log)
-5. Look for stack traces or repeated errors
-Return: Key errors/warnings with timestamps
+我將協助除錯您當前的問題。
+
+請描述出了什麼問題：
+- 您正在處理什麼？
+- 發生了什麼具體問題？
+- 上次何時正常運作？
+
+我可以調查日誌、資料庫狀態和最近的變更以協助識別問題。
 ```
 
+## 環境資訊
+
+您可以存取這些關鍵位置和工具：
+
+**日誌**（由 `make daemon` 和 `make wui` 自動建立）：
+- MCP 日誌：`~/.humanlayer/logs/mcp-claude-approvals-*.log`
+- 合併的 WUI/Daemon 日誌：`~/.humanlayer/logs/wui-${BRANCH_NAME}/codelayer.log`
+- 第一行顯示：`[timestamp] starting [service] in [directory]`
+
+**資料庫**：
+- 位置：`~/.humanlayer/daemon-{BRANCH_NAME}.db`
+- 包含 sessions、events、approvals 等的 SQLite 資料庫
+- 可以直接使用 `sqlite3` 查詢
+
+**Git 狀態**：
+- 檢查當前分支、最近的 commit、未提交的變更
+- 類似於 `commit` 和 `describe_pr` 指令的運作方式
+
+**服務狀態**：
+- 檢查 daemon 是否正在執行：`ps aux | grep hld`
+- 檢查 WUI 是否正在執行：`ps aux | grep wui`
+- Socket 是否存在：`~/.humanlayer/daemon.sock`
+
+## 流程步驟
+
+### 步驟 1：理解問題
+
+在使用者描述問題後：
+
+1. **讀取任何提供的脈絡**（計畫或票證檔案）：
+   - 了解他們正在實作/測試什麼
+   - 注意他們在哪個階段或步驟
+   - 識別預期與實際行為
+
+2. **快速狀態檢查**：
+   - 當前 git 分支和最近的 commit
+   - 任何未提交的變更
+   - 問題何時開始發生
+
+### 步驟 2：調查問題
+
+產生並行的 Task 代理以進行高效調查：
+
 ```
-Task 2 - Database State:
-Check the current database state:
-1. Connect to database: sqlite3 ~/.humanlayer/daemon.db
-2. Check schema: .tables and .schema for relevant tables
-3. Query recent data:
+Task 1 - 檢查最近的日誌：
+尋找並分析最近的日誌以查找錯誤：
+1. 尋找最新的 daemon 日誌：ls -t ~/.humanlayer/logs/daemon-*.log | head -1
+2. 尋找最新的 WUI 日誌：ls -t ~/.humanlayer/logs/wui-*.log | head -1
+3. 在問題時間範圍內搜尋錯誤、警告或問題
+4. 注意工作目錄（日誌的第一行）
+5. 尋找堆疊追蹤或重複錯誤
+返回：帶時間戳記的關鍵錯誤/警告
+```
+
+```
+Task 2 - 資料庫狀態：
+檢查當前資料庫狀態：
+1. 連接到資料庫：sqlite3 ~/.humanlayer/daemon.db
+2. 檢查架構：.tables 和 .schema 以查看相關表格
+3. 查詢最近的資料：
    - SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;
    - SELECT * FROM conversation_events WHERE created_at > datetime('now', '-1 hour');
-   - Other queries based on the issue
-4. Look for stuck states or anomalies
-Return: Relevant database findings
+   - 基於問題的其他查詢
+4. 尋找卡住的狀態或異常
+返回：相關的資料庫發現
 ```
 
 ```
-Task 3 - Git and File State:
-Understand what changed recently:
-1. Check git status and current branch
-2. Look at recent commits: git log --oneline -10
-3. Check uncommitted changes: git diff
-4. Verify expected files exist
-5. Look for any file permission issues
-Return: Git state and any file issues
+Task 3 - Git 和檔案狀態：
+了解最近的變更：
+1. 檢查 git 狀態和當前分支
+2. 查看最近的 commit：git log --oneline -10
+3. 檢查未提交的變更：git diff
+4. 驗證預期的檔案是否存在
+5. 尋找任何檔案權限問題
+返回：Git 狀態和任何檔案問題
 ```
 
-### Step 3: Present Findings
+### 步驟 3：呈現發現
 
-Based on the investigation, present a focused debug report:
+根據調查，呈現一份專注的除錯報告：
 
 ```markdown
-## Debug Report
+## 除錯報告
 
-### What's Wrong
-[Clear statement of the issue based on evidence]
+### 問題所在
+[基於證據的清晰問題陳述]
 
-### Evidence Found
+### 發現的證據
 
-**From Logs** (`~/.humanlayer/logs/`):
-- [Error/warning with timestamp]
-- [Pattern or repeated issue]
+**來自日誌**（`~/.humanlayer/logs/`）：
+- [帶時間戳記的錯誤/警告]
+- [模式或重複問題]
 
-**From Database**:
+**來自資料庫**：
 ```sql
--- Relevant query and result
-[Finding from database]
+-- 相關查詢和結果
+[來自資料庫的發現]
 ```
 
-**From Git/Files**:
-- [Recent changes that might be related]
-- [File state issues]
+**來自 Git/檔案**：
+- [可能相關的最近變更]
+- [檔案狀態問題]
 
-### Root Cause
-[Most likely explanation based on evidence]
+### 根本原因
+[基於證據的最可能解釋]
 
-### Next Steps
+### 後續步驟
 
-1. **Try This First**:
+1. **首先嘗試此操作**：
    ```bash
-   [Specific command or action]
+   [具體指令或動作]
    ```
 
-2. **If That Doesn't Work**:
-   - Restart services: `make daemon` and `make wui`
-   - Check browser console for WUI errors
-   - Run with debug: `HUMANLAYER_DEBUG=true make daemon`
+2. **如果無效**：
+   - 重啟服務：`make daemon` 和 `make wui`
+   - 檢查 WUI 錯誤的瀏覽器控制台
+   - 使用除錯模式執行：`HUMANLAYER_DEBUG=true make daemon`
 
-### Can't Access?
-Some issues might be outside my reach:
-- Browser console errors (F12 in browser)
-- MCP server internal state
-- System-level issues
+### 無法存取？
+某些問題可能超出我的能力範圍：
+- 瀏覽器控制台錯誤（在瀏覽器中按 F12）
+- MCP 伺服器內部狀態
+- 系統層級問題
 
-Would you like me to investigate something specific further?
+您希望我進一步調查特定事項嗎？
 ```
 
-## Important Notes
+## 重要注意事項
 
-- **Focus on manual testing scenarios** - This is for debugging during implementation
-- **Always require problem description** - Can't debug without knowing what's wrong
-- **Read files completely** - No limit/offset when reading context
-- **Think like `commit` or `describe_pr`** - Understand git state and changes
-- **Guide back to user** - Some issues (browser console, MCP internals) are outside reach
-- **No file editing** - Pure investigation only
+- **專注於手動測試場景** - 這是用於實作期間的除錯
+- **務必要求問題描述** - 沒有知道問題所在就無法除錯
+- **完整讀取檔案** - 讀取脈絡時不使用 limit/offset
+- **像 `commit` 或 `describe_pr` 一樣思考** - 了解 git 狀態和變更
+- **引導回使用者** - 某些問題（瀏覽器控制台、MCP 內部）超出能力範圍
+- **不編輯檔案** - 僅進行調查
 
-## Quick Reference
+## 快速參考
 
-**Find Latest Logs**:
+**尋找最新日誌**：
 ```bash
 ls -t ~/.humanlayer/logs/daemon-*.log | head -1
 ls -t ~/.humanlayer/logs/wui-*.log | head -1
 ```
 
-**Database Queries**:
+**資料庫查詢**：
 ```bash
 sqlite3 ~/.humanlayer/daemon.db ".tables"
 sqlite3 ~/.humanlayer/daemon.db ".schema sessions"
 sqlite3 ~/.humanlayer/daemon.db "SELECT * FROM sessions ORDER BY created_at DESC LIMIT 5;"
 ```
 
-**Service Check**:
+**服務檢查**：
 ```bash
-ps aux | grep hld     # Is daemon running?
-ps aux | grep wui     # Is WUI running?
+ps aux | grep hld     # daemon 是否正在執行？
+ps aux | grep wui     # WUI 是否正在執行？
 ```
 
-**Git State**:
+**Git 狀態**：
 ```bash
 git status
 git log --oneline -10
 git diff
 ```
 
-Remember: This command helps you investigate without burning the primary window's context. Perfect for when you hit an issue during manual testing and need to dig into logs, database, or git state.
+記住：此指令協助您在不耗用主視窗脈絡的情況下進行調查。當您在手動測試期間遇到問題並需要深入研究日誌、資料庫或 git 狀態時非常適合。

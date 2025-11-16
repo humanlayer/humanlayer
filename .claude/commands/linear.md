@@ -1,280 +1,279 @@
 ---
-description: Manage Linear tickets - create, update, comment, and follow workflow patterns
+description: 管理 Linear 工作項目 - 建立、更新、留言，並遵循工作流程模式
 ---
 
-# Linear - Ticket Management
+# Linear - 工作項目管理
 
-You are tasked with managing Linear tickets, including creating tickets from thoughts documents, updating existing tickets, and following the team's specific workflow patterns.
+你的任務是管理 Linear 工作項目，包括從想法文件建立工作項目、更新現有工作項目，以及遵循團隊的特定工作流程模式。
 
-## Initial Setup
+## 初始設定
 
-First, verify that Linear MCP tools are available by checking if any `mcp__linear__` tools exist. If not, respond:
+首先，透過檢查是否存在任何 `mcp__linear__` 工具來驗證 Linear MCP 工具是否可用。如果不可用，回應：
 ```
-I need access to Linear tools to help with ticket management. Please run the `/mcp` command to enable the Linear MCP server, then try again.
-```
-
-If tools are available, respond based on the user's request:
-
-### For general requests:
-```
-I can help you with Linear tickets. What would you like to do?
-1. Create a new ticket from a thoughts document
-2. Add a comment to a ticket (I'll use our conversation context)
-3. Search for tickets
-4. Update ticket status or details
+我需要存取 Linear 工具來協助工作項目管理。請執行 `/mcp` 指令以啟用 Linear MCP 伺服器，然後重試。
 ```
 
-### For specific create requests:
+如果工具可用，根據使用者的請求回應：
+
+### 對於一般請求：
 ```
-I'll help you create a Linear ticket from your thoughts document. Please provide:
-1. The path to the thoughts document (or topic to search for)
-2. Any specific focus or angle for the ticket (optional)
+我可以協助你處理 Linear 工作項目。你想要做什麼？
+1. 從想法文件建立新的工作項目
+2. 在工作項目中新增留言（我將使用我們的對話上下文）
+3. 搜尋工作項目
+4. 更新工作項目狀態或詳細資訊
 ```
 
-Then wait for the user's input.
+### 對於特定建立請求：
+```
+我將協助你從想法文件建立 Linear 工作項目。請提供：
+1. 想法文件的路徑（或要搜尋的主題）
+2. 工作項目的任何特定焦點或角度（選填）
+```
 
-## Team Workflow & Status Progression
+然後等待使用者的輸入。
 
-The team follows a specific workflow to ensure alignment before code implementation:
+## 團隊工作流程與狀態進展
 
-1. **Triage** → All new tickets start here for initial review
-2. **Spec Needed** → More detail is needed - problem to solve and solution outline necessary
-3. **Research Needed** → Ticket requires investigation before plan can be written
-4. **Research in Progress** → Active research/investigation underway
-5. **Research in Review** → Research findings under review (optional step)
-6. **Ready for Plan** → Research complete, ticket needs an implementation plan
-7. **Plan in Progress** → Actively writing the implementation plan
-8. **Plan in Review** → Plan is written and under discussion
-9. **Ready for Dev** → Plan approved, ready for implementation
-10. **In Dev** → Active development
-11. **Code Review** → PR submitted
-12. **Done** → Completed
+團隊遵循特定的工作流程以確保在程式碼實作前達成共識:
 
-**Key principle**: Review and alignment happen at the plan stage (not PR stage) to move faster and avoid rework.
+1. **Triage** → 所有新工作項目從此開始進行初步審查
+2. **Spec Needed** → 需要更多細節 - 需要問題描述和解決方案大綱
+3. **Research Needed** → 工作項目在撰寫計畫前需要調查
+4. **Research in Progress** → 正在進行研究/調查
+5. **Research in Review** → 研究結果審查中(選填步驟)
+6. **Ready for Plan** → 研究完成,工作項目需要實作計畫
+7. **Plan in Progress** → 正在撰寫實作計畫
+8. **Plan in Review** → 計畫已撰寫並在討論中
+9. **Ready for Dev** → 計畫已批准,準備實作
+10. **In Dev** → 積極開發中
+11. **Code Review** → PR 已提交
+12. **Done** → 已完成
 
-## Important Conventions
+**核心原則**: 審查和共識發生在計畫階段(而非 PR 階段),以加快進度並避免重工。
 
-### URL Mapping for Thoughts Documents
-When referencing thoughts documents, always provide GitHub links using the `links` parameter:
+## 重要慣例
+
+### Thoughts 文件的 URL 對應
+參考 thoughts 文件時,始終使用 `links` 參數提供 GitHub 連結:
 - `thoughts/shared/...` → `https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/...`
 - `thoughts/allison/...` → `https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/allison/...`
 - `thoughts/global/...` → `https://github.com/humanlayer/thoughts/blob/main/global/...`
 
-### Default Values
-- **Status**: Always create new tickets in "Triage" status
-- **Project**: For new tickets, default to "M U L T I C L A U D E" (ID: f11c8d63-9120-4393-bfae-553da0b04fd8) unless told otherwise
-- **Priority**: Default to Medium (3) for most tasks, use best judgment or ask user
-  - Urgent (1): Critical blockers, security issues
-  - High (2): Important features with deadlines, major bugs
-  - Medium (3): Standard implementation tasks (default)
-  - Low (4): Nice-to-haves, minor improvements
-- **Links**: Use the `links` parameter to attach URLs (not just markdown links in description)
+### 預設值
+- **狀態**: 始終在「Triage」狀態中建立新工作項目
+- **專案**: 對於新工作項目,除非另有說明,否則預設為「M U L T I C L A U D E」(ID: f11c8d63-9120-4393-bfae-553da0b04fd8)
+- **優先順序**: 大多數任務預設為中等 (3),使用最佳判斷或詢問使用者
+  - 緊急 (1): 關鍵阻礙、安全問題
+  - 高 (2): 有截止日期的重要功能、主要錯誤
+  - 中等 (3): 標準實作任務(預設)
+  - 低 (4): 錦上添花、小改進
+- **連結**: 使用 `links` 參數附加 URL(不只是描述中的 markdown 連結)
 
-### Automatic Label Assignment
-Automatically apply labels based on the ticket content:
-- **hld**: For tickets about the `hld/` directory (the daemon)
-- **wui**: For tickets about `humanlayer-wui/`
-- **meta**: For tickets about `hlyr` commands, thoughts tool, or `thoughts/` directory
+### 自動標籤分配
+根據工作項目內容自動套用標籤:
+- **hld**: 關於 `hld/` 目錄(daemon)的工作項目
+- **wui**: 關於 `humanlayer-wui/` 的工作項目
+- **meta**: 關於 `hlyr` 指令、thoughts 工具或 `thoughts/` 目錄的工作項目
 
-Note: meta is mutually exclusive with hld/wui. Tickets can have both hld and wui, but not meta with either.
+注意: meta 與 hld/wui 互斥。工作項目可以同時有 hld 和 wui,但不能有 meta 搭配其中任一個。
 
-## Action-Specific Instructions
+## 特定動作指示
 
-### 1. Creating Tickets from Thoughts
+### 1. 從 Thoughts 建立工作項目
 
-#### Steps to follow after receiving the request:
+#### 收到請求後要遵循的步驟:
 
-1. **Locate and read the thoughts document:**
-   - If given a path, read the document directly
-   - If given a topic/keyword, search thoughts/ directory using Grep to find relevant documents
-   - If multiple matches found, show list and ask user to select
-   - Create a TodoWrite list to track: Read document → Analyze content → Draft ticket → Get user input → Create ticket
+1. **找出並讀取 thoughts 文件:**
+   - 如果給定路徑,直接讀取文件
+   - 如果給定主題/關鍵字,使用 Grep 搜尋 thoughts/ 目錄以找出相關文件
+   - 如果找到多個匹配項,顯示清單並要求使用者選擇
+   - 建立 TodoWrite 清單以追蹤: 讀取文件 → 分析內容 → 起草工作項目 → 獲取使用者輸入 → 建立工作項目
 
-2. **Analyze the document content:**
-   - Identify the core problem or feature being discussed
-   - Extract key implementation details or technical decisions
-   - Note any specific code files or areas mentioned
-   - Look for action items or next steps
-   - Identify what stage the idea is at (early ideation vs ready to implement)
-   - Take time to ultrathink about distilling the essence of this document into a clear problem statement and solution approach
+2. **分析文件內容:**
+   - 識別正在討論的核心問題或功能
+   - 提取關鍵實作細節或技術決策
+   - 記錄提到的任何特定程式碼檔案或領域
+   - 尋找行動項目或後續步驟
+   - 識別想法處於什麼階段(早期構思與準備實作)
+   - 花時間深入思考如何將此文件的精髓提煉成清晰的問題陳述和解決方案方法
 
-3. **Check for related context (if mentioned in doc):**
-   - If the document references specific code files, read relevant sections
-   - If it mentions other thoughts documents, quickly check them
-   - Look for any existing Linear tickets mentioned
+3. **檢查相關上下文(如果文件中提到):**
+   - 如果文件參考特定程式碼檔案,讀取相關章節
+   - 如果提到其他 thoughts 文件,快速檢查它們
+   - 尋找任何提及的現有 Linear 工作項目
 
-4. **Get Linear workspace context:**
-   - List teams: `mcp__linear__list_teams`
-   - If multiple teams, ask user to select one
-   - List projects for selected team: `mcp__linear__list_projects`
+4. **獲取 Linear 工作區上下文:**
+   - 列出團隊: `mcp__linear__list_teams`
+   - 如果有多個團隊,請使用者選擇一個
+   - 列出所選團隊的專案: `mcp__linear__list_projects`
 
-5. **Draft the ticket summary:**
-   Present a draft to the user:
+5. **起草工作項目摘要:**
+   向使用者呈現草稿:
    ```
-   ## Draft Linear Ticket
+   ## Linear 工作項目草稿
 
-   **Title**: [Clear, action-oriented title]
+   **標題**: [清晰、以行動為導向的標題]
 
-   **Description**:
-   [2-3 sentence summary of the problem/goal]
+   **描述**:
+   [2-3 句問題/目標摘要]
 
-   ## Key Details
-   - [Bullet points of important details from thoughts]
-   - [Technical decisions or constraints]
-   - [Any specific requirements]
+   ## 關鍵細節
+   - [來自 thoughts 的重要細節要點]
+   - [技術決策或限制條件]
+   - [任何特定需求]
 
-   ## Implementation Notes (if applicable)
-   [Any specific technical approach or steps outlined]
+   ## 實作注意事項(如果適用)
+   [概述的任何特定技術方法或步驟]
 
-   ## References
-   - Source: `thoughts/[path/to/document.md]` ([View on GitHub](converted GitHub URL))
-   - Related code: [any file:line references]
-   - Parent ticket: [if applicable]
+   ## 參考資料
+   - 來源: `thoughts/[path/to/document.md]` ([在 GitHub 上檢視](轉換後的 GitHub URL))
+   - 相關程式碼: [任何 file:line 參考]
+   - 父工作項目: [如果適用]
 
    ---
-   Based on the document, this seems to be at the stage of: [ideation/planning/ready to implement]
+   根據文件,這似乎處於以下階段: [構思/規劃/準備實作]
    ```
 
-6. **Interactive refinement:**
-   Ask the user:
-   - Does this summary capture the ticket accurately?
-   - Which project should this go in? [show list]
-   - What priority? (Default: Medium/3)
-   - Any additional context to add?
-   - Should we include more/less implementation detail?
-   - Do you want to assign it to yourself?
+6. **互動式精煉:**
+   詢問使用者:
+   - 此摘要是否準確捕捉了工作項目?
+   - 這應該放在哪個專案中? [顯示清單]
+   - 什麼優先順序? (預設: 中等/3)
+   - 要新增任何額外上下文嗎?
+   - 我們應該包含更多/更少實作細節嗎?
+   - 您想要將它指派給自己嗎?
 
-   Note: Ticket will be created in "Triage" status by default.
+   注意: 工作項目預設將在「Triage」狀態中建立。
 
-7. **Create the Linear ticket:**
+7. **建立 Linear 工作項目:**
    ```
    mcp__linear__create_issue with:
-   - title: [refined title]
-   - description: [final description in markdown]
-   - teamId: [selected team]
-   - projectId: [use default project from above unless user specifies]
-   - priority: [selected priority number, default 3]
-   - stateId: [Triage status ID]
-   - assigneeId: [if requested]
-   - labelIds: [apply automatic label assignment from above]
+   - title: [精煉的標題]
+   - description: [markdown 格式的最終描述]
+   - teamId: [所選團隊]
+   - projectId: [除非使用者指定,否則使用上述預設專案]
+   - priority: [所選優先順序編號,預設 3]
+   - stateId: [Triage 狀態 ID]
+   - assigneeId: [如果請求]
+   - labelIds: [套用上述自動標籤分配]
    - links: [{url: "GitHub URL", title: "Document Title"}]
    ```
 
-8. **Post-creation actions:**
-   - Show the created ticket URL
-   - Ask if user wants to:
-     - Add a comment with additional implementation details
-     - Create sub-tasks for specific action items
-     - Update the original thoughts document with the ticket reference
-   - If yes to updating thoughts doc:
+8. **建立後動作:**
+   - 顯示已建立的工作項目 URL
+   - 詢問使用者是否想要:
+     - 新增包含額外實作細節的留言
+     - 為特定行動項目建立子任務
+     - 使用工作項目參考更新原始 thoughts 文件
+   - 如果同意更新 thoughts 文件:
      ```
-     Add at the top of the document:
+     在文件頂部新增:
      ---
      linear_ticket: [URL]
      created: [date]
      ---
      ```
 
-## Example transformations:
+## 轉換範例:
 
-### From verbose thoughts:
+### 從冗長的 thoughts:
 ```
-"I've been thinking about how our resumed sessions don't inherit permissions properly.
-This is causing issues where users have to re-specify everything. We should probably
-store all the config in the database and then pull it when resuming. Maybe we need
-new columns for permission_prompt_tool and allowed_tools..."
-```
-
-### To concise ticket:
-```
-Title: Fix resumed sessions to inherit all configuration from parent
-
-Description:
-
-## Problem to solve
-Currently, resumed sessions only inherit Model and WorkingDir from parent sessions,
-causing all other configuration to be lost. Users must re-specify permissions and
-settings when resuming.
-
-## Solution
-Store all session configuration in the database and automatically inherit it when
-resuming sessions, with support for explicit overrides.
+「我一直在想我們恢復的會話沒有正確繼承權限的問題。
+這導致使用者必須重新指定所有內容。我們應該可能
+將所有設定儲存在資料庫中,然後在恢復時提取。也許我們需要
+permission_prompt_tool 和 allowed_tools 的新欄位...」
 ```
 
-### 2. Adding Comments and Links to Existing Tickets
+### 到簡潔的工作項目:
+```
+標題: 修復恢復的會話以繼承父會話的所有設定
 
-When user wants to add a comment to a ticket:
+描述:
 
-1. **Determine which ticket:**
-   - Use context from the current conversation to identify the relevant ticket
-   - If uncertain, use `mcp__linear__get_issue` to show ticket details and confirm with user
-   - Look for ticket references in recent work discussed
+## 要解決的問題
+目前,恢復的會話只繼承父會話的 Model 和 WorkingDir,
+導致所有其他設定遺失。使用者必須在恢復時重新指定權限和設定。
 
-2. **Format comments for clarity:**
-   - Attempt to keep comments concise (~10 lines) unless more detail is needed
-   - Focus on the key insight or most useful information for a human reader
-   - Not just what was done, but what matters about it
-   - Include relevant file references with backticks and GitHub links
+## 解決方案
+將所有會話設定儲存在資料庫中,並在恢復會話時自動繼承,
+支援明確覆寫。
+```
 
-3. **File reference formatting:**
-   - Wrap paths in backticks: `thoughts/allison/example.md`
-   - Add GitHub link after: `([View](url))`
-   - Do this for both thoughts/ and code files mentioned
+### 2. 為現有工作項目新增留言和連結
 
-4. **Comment structure example:**
+當使用者想要為工作項目新增留言時:
+
+1. **確定哪個工作項目:**
+   - 使用目前對話的上下文來識別相關工作項目
+   - 如果不確定,使用 `mcp__linear__get_issue` 顯示工作項目詳細資訊並與使用者確認
+   - 尋找最近討論的工作中提到的工作項目參考
+
+2. **格式化留言以提高清晰度:**
+   - 除非需要更多細節,否則嘗試保持留言簡潔(約 10 行)
+   - 專注於關鍵見解或對人類讀者最有用的資訊
+   - 不只是做了什麼,而是它有什麼重要性
+   - 包含帶有反引號和 GitHub 連結的相關檔案參考
+
+3. **檔案參考格式:**
+   - 用反引號包裝路徑: `thoughts/allison/example.md`
+   - 之後新增 GitHub 連結: `([View](url))`
+   - 對提到的 thoughts/ 和程式碼檔案都這樣做
+
+4. **留言結構範例:**
    ```markdown
-   Implemented retry logic in webhook handler to address rate limit issues.
+   在 webhook 處理器中實作重試邏輯以解決速率限制問題。
 
-   Key insight: The 429 responses were clustered during batch operations,
-   so exponential backoff alone wasn't sufficient - added request queuing.
+   關鍵見解: 429 回應在批次操作期間聚集,
+   因此單獨的指數退避不夠 - 新增了請求佇列。
 
-   Files updated:
+   更新的檔案:
    - `hld/webhooks/handler.go` ([GitHub](link))
    - `thoughts/shared/rate_limit_analysis.md` ([GitHub](link))
    ```
 
-5. **Handle links properly:**
-   - If adding a link with a comment: Update the issue with the link AND mention it in the comment
-   - If only adding a link: Still create a comment noting what link was added for posterity
-   - Always add links to the issue itself using the `links` parameter
+5. **正確處理連結:**
+   - 如果新增帶留言的連結: 更新工作項目的連結「並」在留言中提及它
+   - 如果只新增連結: 仍然建立留言記錄新增了什麼連結以供後用
+   - 始終使用 `links` 參數將連結新增到工作項目本身
 
-6. **For comments with links:**
+6. **對於帶連結的留言:**
    ```
-   # First, update the issue with the link
+   # 首先,用連結更新工作項目
    mcp__linear__update_issue with:
    - id: [ticket ID]
    - links: [existing links + new link with proper title]
 
-   # Then, create the comment mentioning the link
+   # 然後,建立提及連結的留言
    mcp__linear__create_comment with:
    - issueId: [ticket ID]
    - body: [formatted comment with key insights and file references]
    ```
 
-7. **For links only:**
+7. **僅對於連結:**
    ```
-   # Update the issue with the link
+   # 用連結更新工作項目
    mcp__linear__update_issue with:
    - id: [ticket ID]
    - links: [existing links + new link with proper title]
 
-   # Add a brief comment for posterity
+   # 新增簡短留言以供後用
    mcp__linear__create_comment with:
    - issueId: [ticket ID]
    - body: "Added link: `path/to/document.md` ([View](url))"
    ```
 
-### 3. Searching for Tickets
+### 3. 搜尋工作項目
 
-When user wants to find tickets:
+當使用者想要找出工作項目時:
 
-1. **Gather search criteria:**
-   - Query text
-   - Team/Project filters
-   - Status filters
-   - Date ranges (createdAt, updatedAt)
+1. **收集搜尋準則:**
+   - 查詢文字
+   - 團隊/專案篩選器
+   - 狀態篩選器
+   - 日期範圍 (createdAt, updatedAt)
 
-2. **Execute search:**
+2. **執行搜尋:**
    ```
    mcp__linear__list_issues with:
    - query: [search text]
@@ -284,83 +283,83 @@ When user wants to find tickets:
    - limit: 20
    ```
 
-3. **Present results:**
-   - Show ticket ID, title, status, assignee
-   - Group by project if multiple projects
-   - Include direct links to Linear
+3. **呈現結果:**
+   - 顯示工作項目 ID、標題、狀態、受指派人
+   - 如果有多個專案,按專案分組
+   - 包含 Linear 的直接連結
 
-### 4. Updating Ticket Status
+### 4. 更新工作項目狀態
 
-When moving tickets through the workflow:
+在工作流程中移動工作項目時:
 
-1. **Get current status:**
-   - Fetch ticket details
-   - Show current status in workflow
+1. **獲取目前狀態:**
+   - 取得工作項目詳細資訊
+   - 在工作流程中顯示目前狀態
 
-2. **Suggest next status:**
-   - Triage → Spec Needed (lacks detail/problem statement)
-   - Spec Needed → Research Needed (once problem/solution outlined)
-   - Research Needed → Research in Progress (starting research)
-   - Research in Progress → Research in Review (optional, can skip to Ready for Plan)
-   - Research in Review → Ready for Plan (research approved)
-   - Ready for Plan → Plan in Progress (starting to write plan)
-   - Plan in Progress → Plan in Review (plan written)
-   - Plan in Review → Ready for Dev (plan approved)
-   - Ready for Dev → In Dev (work started)
+2. **建議下一個狀態:**
+   - Triage → Spec Needed (缺少細節/問題陳述)
+   - Spec Needed → Research Needed (問題/解決方案概述後)
+   - Research Needed → Research in Progress (開始研究)
+   - Research in Progress → Research in Review (選填,可跳至 Ready for Plan)
+   - Research in Review → Ready for Plan (研究已批准)
+   - Ready for Plan → Plan in Progress (開始撰寫計畫)
+   - Plan in Progress → Plan in Review (計畫已撰寫)
+   - Plan in Review → Ready for Dev (計畫已批准)
+   - Ready for Dev → In Dev (工作已開始)
 
-3. **Update with context:**
+3. **帶上下文更新:**
    ```
    mcp__linear__update_issue with:
    - id: [ticket ID]
    - stateId: [new status ID]
    ```
 
-   Consider adding a comment explaining the status change.
+   考慮新增解釋狀態變更的留言。
 
-## Important Notes
+## 重要注意事項
 
-- Tag users in descriptions and comments using `@[name](ID)` format, e.g., `@[dex](16765c85-2286-4c0f-ab49-0d4d79222ef5)`
-- Keep tickets concise but complete - aim for scannable content
-- All tickets should include a clear "problem to solve" - if the user asks for a ticket and only gives implementation details, you MUST ask "To write a good ticket, please explain the problem you're trying to solve from a user perspective"
-- Focus on the "what" and "why", include "how" only if well-defined
-- Always preserve links to source material using the `links` parameter
-- Don't create tickets from early-stage brainstorming unless requested
-- Use proper Linear markdown formatting
-- Include code references as: `path/to/file.ext:linenum`
-- Ask for clarification rather than guessing project/status
-- Remember that Linear descriptions support full markdown including code blocks
-- Always use the `links` parameter for external URLs (not just markdown links)
-- remember - you must get a "Problem to solve"!
+- 在描述和留言中使用 `@[name](ID)` 格式標記使用者,例如:`@[dex](16765c85-2286-4c0f-ab49-0d4d79222ef5)`
+- 保持工作項目簡潔但完整 - 目標是可掃描的內容
+- 所有工作項目都應包含清晰的「要解決的問題」- 如果使用者要求工作項目但只提供實作細節,您「必須」詢問「要撰寫好的工作項目,請從使用者角度解釋您試圖解決的問題」
+- 專注於「什麼」和「為什麼」,只有在定義明確時才包含「如何」
+- 始終使用 `links` 參數保留來源資料的連結
+- 除非請求,否則不要從早期階段的腦力激盪建立工作項目
+- 使用正確的 Linear markdown 格式
+- 包含程式碼參考為: `path/to/file.ext:linenum`
+- 尋求澄清而不是猜測專案/狀態
+- 記住 Linear 描述支援完整的 markdown,包括程式碼區塊
+- 始終對外部 URL 使用 `links` 參數(不只是描述中的 markdown 連結)
+- 記住 - 您必須獲得「要解決的問題」!
 
-## Comment Quality Guidelines
+## 留言品質指引
 
-When creating comments, focus on extracting the **most valuable information** for a human reader:
+建立留言時,專注於提取對人類讀者**最有價值的資訊**:
 
-- **Key insights over summaries**: What's the "aha" moment or critical understanding?
-- **Decisions and tradeoffs**: What approach was chosen and what it enables/prevents
-- **Blockers resolved**: What was preventing progress and how it was addressed
-- **State changes**: What's different now and what it means for next steps
-- **Surprises or discoveries**: Unexpected findings that affect the work
+- **關鍵見解優於摘要**: 什麼是「頓悟」時刻或關鍵理解?
+- **決策和權衡**: 選擇了什麼方法以及它啟用/阻止了什麼
+- **解決的阻礙**: 什麼阻止了進度以及如何解決的
+- **狀態變更**: 現在有什麼不同以及對後續步驟意味著什麼
+- **驚喜或發現**: 影響工作的意外發現
 
-Avoid:
-- Mechanical lists of changes without context
-- Restating what's obvious from code diffs
-- Generic summaries that don't add value
+避免:
+- 沒有上下文的機械式變更清單
+- 重述程式碼差異中顯而易見的內容
+- 不增加價值的通用摘要
 
-Remember: The goal is to help a future reader (including yourself) quickly understand what matters about this update.
+記住: 目標是幫助未來的讀者(包括您自己)快速理解此更新的重要內容。
 
-## Commonly Used IDs
+## 常用 ID
 
-### Engineering Team
+### 工程團隊
 - **Team ID**: `6b3b2115-efd4-4b83-8463-8160842d2c84`
 
-### Label IDs
+### 標籤 ID
 - **bug**: `ff23dde3-199b-421e-904c-4b9f9b3d452c`
 - **hld**: `d28453c8-e53e-4a06-bea9-b5bbfad5f88a`
 - **meta**: `7a5abaae-f343-4f52-98b0-7987048b0cfa`
 - **wui**: `996deb94-ba0f-4375-8b01-913e81477c4b`
 
-### Workflow State IDs
+### 工作流程狀態 ID
 - **Triage**: `77da144d-fe13-4c3a-a53a-cfebd06c0cbe` (type: triage)
 - **spec needed**: `274beb99-bff8-4d7b-85cf-04d18affbc82` (type: unstarted)
 - **research needed**: `d0b89672-8189-45d6-b705-50afd6c94a91` (type: unstarted)
@@ -381,7 +380,7 @@ Remember: The goal is to help a future reader (including yourself) quickly under
 - **Canceled**: `14a28d0d-c6aa-4d8e-9ff2-9801d4cc7de1` (type: canceled)
 
 
-## Linear User IDs
+## Linear 使用者 ID
 
 - allison: b157f9e4-8faf-4e7e-a598-dae6dec8a584
 - dex: 16765c85-2286-4c0f-ab49-0d4d79222ef5

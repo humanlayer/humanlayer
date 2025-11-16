@@ -1,16 +1,16 @@
 ---
-description: Generate comprehensive PR descriptions following repository templates
+description: 依照儲存庫範本產生完整的 PR 說明
 ---
 
-# Generate PR Description
+# 產生 PR 說明
 
-You are tasked with generating a comprehensive pull request description following the repository's standard template.
+您的任務是依照儲存庫的標準範本產生完整的 pull request 說明。
 
-## Steps to follow:
+## 執行步驟：
 
-1. **Read the PR description template:**
+1. **讀取 PR 說明範本：**
 
-    - Use the following PR description template:
+    - 使用以下 PR 說明範本：
 
         ```md
         ## What problem(s) was I solving?
@@ -26,64 +26,64 @@ You are tasked with generating a comprehensive pull request description followin
         ## Description for the changelog
         ```
 
-    - Read the template carefully to understand all sections and requirements
+    - 仔細閱讀範本以理解所有章節和要求
 
-2. **Identify the PR to describe:**
-   - Check if the current branch has an associated PR: `gh pr view --json url,number,title,state 2>/dev/null`
-   - If no PR exists for the current branch, or if on main/master, list open PRs: `gh pr list --limit 10 --json number,title,headRefName,author`
-   - Ask the user which PR they want to describe
+2. **識別要描述的 PR：**
+   - 檢查當前分支是否有關聯的 PR：`gh pr view --json url,number,title,state 2>/dev/null`
+   - 如果當前分支沒有 PR，或在 main/master 分支上，列出開啟的 PR：`gh pr list --limit 10 --json number,title,headRefName,author`
+   - 詢問使用者想要描述哪個 PR
 
-3. **Check for existing description:**
-   - Check if `/tmp/{repo_name}/prs/{number}_description.md` already exists
-   - If it exists, read it and inform the user you'll be updating it
-   - Consider what has changed since the last description was written
+3. **檢查現有說明：**
+   - 檢查 `/tmp/{repo_name}/prs/{number}_description.md` 是否已存在
+   - 如果存在，讀取它並告知使用者您將更新它
+   - 考慮自上次撰寫說明以來有哪些變更
 
-4. **Gather comprehensive PR information:**
-   - Get the full PR diff: `gh pr diff {number}`
-   - If you get an error about no default remote repository, instruct the user to run `gh repo set-default` and select the appropriate repository
-   - Get commit history: `gh pr view {number} --json commits`
-   - Review the base branch: `gh pr view {number} --json baseRefName`
-   - Get PR metadata: `gh pr view {number} --json url,title,number,state`
+4. **收集完整的 PR 資訊：**
+   - 取得完整的 PR diff：`gh pr diff {number}`
+   - 如果收到沒有預設遠端儲存庫的錯誤，指示使用者執行 `gh repo set-default` 並選擇適當的儲存庫
+   - 取得 commit 歷史：`gh pr view {number} --json commits`
+   - 查看基礎分支：`gh pr view {number} --json baseRefName`
+   - 取得 PR 中繼資料：`gh pr view {number} --json url,title,number,state`
 
-5. **Analyze the changes thoroughly:** (ultrathink about the code changes, their architectural implications, and potential impacts)
-   - Read through the entire diff carefully
-   - For context, read any files that are referenced but not shown in the diff
-   - Understand the purpose and impact of each change
-   - Identify user-facing changes vs internal implementation details
-   - Look for breaking changes or migration requirements
+5. **徹底分析變更：**（深入思考程式碼變更、其架構影響和潛在影響）
+   - 仔細閱讀整個 diff
+   - 為了理解脈絡，讀取任何在 diff 中被引用但未顯示的檔案
+   - 理解每個變更的目的和影響
+   - 識別面向使用者的變更與內部實作細節
+   - 尋找破壞性變更或遷移需求
 
-6. **Handle verification requirements:**
-   - Look for any checklist items in the "How to verify it" section of the template
-   - For each verification step:
-     - If it's a command you can run (like `make check test`, `npm test`, etc.), run it
-     - If it passes, mark the checkbox as checked: `- [x]`
-     - If it fails, keep it unchecked and note what failed: `- [ ]` with explanation
-     - If it requires manual testing (UI interactions, external services), leave unchecked and note for user
-   - Document any verification steps you couldn't complete
+6. **處理驗證需求：**
+   - 在範本的「如何驗證」章節中尋找任何檢查清單項目
+   - 對於每個驗證步驟：
+     - 如果是您可以執行的指令（如 `make check test`、`npm test` 等），執行它
+     - 如果通過，將核取方塊標記為已勾選：`- [x]`
+     - 如果失敗，保持未勾選並註明失敗原因：`- [ ]` 附上說明
+     - 如果需要手動測試（UI 互動、外部服務），保持未勾選並為使用者註記
+   - 記錄任何您無法完成的驗證步驟
 
-7. **Generate the description:**
-   - Fill out each section from the template thoroughly:
-     - Answer each question/section based on your analysis
-     - Be specific about problems solved and changes made
-     - Focus on user impact where relevant
-     - Include technical details in appropriate sections
-     - Write a concise changelog entry
-   - Ensure all checklist items are addressed (checked or explained)
+7. **產生說明：**
+   - 徹底填寫範本中的每個章節：
+     - 根據您的分析回答每個問題/章節
+     - 具體說明解決的問題和所做的變更
+     - 在相關處專注於對使用者的影響
+     - 在適當章節中包含技術細節
+     - 撰寫簡潔的變更日誌條目
+   - 確保所有檢查清單項目都已處理（已勾選或已說明）
 
-8. **Save and sync the description:**
-   - Write the completed description to `/tmp/{repo_name}/prs/{number}_description.md`
-   - Show the user the generated description
+8. **儲存並同步說明：**
+   - 將完成的說明寫入 `/tmp/{repo_name}/prs/{number}_description.md`
+   - 向使用者展示產生的說明
 
-9. **Update the PR:**
-   - Update the PR description directly: `gh pr edit {number} --body-file /tmp/{repo_name}/prs/{number}_description.md`
-   - Confirm the update was successful
-   - If any verification steps remain unchecked, remind the user to complete them before merging
+9. **更新 PR：**
+   - 直接更新 PR 說明：`gh pr edit {number} --body-file /tmp/{repo_name}/prs/{number}_description.md`
+   - 確認更新成功
+   - 如果有任何驗證步驟仍未勾選，提醒使用者在合併前完成它們
 
-## Important notes:
-- This command works across different repositories - always read the local template
-- Be thorough but concise - descriptions should be scannable
-- Focus on the "why" as much as the "what"
-- Include any breaking changes or migration notes prominently
-- If the PR touches multiple components, organize the description accordingly
-- Always attempt to run verification commands when possible
-- Clearly communicate which verification steps need manual testing
+## 重要注意事項：
+- 此指令適用於不同的儲存庫 - 務必讀取本地範本
+- 要徹底但簡潔 - 說明應易於瀏覽
+- 專注於「為什麼」與「做什麼」同樣重要
+- 顯著地包含任何破壞性變更或遷移注意事項
+- 如果 PR 涉及多個元件，相應地組織說明
+- 盡可能嘗試執行驗證指令
+- 清楚傳達哪些驗證步驟需要手動測試

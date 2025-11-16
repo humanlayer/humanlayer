@@ -1,217 +1,217 @@
 ---
-description: Resume work from handoff document with context analysis and validation
+description: 透過上下文分析和驗證從交接文件恢復工作
 ---
 
-# Resume work from a handoff document
+# 從交接文件恢復工作
 
-You are tasked with resuming work from a handoff document through an interactive process. These handoffs contain critical context, learnings, and next steps from previous work sessions that need to be understood and continued.
+你的任務是透過互動過程從交接文件恢復工作。這些交接包含了先前工作會話的關鍵上下文、學習內容和後續步驟，需要被理解和繼續。
 
-## Initial Response
+## 初始回應
 
-When this command is invoked:
+當此指令被呼叫時：
 
-1. **If the path to a handoff document was provided**:
-   - If a handoff document path was provided as a parameter, skip the default message
-   - Immediately read the handoff document FULLY
-   - Immediately read any research or plan documents that it links to under `thoughts/shared/plans` or `thoughts/shared/research`. do NOT use a sub-agent to read these critical files.
-   - Begin the analysis process by ingesting relevant context from the handoff document, reading additional files it mentions
-   - Then propose a course of action to the user and confirm, or ask for clarification on direction.
+1. **如果提供了交接文件的路徑**：
+   - 如果交接文件路徑作為參數提供，跳過預設訊息
+   - 立即完整閱讀交接文件
+   - 立即閱讀它在 `thoughts/shared/plans` 或 `thoughts/shared/research` 下連結的任何研究或計畫文件。不要使用子代理來閱讀這些關鍵檔案。
+   - 透過從交接文件中擷取相關上下文來開始分析過程，閱讀它提到的其他檔案
+   - 然後向使用者提出行動方案並確認，或要求澄清方向。
 
-2. **If a ticket number (like ENG-XXXX) was provided**:
-   - run `humanlayer thoughts sync` to ensure your `thoughts/` directory is up to date.
-   - locate the most recent handoff document for the ticket. Tickets will be located in `thoughts/shared/handoffs/ENG-XXXX` where `ENG-XXXX` is the ticket number. e.g. for `ENG-2124` the handoffs would be in `thoughts/shared/handoffs/ENG-2124/`. **List this directory's contents.**
-   - There may be zero, one or multiple files in the directory.
-   - **If there are zero files in the directory, or the directory does not exist**: tell the user: "I'm sorry, I can't seem to find that handoff document. Can you please provide me with a path to it?"
-   - **If there is only one file in the directory**: proceed with that handoff
-   - **If there are multiple files in the directory**: using the date and time specified in the file name (it will be in the format `YYYY-MM-DD_HH-MM-SS` in 24-hour time format), proceed with the _most recent_ handoff document.
-   - Immediately read the handoff document FULLY
-   - Immediately read any research or plan documents that it links to under `thoughts/shared/plans` or `thoughts/shared/research`; do NOT use a sub-agent to read these critical files.
-   - Begin the analysis process by ingesting relevant context from the handoff document, reading additional files it mentions
-   - Then propose a course of action to the user and confirm, or ask for clarification on direction.
+2. **如果提供了工作項目編號（如 ENG-XXXX）**：
+   - 執行 `humanlayer thoughts sync` 以確保你的 `thoughts/` 目錄是最新的。
+   - 找到該工作項目最近的交接文件。工作項目將位於 `thoughts/shared/handoffs/ENG-XXXX`，其中 `ENG-XXXX` 是工作項目編號。例如，對於 `ENG-2124`，交接將位於 `thoughts/shared/handoffs/ENG-2124/`。**列出此目錄的內容。**
+   - 目錄中可能有零個、一個或多個檔案。
+   - **如果目錄中有零個檔案，或目錄不存在**：告訴使用者：「很抱歉，我似乎找不到該交接文件。你能提供路徑給我嗎？」
+   - **如果目錄中只有一個檔案**：使用該交接繼續
+   - **如果目錄中有多個檔案**：使用檔案名稱中指定的日期和時間（格式為 `YYYY-MM-DD_HH-MM-SS`，24 小時制），繼續處理最近的交接文件。
+   - 立即完整閱讀交接文件
+   - 立即閱讀它在 `thoughts/shared/plans` 或 `thoughts/shared/research` 下連結的任何研究或計畫文件；不要使用子代理來閱讀這些關鍵檔案。
+   - 透過從交接文件中擷取相關上下文來開始分析過程，閱讀它提到的其他檔案
+   - 然後向使用者提出行動方案並確認，或要求澄清方向。
 
-3. **If no parameters provided**, respond with:
+3. **如果未提供參數**，回應：
 ```
-I'll help you resume work from a handoff document. Let me find the available handoffs.
+我將協助你從交接文件恢復工作。讓我找到可用的交接。
 
-Which handoff would you like to resume from?
+你想從哪個交接恢復？
 
-Tip: You can invoke this command directly with a handoff path: `/resume_handoff `thoughts/shared/handoffs/ENG-XXXX/YYYY-MM-DD_HH-MM-SS_ENG-XXXX_description.md`
+提示：你可以直接使用交接路徑呼叫此指令：`/resume_handoff `thoughts/shared/handoffs/ENG-XXXX/YYYY-MM-DD_HH-MM-SS_ENG-XXXX_description.md`
 
-or using a ticket number to resume from the most recent handoff for that ticket: `/resume_handoff ENG-XXXX`
+或使用工作項目編號從該工作項目的最近交接恢復：`/resume_handoff ENG-XXXX`
 ```
 
-Then wait for the user's input.
+然後等待使用者的輸入。
 
-## Process Steps
+## 處理步驟
 
-### Step 1: Read and Analyze Handoff
+### 步驟 1：閱讀和分析交接
 
-1. **Read handoff document completely**:
-   - Use the Read tool WITHOUT limit/offset parameters
-   - Extract all sections:
-     - Task(s) and their statuses
-     - Recent changes
-     - Learnings
-     - Artifacts
-     - Action items and next steps
-     - Other notes
+1. **完整閱讀交接文件**：
+   - 使用 Read 工具時不要使用 limit/offset 參數
+   - 擷取所有區段：
+     - 任務及其狀態
+     - 最近的變更
+     - 學習內容
+     - 產出物
+     - 行動項目和後續步驟
+     - 其他註記
 
-2. **Spawn focused research tasks**:
-   Based on the handoff content, spawn parallel research tasks to verify current state:
+2. **產生集中的研究任務**：
+   根據交接內容，產生平行研究任務以驗證當前狀態：
 
    ```
-   Task 1 - Gather artifact context:
-   Read all artifacts mentioned in the handoff.
-   1. Read feature documents listed in "Artifacts"
-   2. Read implementation plans referenced
-   3. Read any research documents mentioned
-   4. Extract key requirements and decisions
-   Use tools: Read
-   Return: Summary of artifact contents and key decisions
+   任務 1 - 收集產出物上下文：
+   閱讀交接中提到的所有產出物。
+   1. 閱讀「產出物」中列出的功能文件
+   2. 閱讀參照的實作計畫
+   3. 閱讀提到的任何研究文件
+   4. 擷取關鍵需求和決策
+   使用工具：Read
+   回傳：產出物內容和關鍵決策的摘要
    ```
 
-3. **Wait for ALL sub-tasks to complete** before proceeding
+3. **在繼續之前等待所有子任務完成**
 
-4. **Read critical files identified**:
-   - Read files from "Learnings" section completely
-   - Read files from "Recent changes" to understand modifications
-   - Read any new related files discovered during research
+4. **閱讀識別出的關鍵檔案**：
+   - 完整閱讀「學習內容」區段的檔案
+   - 閱讀「最近的變更」的檔案以理解修改
+   - 閱讀研究期間發現的任何新相關檔案
 
-### Step 2: Synthesize and Present Analysis
+### 步驟 2：綜合並呈現分析
 
-1. **Present comprehensive analysis**:
+1. **呈現綜合分析**：
    ```
-   I've analyzed the handoff from [date] by [researcher]. Here's the current situation:
+   我已分析來自 [研究員] 在 [日期] 的交接。以下是當前情況：
 
-   **Original Tasks:**
-   - [Task 1]: [Status from handoff] → [Current verification]
-   - [Task 2]: [Status from handoff] → [Current verification]
+   **原始任務：**
+   - [任務 1]：[交接的狀態] → [當前驗證]
+   - [任務 2]：[交接的狀態] → [當前驗證]
 
-   **Key Learnings Validated:**
-   - [Learning with file:line reference] - [Still valid/Changed]
-   - [Pattern discovered] - [Still applicable/Modified]
+   **已驗證的關鍵學習內容：**
+   - [具有 file:line 參照的學習] - [仍然有效/已變更]
+   - [發現的模式] - [仍然適用/已修改]
 
-   **Recent Changes Status:**
-   - [Change 1] - [Verified present/Missing/Modified]
-   - [Change 2] - [Verified present/Missing/Modified]
+   **最近變更狀態：**
+   - [變更 1] - [已驗證存在/缺失/已修改]
+   - [變更 2] - [已驗證存在/缺失/已修改]
 
-   **Artifacts Reviewed:**
-   - [Document 1]: [Key takeaway]
-   - [Document 2]: [Key takeaway]
+   **已審查的產出物：**
+   - [文件 1]：[關鍵要點]
+   - [文件 2]：[關鍵要點]
 
-   **Recommended Next Actions:**
-   Based on the handoff's action items and current state:
-   1. [Most logical next step based on handoff]
-   2. [Second priority action]
-   3. [Additional tasks discovered]
+   **建議的後續行動：**
+   根據交接的行動項目和當前狀態：
+   1. [基於交接的最合理的下一步]
+   2. [第二優先級行動]
+   3. [發現的其他任務]
 
-   **Potential Issues Identified:**
-   - [Any conflicts or regressions found]
-   - [Missing dependencies or broken code]
+   **識別的潛在問題：**
+   - [發現的任何衝突或退化]
+   - [缺失的相依性或損壞的程式碼]
 
-   Shall I proceed with [recommended action 1], or would you like to adjust the approach?
-   ```
-
-2. **Get confirmation** before proceeding
-
-### Step 3: Create Action Plan
-
-1. **Use TodoWrite to create task list**:
-   - Convert action items from handoff into todos
-   - Add any new tasks discovered during analysis
-   - Prioritize based on dependencies and handoff guidance
-
-2. **Present the plan**:
-   ```
-   I've created a task list based on the handoff and current analysis:
-
-   [Show todo list]
-
-   Ready to begin with the first task: [task description]?
+   我應該繼續進行 [建議行動 1] 嗎，還是你想調整方法？
    ```
 
-### Step 4: Begin Implementation
+2. **在繼續之前取得確認**
 
-1. **Start with the first approved task**
-2. **Reference learnings from handoff** throughout implementation
-3. **Apply patterns and approaches documented** in the handoff
-4. **Update progress** as tasks are completed
+### 步驟 3：建立行動計畫
 
-## Guidelines
+1. **使用 TodoWrite 建立任務清單**：
+   - 將交接的行動項目轉換為待辦事項
+   - 新增分析期間發現的任何新任務
+   - 根據相依性和交接指導進行優先排序
 
-1. **Be Thorough in Analysis**:
-   - Read the entire handoff document first
-   - Verify ALL mentioned changes still exist
-   - Check for any regressions or conflicts
-   - Read all referenced artifacts
+2. **呈現計畫**：
+   ```
+   我已根據交接和當前分析建立任務清單：
 
-2. **Be Interactive**:
-   - Present findings before starting work
-   - Get buy-in on the approach
-   - Allow for course corrections
-   - Adapt based on current state vs handoff state
+   [顯示待辦清單]
 
-3. **Leverage Handoff Wisdom**:
-   - Pay special attention to "Learnings" section
-   - Apply documented patterns and approaches
-   - Avoid repeating mistakes mentioned
-   - Build on discovered solutions
+   準備好開始第一個任務了嗎：[任務描述]？
+   ```
 
-4. **Track Continuity**:
-   - Use TodoWrite to maintain task continuity
-   - Reference the handoff document in commits
-   - Document any deviations from original plan
-   - Consider creating a new handoff when done
+### 步驟 4：開始實作
 
-5. **Validate Before Acting**:
-   - Never assume handoff state matches current state
-   - Verify all file references still exist
-   - Check for breaking changes since handoff
-   - Confirm patterns are still valid
+1. **從第一個已批准的任務開始**
+2. **在整個實作過程中參照交接的學習內容**
+3. **應用交接中記錄的模式和方法**
+4. **隨著任務完成更新進度**
 
-## Common Scenarios
+## 指南
 
-### Scenario 1: Clean Continuation
-- All changes from handoff are present
-- No conflicts or regressions
-- Clear next steps in action items
-- Proceed with recommended actions
+1. **在分析時要徹底**：
+   - 首先閱讀整個交接文件
+   - 驗證所有提到的變更仍然存在
+   - 檢查任何退化或衝突
+   - 閱讀所有參照的產出物
 
-### Scenario 2: Diverged Codebase
-- Some changes missing or modified
-- New related code added since handoff
-- Need to reconcile differences
-- Adapt plan based on current state
+2. **保持互動**：
+   - 在開始工作前呈現發現
+   - 在方法上取得認同
+   - 允許路線修正
+   - 根據當前狀態與交接狀態進行調整
 
-### Scenario 3: Incomplete Handoff Work
-- Tasks marked as "in_progress" in handoff
-- Need to complete unfinished work first
-- May need to re-understand partial implementations
-- Focus on completing before new work
+3. **利用交接智慧**：
+   - 特別注意「學習內容」區段
+   - 應用記錄的模式和方法
+   - 避免重複提到的錯誤
+   - 建立在已發現的解決方案之上
 
-### Scenario 4: Stale Handoff
-- Significant time has passed
-- Major refactoring has occurred
-- Original approach may no longer apply
-- Need to re-evaluate strategy
+4. **追蹤連續性**：
+   - 使用 TodoWrite 維持任務連續性
+   - 在提交中參照交接文件
+   - 記錄與原始計畫的任何偏差
+   - 完成後考慮建立新的交接
 
-## Example Interaction Flow
+5. **在行動前驗證**：
+   - 永遠不要假設交接狀態與當前狀態相符
+   - 驗證所有檔案參照仍然存在
+   - 檢查自交接以來的破壞性變更
+   - 確認模式仍然有效
+
+## 常見情境
+
+### 情境 1：順利延續
+- 交接的所有變更都存在
+- 沒有衝突或退化
+- 行動項目中有明確的後續步驟
+- 繼續進行建議的行動
+
+### 情境 2：分岐的程式碼庫
+- 一些變更缺失或已修改
+- 自交接以來新增了新的相關程式碼
+- 需要調和差異
+- 根據當前狀態調整計畫
+
+### 情境 3：未完成的交接工作
+- 交接中標記為「in_progress」的任務
+- 需要首先完成未完成的工作
+- 可能需要重新理解部分實作
+- 在新工作之前專注於完成
+
+### 情境 4：過時的交接
+- 已經過了相當長的時間
+- 發生了重大重構
+- 原始方法可能不再適用
+- 需要重新評估策略
+
+## 範例互動流程
 
 ```
 User: /resume_handoff specification/feature/handoffs/handoff-0.md
-Assistant: Let me read and analyze that handoff document...
+Assistant: 讓我閱讀並分析該交接文件...
 
-[Reads handoff completely]
-[Spawns research tasks]
-[Waits for completion]
-[Reads identified files]
+[完整閱讀交接]
+[產生研究任務]
+[等待完成]
+[閱讀識別的檔案]
 
-I've analyzed the handoff from [date]. Here's the current situation...
+我已分析來自 [日期] 的交接。以下是當前情況...
 
-[Presents analysis]
+[呈現分析]
 
-Shall I proceed with implementing the webhook validation fix, or would you like to adjust the approach?
+我應該繼續實作 webhook 驗證修復，還是你想調整方法？
 
-User: Yes, proceed with the webhook validation
-Assistant: [Creates todo list and begins implementation]
+User: 是的，繼續進行 webhook 驗證
+Assistant: [建立待辦清單並開始實作]
 ```

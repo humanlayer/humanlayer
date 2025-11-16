@@ -1,30 +1,30 @@
 ---
-description: Create handoff document for transferring work to another session
+description: 建立交接文件以將工作轉移至另一個會話
 ---
 
-# Create Handoff
+# 建立交接文件
 
-You are tasked with writing a handoff document to hand off your work to another agent in a new session. You will create a handoff document that is thorough, but also **concise**. The goal is to compact and summarize your context without losing any of the key details of what you're working on.
+您的任務是撰寫交接文件，將您的工作交接給新會話中的另一個代理。您將建立一份徹底但**簡潔**的交接文件。目標是壓縮和總結您的脈絡，而不遺失您正在處理的任何關鍵細節。
 
 
-## Process
-### 1. Filepath & Metadata
-Use the following information to understand how to create your document:
-    - create your file under `thoughts/shared/handoffs/ENG-XXXX/YYYY-MM-DD_HH-MM-SS_ENG-ZZZZ_description.md`, where:
-        - YYYY-MM-DD is today's date
-        - HH-MM-SS is the hours, minutes and seconds based on the current time, in 24-hour format (i.e. use `13:00` for `1:00 pm`)
-        - ENG-XXXX is the ticket number (replace with `general` if no ticket)
-        - ENG-ZZZZ is the ticket number (omit if no ticket)
-        - description is a brief kebab-case description
-    - Run the `scripts/spec_metadata.sh` script to generate all relevant metadata
-    - Examples:
-        - With ticket: `2025-01-08_13-55-22_ENG-2166_create-context-compaction.md`
-        - Without ticket: `2025-01-08_13-55-22_create-context-compaction.md`
+## 流程
+### 1. 檔案路徑與中繼資料
+使用以下資訊來了解如何建立您的文件：
+    - 在 `thoughts/shared/handoffs/ENG-XXXX/YYYY-MM-DD_HH-MM-SS_ENG-ZZZZ_description.md` 下建立您的檔案，其中：
+        - YYYY-MM-DD 是今天的日期
+        - HH-MM-SS 是基於當前時間的小時、分鐘和秒數，採用 24 小時制（即 `1:00 pm` 使用 `13:00`）
+        - ENG-XXXX 是票證編號（如果沒有票證則替換為 `general`）
+        - ENG-ZZZZ 是票證編號（如果沒有票證則省略）
+        - description 是簡短的 kebab-case 描述
+    - 執行 `scripts/spec_metadata.sh` 腳本以產生所有相關中繼資料
+    - 範例：
+        - 有票證：`2025-01-08_13-55-22_ENG-2166_create-context-compaction.md`
+        - 無票證：`2025-01-08_13-55-22_create-context-compaction.md`
 
-### 2. Handoff writing.
-using the above conventions, write your document. use the defined filepath, and the following YAML frontmatter pattern. Use the metadata gathered in step 1, Structure the document with YAML frontmatter followed by content:
+### 2. 撰寫交接文件
+使用上述慣例，撰寫您的文件。使用定義的檔案路徑和以下 YAML frontmatter 模式。使用步驟 1 中收集的中繼資料，以 YAML frontmatter 後接內容的方式組織文件：
 
-Use the following template structure:
+使用以下範本結構：
 ```markdown
 ---
 date: [Current date and time with timezone in ISO format]
@@ -43,45 +43,45 @@ type: implementation_strategy
 # Handoff: ENG-XXXX {very concise description}
 
 ## Task(s)
-{description of the task(s) that you were working on, along with the status of each (completed, work in progress, planned/discussed). If you are working on an implementation plan, make sure to call out which phase you are on. Make sure to reference the plan document and/or research document(s) you are working from that were provided to you at the beginning of the session, if applicable.}
+{您正在處理的任務描述，以及每個任務的狀態（已完成、進行中、已規劃/已討論）。如果您正在執行實作計畫，請務必說明您在哪個階段。如果適用，請務必引用會話開始時提供給您的計畫文件和/或研究文件。}
 
 ## Critical References
-{List any critical specification documents, architectural decisions, or design docs that must be followed. Include only 2-3 most important file paths. Leave blank if none.}
+{列出任何必須遵循的關鍵規格文件、架構決策或設計文件。僅包含 2-3 個最重要的檔案路徑。如果沒有則留空。}
 
 ## Recent changes
-{describe recent changes made to the codebase that you made in line:file syntax}
+{以 line:file 語法描述您對程式碼庫所做的最近變更}
 
 ## Learnings
-{describe important things that you learned - e.g. patterns, root causes of bugs, or other important pieces of information someone that is picking up your work after you should know. consider listing explicit file paths.}
+{描述您學到的重要事項 - 例如模式、錯誤的根本原因，或其他接手您工作的人應該知道的重要資訊。考慮列出明確的檔案路徑。}
 
 ## Artifacts
-{ an exhaustive list of artifacts you produced or updated as filepaths and/or file:line references - e.g. paths to feature documents, implementation plans, etc that should be read in order to resume your work.}
+{您產生或更新的工件的詳盡清單，以檔案路徑和/或 file:line 引用表示 - 例如功能文件、實作計畫等的路徑，這些應該被閱讀以恢復您的工作。}
 
 ## Action Items & Next Steps
-{ a list of action items and next steps for the next agent to accomplish based on your tasks and their statuses}
+{根據您的任務及其狀態，為下一個代理列出行動項目和後續步驟}
 
 ## Other Notes
-{ other notes, references, or useful information - e.g. where relevant sections of the codebase are, where relevant documents are, or other important things you leanrned that you want to pass on but that don't fall into the above categories}
+{其他註記、參考或有用資訊 - 例如程式碼庫的相關部分在哪裡、相關文件在哪裡，或您想要傳遞但不屬於上述類別的其他重要事項}
 ```
 ---
 
-### 3. Approve and Sync
-Run `humanlayer thoughts sync` to save the document.
+### 3. 核准並同步
+執行 `humanlayer thoughts sync` 以儲存文件。
 
-Once this is completed, you should respond to the user with the template between <template_response></template_response> XML tags. do NOT include the tags in your response.
+完成後，您應該使用 <template_response></template_response> XML 標籤之間的範本回覆使用者。請勿在回應中包含標籤。
 
 <template_response>
-Handoff created and synced! You can resume from this handoff in a new session with the following command:
+交接文件已建立並同步！您可以使用以下指令在新會話中從此交接文件恢復：
 
 ```bash
 /resume_handoff path/to/handoff.md
 ```
 </template_response>
 
-for example (between <example_response></example_response> XML tags - do NOT include these tags in your actual response to the user)
+例如（在 <example_response></example_response> XML 標籤之間 - 請勿在實際回應使用者時包含這些標籤）
 
 <example_response>
-Handoff created and synced! You can resume from this handoff in a new session with the following command:
+交接文件已建立並同步！您可以使用以下指令在新會話中從此交接文件恢復：
 
 ```bash
 /resume_handoff thoughts/shared/handoffs/ENG-2166/2025-01-08_13-44-55_ENG-2166_create-context-compaction.md
@@ -89,7 +89,7 @@ Handoff created and synced! You can resume from this handoff in a new session wi
 </example_response>
 
 ---
-##.  Additional Notes & Instructions
-- **more information, not less**. This is a guideline that defines the minimum of what a handoff should be. Always feel free to include more information if necessary.
-- **be thorough and precise**. include both top-level objectives, and lower-level details as necessary.
-- **avoid excessive code snippets**. While a brief snippet to describe some key change is important, avoid large code blocks or diffs; do not include one unless it's necessary (e.g. pertains to an error you're debugging). Prefer using `/path/to/file.ext:line` references that an agent can follow later when it's ready, e.g. `packages/dashboard/src/app/dashboard/page.tsx:12-24`
+## 其他注意事項與指示
+- **資訊要多不要少**。這是定義交接文件最低要求的指南。如有必要，請隨時包含更多資訊。
+- **要徹底且精確**。根據需要包含高層級目標和低層級細節。
+- **避免過多的程式碼片段**。雖然簡短的程式碼片段對於描述某些關鍵變更很重要，但請避免大型程式碼區塊或 diff；除非必要（例如與您正在除錯的錯誤有關），否則不要包含。建議使用 `/path/to/file.ext:line` 引用，代理可以在準備好時稍後跟進，例如 `packages/dashboard/src/app/dashboard/page.tsx:12-24`

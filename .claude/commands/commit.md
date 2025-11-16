@@ -1,44 +1,44 @@
 ---
-description: Create git commits with user approval and no Claude attribution
+description: 經使用者核准建立 git commit，不含 Claude 署名
 ---
 
-# Commit Changes
+# 提交變更
 
-You are tasked with creating git commits for the changes made during this session.
+您的任務是為本次會話中所做的變更建立 git commit。
 
-## Process:
+## 流程：
 
-1. **Think about what changed:**
-   - Review the conversation history and understand what was accomplished
-   - Run `git status` to see current changes
-   - Run `git diff` to understand the modifications
-   - Consider whether changes should be one commit or multiple logical commits
+1. **思考變更內容：**
+   - 回顧對話歷史並理解已完成的工作
+   - 執行 `git status` 查看當前變更
+   - 執行 `git diff` 了解修改內容
+   - 考慮變更應該是單一 commit 還是多個邏輯 commit
 
-2. **Plan your commit(s):**
-   - Identify which files belong together
-   - Draft clear, descriptive commit messages
-   - Use imperative mood in commit messages
-   - Focus on why the changes were made, not just what
+2. **規劃您的 commit：**
+   - 識別哪些檔案應該歸為一組
+   - 起草清晰、描述性的 commit 訊息
+   - 在 commit 訊息中使用祈使語氣
+   - 專注於變更的原因，而非僅是變更內容
 
-3. **Present your plan to the user:**
-   - List the files you plan to add for each commit
-   - Show the commit message(s) you'll use
-   - Ask: "I plan to create [N] commit(s) with these changes. Shall I proceed?"
+3. **向使用者展示您的計畫：**
+   - 列出您計畫為每個 commit 加入的檔案
+   - 展示您將使用的 commit 訊息
+   - 詢問：「我計畫用這些變更建立 [N] 個 commit。我可以繼續嗎？」
 
-4. **Execute upon confirmation:**
-   - Use `git add` with specific files (never use `-A` or `.`)
-   - Create commits with your planned messages
-   - Show the result with `git log --oneline -n [number]`
+4. **確認後執行：**
+   - 使用 `git add` 加入特定檔案（絕不使用 `-A` 或 `.`）
+   - 以您規劃的訊息建立 commit
+   - 使用 `git log --oneline -n [number]` 顯示結果
 
-## Important:
-- **NEVER add co-author information or Claude attribution**
-- Commits should be authored solely by the user
-- Do not include any "Generated with Claude" messages
-- Do not add "Co-Authored-By" lines
-- Write commit messages as if the user wrote them
+## 重要：
+- **絕不加入共同作者資訊或 Claude 署名**
+- Commit 應僅由使用者署名
+- 不要包含任何「Generated with Claude」訊息
+- 不要加入「Co-Authored-By」行
+- 撰寫 commit 訊息時就像是使用者自己寫的
 
-## Remember:
-- You have the full context of what was done in this session
-- Group related changes together
-- Keep commits focused and atomic when possible
-- The user trusts your judgment - they asked you to commit
+## 記住：
+- 您擁有本次會話中所有工作的完整脈絡
+- 將相關變更組合在一起
+- 盡可能保持 commit 專注且原子化
+- 使用者信任您的判斷 - 他們要求您進行提交

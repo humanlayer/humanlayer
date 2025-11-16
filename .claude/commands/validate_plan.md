@@ -1,166 +1,166 @@
 ---
-description: Validate implementation against plan, verify success criteria, identify issues
+description: 根據計畫驗證實作、驗證成功標準、識別問題
 ---
 
-# Validate Plan
+# 驗證計畫
 
-You are tasked with validating that an implementation plan was correctly executed, verifying all success criteria and identifying any deviations or issues.
+你的任務是驗證實作計畫是否正確執行，驗證所有成功標準並識別任何偏差或問題。
 
-## Initial Setup
+## 初始設定
 
-When invoked:
-1. **Determine context** - Are you in an existing conversation or starting fresh?
-   - If existing: Review what was implemented in this session
-   - If fresh: Need to discover what was done through git and codebase analysis
+當被呼叫時：
+1. **確定上下文** - 你是在現有對話中還是重新開始？
+   - 如果是現有對話：審查在此會話中實作的內容
+   - 如果是全新開始：需要透過 git 和程式碼庫分析來發現已完成的內容
 
-2. **Locate the plan**:
-   - If plan path provided, use it
-   - Otherwise, search recent commits for plan references or ask user
+2. **找到計畫**：
+   - 如果提供了計畫路徑，使用它
+   - 否則，在最近的提交中搜尋計畫參照或詢問使用者
 
-3. **Gather implementation evidence**:
+3. **收集實作證據**：
    ```bash
-   # Check recent commits
+   # 檢查最近的提交
    git log --oneline -n 20
-   git diff HEAD~N..HEAD  # Where N covers implementation commits
+   git diff HEAD~N..HEAD  # 其中 N 涵蓋實作提交
 
-   # Run comprehensive checks
+   # 執行綜合檢查
    cd $(git rev-parse --show-toplevel) && make check test
    ```
 
-## Validation Process
+## 驗證流程
 
-### Step 1: Context Discovery
+### 步驟 1：上下文探索
 
-If starting fresh or need more context:
+如果重新開始或需要更多上下文：
 
-1. **Read the implementation plan** completely
-2. **Identify what should have changed**:
-   - List all files that should be modified
-   - Note all success criteria (automated and manual)
-   - Identify key functionality to verify
+1. **完整閱讀實作計畫**
+2. **識別應該變更的內容**：
+   - 列出所有應該修改的檔案
+   - 記錄所有成功標準（自動化和手動）
+   - 識別要驗證的關鍵功能
 
-3. **Spawn parallel research tasks** to discover implementation:
+3. **產生平行研究任務**以發現實作：
    ```
-   Task 1 - Verify database changes:
-   Research if migration [N] was added and schema changes match plan.
-   Check: migration files, schema version, table structure
-   Return: What was implemented vs what plan specified
+   任務 1 - 驗證資料庫變更：
+   研究是否新增了遷移 [N] 並且架構變更與計畫相符。
+   檢查：遷移檔案、架構版本、資料表結構
+   回傳：實作的內容與計畫指定的內容比較
 
-   Task 2 - Verify code changes:
-   Find all modified files related to [feature].
-   Compare actual changes to plan specifications.
-   Return: File-by-file comparison of planned vs actual
+   任務 2 - 驗證程式碼變更：
+   找到與 [功能] 相關的所有已修改檔案。
+   將實際變更與計畫規格比較。
+   回傳：計畫與實際的逐檔案比較
 
-   Task 3 - Verify test coverage:
-   Check if tests were added/modified as specified.
-   Run test commands and capture results.
-   Return: Test status and any missing coverage
+   任務 3 - 驗證測試覆蓋率：
+   檢查是否按照指定新增/修改了測試。
+   執行測試指令並捕獲結果。
+   回傳：測試狀態和任何缺失的覆蓋率
    ```
 
-### Step 2: Systematic Validation
+### 步驟 2：系統性驗證
 
-For each phase in the plan:
+對於計畫中的每個階段：
 
-1. **Check completion status**:
-   - Look for checkmarks in the plan (- [x])
-   - Verify the actual code matches claimed completion
+1. **檢查完成狀態**：
+   - 在計畫中尋找勾選標記 (- [x])
+   - 驗證實際程式碼與宣稱的完成情況相符
 
-2. **Run automated verification**:
-   - Execute each command from "Automated Verification"
-   - Document pass/fail status
-   - If failures, investigate root cause
+2. **執行自動化驗證**：
+   - 執行「自動化驗證」中的每個指令
+   - 記錄通過/失敗狀態
+   - 如果失敗，調查根本原因
 
-3. **Assess manual criteria**:
-   - List what needs manual testing
-   - Provide clear steps for user verification
+3. **評估手動標準**：
+   - 列出需要手動測試的內容
+   - 為使用者驗證提供清晰的步驟
 
-4. **Think deeply about edge cases**:
-   - Were error conditions handled?
-   - Are there missing validations?
-   - Could the implementation break existing functionality?
+4. **深入思考邊緣情況**：
+   - 是否處理了錯誤條件？
+   - 是否缺少驗證？
+   - 實作是否可能破壞現有功能？
 
-### Step 3: Generate Validation Report
+### 步驟 3：產生驗證報告
 
-Create comprehensive validation summary:
+建立綜合驗證摘要：
 
 ```markdown
-## Validation Report: [Plan Name]
+## 驗證報告：[計畫名稱]
 
-### Implementation Status
-✓ Phase 1: [Name] - Fully implemented
-✓ Phase 2: [Name] - Fully implemented
-⚠️ Phase 3: [Name] - Partially implemented (see issues)
+### 實作狀態
+✓ 階段 1：[名稱] - 完全實作
+✓ 階段 2：[名稱] - 完全實作
+⚠️ 階段 3：[名稱] - 部分實作（見問題）
 
-### Automated Verification Results
-✓ Build passes: `make build`
-✓ Tests pass: `make test`
-✗ Linting issues: `make lint` (3 warnings)
+### 自動化驗證結果
+✓ 建置通過：`make build`
+✓ 測試通過：`make test`
+✗ Linting 問題：`make lint`（3 個警告）
 
-### Code Review Findings
+### 程式碼審查發現
 
-#### Matches Plan:
-- Database migration correctly adds [table]
-- API endpoints implement specified methods
-- Error handling follows plan
+#### 符合計畫：
+- 資料庫遷移正確新增 [資料表]
+- API 端點實作了指定的方法
+- 錯誤處理遵循計畫
 
-#### Deviations from Plan:
-- Used different variable names in [file:line]
-- Added extra validation in [file:line] (improvement)
+#### 與計畫的偏差：
+- 在 [file:line] 中使用了不同的變數名稱
+- 在 [file:line] 中新增了額外的驗證（改進）
 
-#### Potential Issues:
-- Missing index on foreign key could impact performance
-- No rollback handling in migration
+#### 潛在問題：
+- 外鍵上缺少索引可能影響效能
+- 遷移中沒有回滾處理
 
-### Manual Testing Required:
-1. UI functionality:
-   - [ ] Verify [feature] appears correctly
-   - [ ] Test error states with invalid input
+### 需要手動測試：
+1. UI 功能：
+   - [ ] 驗證 [功能] 正確顯示
+   - [ ] 使用無效輸入測試錯誤狀態
 
-2. Integration:
-   - [ ] Confirm works with existing [component]
-   - [ ] Check performance with large datasets
+2. 整合：
+   - [ ] 確認與現有 [元件] 一起工作
+   - [ ] 檢查大型資料集的效能
 
-### Recommendations:
-- Address linting warnings before merge
-- Consider adding integration test for [scenario]
-- Document new API endpoints
+### 建議：
+- 在合併前處理 linting 警告
+- 考慮為 [情境] 新增整合測試
+- 記錄新的 API 端點
 ```
 
-## Working with Existing Context
+## 處理現有上下文
 
-If you were part of the implementation:
-- Review the conversation history
-- Check your todo list for what was completed
-- Focus validation on work done in this session
-- Be honest about any shortcuts or incomplete items
+如果你參與了實作：
+- 審查對話歷史
+- 檢查你的待辦清單以了解已完成的內容
+- 將驗證重點放在本會話中完成的工作
+- 對任何捷徑或未完成的項目要誠實
 
-## Important Guidelines
+## 重要指南
 
-1. **Be thorough but practical** - Focus on what matters
-2. **Run all automated checks** - Don't skip verification commands
-3. **Document everything** - Both successes and issues
-4. **Think critically** - Question if the implementation truly solves the problem
-5. **Consider maintenance** - Will this be maintainable long-term?
+1. **要徹底但實際** - 專注於重要的事情
+2. **執行所有自動化檢查** - 不要跳過驗證指令
+3. **記錄所有內容** - 成功和問題都要記錄
+4. **批判性思考** - 質疑實作是否真正解決了問題
+5. **考慮維護性** - 長期來看是否可維護？
 
-## Validation Checklist
+## 驗證檢查清單
 
-Always verify:
-- [ ] All phases marked complete are actually done
-- [ ] Automated tests pass
-- [ ] Code follows existing patterns
-- [ ] No regressions introduced
-- [ ] Error handling is robust
-- [ ] Documentation updated if needed
-- [ ] Manual test steps are clear
+始終驗證：
+- [ ] 標記為完成的所有階段實際上都已完成
+- [ ] 自動化測試通過
+- [ ] 程式碼遵循現有模式
+- [ ] 沒有引入退化
+- [ ] 錯誤處理穩健
+- [ ] 如有需要已更新文件
+- [ ] 手動測試步驟清晰
 
-## Relationship to Other Commands
+## 與其他指令的關係
 
-Recommended workflow:
-1. `/implement_plan` - Execute the implementation
-2. `/commit` - Create atomic commits for changes
-3. `/validate_plan` - Verify implementation correctness
-4. `/describe_pr` - Generate PR description
+建議的工作流程：
+1. `/implement_plan` - 執行實作
+2. `/commit` - 為變更建立原子提交
+3. `/validate_plan` - 驗證實作正確性
+4. `/describe_pr` - 產生 PR 描述
 
-The validation works best after commits are made, as it can analyze the git history to understand what was implemented.
+驗證在提交完成後效果最佳，因為它可以分析 git 歷史記錄以了解實作的內容。
 
-Remember: Good validation catches issues before they reach production. Be constructive but thorough in identifying gaps or improvements.
+記住：良好的驗證在問題到達生產環境之前捕獲問題。在識別差距或改進時要具建設性但徹底。
