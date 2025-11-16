@@ -1,19 +1,19 @@
-# Claude Code Go SDK (Experimental)
+# Claude Code Go SDK (實驗性)
 
-A Go SDK for programmatically interacting with Claude Code (Anthropic's AI coding assistant).
+一個用於與 Claude Code（Anthropic 的 AI 編程助手）進行程式化互動的 Go SDK。
 
-## Installation
+## 安裝
 
 ```bash
 go get github.com/humanlayer/humanlayer/claudecode-go
 ```
 
-## Prerequisites
+## 前置需求
 
-- Claude Code CLI must be installed and available in your PATH
-- Valid Anthropic API key configured
+- 必須安裝 Claude Code CLI 並可在您的 PATH 中使用
+- 已設定有效的 Anthropic API 金鑰
 
-## Quick Start
+## 快速開始
 
 ```go
 package main
@@ -44,7 +44,7 @@ func main() {
 }
 ```
 
-## Streaming Example
+## 串流範例
 
 ```go
 // Launch with streaming output
@@ -65,7 +65,7 @@ for event := range session.Events {
 }
 ```
 
-## MCP Integration
+## MCP 整合
 
 ```go
 // Configure MCP servers
@@ -87,21 +87,21 @@ session, err := client.Launch(claudecode.SessionConfig{
 })
 ```
 
-## Features
+## 功能特色
 
-- **Type-safe configuration** - Build configurations with Go structs
-- **Streaming support** - Real-time event processing
-- **MCP integration** - Add approval workflows and custom tools
-- **Session management** - Resume previous conversations
-- **Process control** - Full control over Claude subprocess
+- **型別安全設定** - 使用 Go 結構體建立設定
+- **串流支援** - 即時事件處理
+- **MCP 整合** - 新增核准工作流程和自訂工具
+- **會話管理** - 恢復先前的對話
+- **程序控制** - 完全控制 Claude 子程序
 
-## Output Formats
+## 輸出格式
 
-- `OutputText` - Plain text output (default)
-- `OutputJSON` - Structured JSON with metadata
-- `OutputStreamJSON` - Real-time streaming JSON events
+- `OutputText` - 純文字輸出（預設）
+- `OutputJSON` - 帶有中繼資料的結構化 JSON
+- `OutputStreamJSON` - 即時串流 JSON 事件
 
-## Configuration Options
+## 設定選項
 
 ```go
 type SessionConfig struct {
@@ -130,9 +130,9 @@ type SessionConfig struct {
 }
 ```
 
-## Error Handling
+## 錯誤處理
 
-The SDK provides detailed error information:
+SDK 提供詳細的錯誤資訊：
 
 ```go
 result, err := client.LaunchAndWait(config)
@@ -147,14 +147,14 @@ if result.IsError {
 }
 ```
 
-## Integration with HumanLayer
+## 與 HumanLayer 整合
 
-This SDK integrates seamlessly with HumanLayer for approval workflows:
+此 SDK 與 HumanLayer 的核准工作流程無縫整合：
 
-1. Configure the HumanLayer MCP server in your MCPConfig
-2. Set appropriate permission prompt tool
-3. Handle approvals through HumanLayer's TUI or API
+1. 在您的 MCPConfig 中設定 HumanLayer MCP 伺服器
+2. 設定適當的權限提示工具
+3. 透過 HumanLayer 的 TUI 或 API 處理核准
 
-## License
+## 授權
 
 MIT

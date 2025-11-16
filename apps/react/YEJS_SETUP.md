@@ -1,21 +1,21 @@
-# Y.js + ElectricSQL Collaborative Editor Setup
+# Y.js + ElectricSQL 協作編輯器設定
 
-This document explains how the collaborative editor is configured and how to customize it for your needs.
+本文件說明協作編輯器的配置方式，以及如何依照您的需求進行客製化。
 
-## Overview
+## 概述
 
-The editor uses:
-- **Tiptap** - Rich text editor framework
-- **Y.js** - CRDT library for conflict-free collaboration
-- **ElectricSQL** - Real-time sync backend using Postgres
+此編輯器使用：
+- **Tiptap** - 富文本編輯器框架
+- **Y.js** - 無衝突協作的 CRDT 函式庫
+- **ElectricSQL** - 使用 Postgres 的即時同步後端
 
-## Configuration
+## 配置
 
 ### 1. Electric Provider URL
 
-The `electricUrl` prop on the `<Editor>` component configures where the client connects to Electric shape streams.
+`<Editor>` 元件上的 `electricUrl` 屬性用於配置客戶端連線至 Electric shape streams 的位置。
 
-**Default:**
+**預設值：**
 ```tsx
 <Editor
   documentId="demo-doc-1"
@@ -23,7 +23,7 @@ The `electricUrl` prop on the `<Editor>` component configures where the client c
 />
 ```
 
-**Production example:**
+**正式環境範例：**
 ```tsx
 <Editor
   documentId="demo-doc-1"
@@ -31,37 +31,37 @@ The `electricUrl` prop on the `<Editor>` component configures where the client c
 />
 ```
 
-The Electric provider expects two endpoints at this base URL:
-- `{electricUrl}/notes-operations` - Y.js document operations
-- `{electricUrl}/awareness` - User presence/cursor data
+Electric provider 需要此基礎 URL 下的兩個端點：
+- `{electricUrl}/notes-operations` - Y.js 文件操作
+- `{electricUrl}/awareness` - 使用者在線狀態/游標資料
 
-### 2. Document Scoping (documentId)
+### 2. 文件範圍 (documentId)
 
-Each document needs a unique `documentId` to keep edits separate.
+每個文件需要唯一的 `documentId` 以區分不同的編輯內容。
 
-**Single document:**
+**單一文件：**
 ```tsx
 <Editor documentId="demo-doc-1" />
 ```
 
-**Per-user documents:**
+**使用者個別文件：**
 ```tsx
 <Editor documentId={`user-${userId}-notes`} />
 ```
 
-**Database-driven documents:**
+**資料庫驅動的文件：**
 ```tsx
 <Editor documentId={`doc-${noteId}`} />
 ```
 
-**How it works:**
-- The `documentId` is passed as `roomName` to ElectricProvider
-- Electric shape streams filter by: `WHERE note_id = '{documentId}'`
-- Each documentId gets its own isolated Y.js document and sync stream
+**運作方式：**
+- `documentId` 會作為 `roomName` 傳遞給 ElectricProvider
+- Electric shape streams 使用以下條件篩選：`WHERE note_id = '{documentId}'`
+- 每個 documentId 都有自己獨立的 Y.js 文件和同步串流
 
-### 3. Multiple Editors on Same Page
+### 3. 同一頁面中的多個編輯器
 
-You can render multiple editors, each with different documents:
+您可以渲染多個編輯器，每個編輯器使用不同的文件：
 
 ```tsx
 <Editor documentId="doc-1" />
@@ -69,31 +69,31 @@ You can render multiple editors, each with different documents:
 <Editor documentId="doc-3" />
 ```
 
-The provider cache (`providerCache` in `src/components/Editor.tsx:15`) ensures each documentId gets exactly one ElectricProvider instance, even if the component re-renders.
+提供者快取（`src/components/Editor.tsx:15` 中的 `providerCache`）確保每個 documentId 僅獲得一個 ElectricProvider 實例，即使元件重新渲染也是如此。
 
-## Required Backend Setup
+## 必要的後端設定
 
-Your backend must provide:
+您的後端必須提供：
 
-### 1. Electric Shape Proxy Endpoints
+### 1. Electric Shape Proxy 端點
 
 - `GET {electricUrl}/notes-operations?where=note_id='...'`
-  - Returns Electric shape stream of Y.js operations
-  - Must parse `bytea` columns to decoders
+  - 回傳 Y.js 操作的 Electric shape stream
+  - 必須將 `bytea` 欄位解析為解碼器
 
 - `GET {electricUrl}/awareness?where=note_id='...'`
-  - Returns Electric shape stream of awareness updates
-  - Must parse `bytea` and `timestamptz` columns
+  - 回傳感知更新的 Electric shape stream
+  - 必須解析 `bytea` 和 `timestamptz` 欄位
 
-### 2. Write Endpoint
+### 2. 寫入端點
 
 - `POST {electricUrl}/../v1/note-operation`
-  - Body: `{ note_id: string, op: string (base64), clientId?: string }`
-  - Writes Y.js operations to Postgres
-  - If `clientId` present, it's an awareness update (goes to `ydoc_awareness` table)
-  - Otherwise, it's a document operation (goes to `notes_operations` table)
+  - 本體：`{ note_id: string, op: string (base64), clientId?: string }`
+  - 將 Y.js 操作寫入 Postgres
+  - 若存在 `clientId`，則為感知更新（寫入 `ydoc_awareness` 資料表）
+  - 否則為文件操作（寫入 `notes_operations` 資料表）
 
-### 3. Database Schema
+### 3. 資料庫架構
 
 ```sql
 CREATE TABLE notes_operations (
@@ -111,9 +111,9 @@ CREATE TABLE ydoc_awareness (
 );
 ```
 
-## Usage Examples
+## 使用範例
 
-### Basic Usage
+### 基本用法
 
 ```tsx
 import { Editor } from './components/Editor';
@@ -123,7 +123,7 @@ function MyApp() {
 }
 ```
 
-### With Environment Variables
+### 搭配環境變數
 
 ```tsx
 const ELECTRIC_URL = import.meta.env.VITE_ELECTRIC_URL || 'http://localhost:3000/shape-proxy';
@@ -138,7 +138,7 @@ function MyApp() {
 }
 ```
 
-### Dynamic Document Selection
+### 動態文件選擇
 
 ```tsx
 function NotesApp() {
@@ -160,17 +160,17 @@ function NotesApp() {
 }
 ```
 
-## Files Overview
+## 檔案概覽
 
-- `src/y-electric/index.ts` - ElectricProvider class (handles sync)
-- `src/y-electric/utils.ts` - Binary parsing utilities
-- `src/lib/tiptap.ts` - Tiptap extensions configuration
-- `src/components/Editor.tsx` - Main editor component
-- `src/components/editor.css` - Editor styles
+- `src/y-electric/index.ts` - ElectricProvider 類別（處理同步）
+- `src/y-electric/utils.ts` - 二進位解析工具
+- `src/lib/tiptap.ts` - Tiptap 擴充功能配置
+- `src/components/Editor.tsx` - 主要編輯器元件
+- `src/components/editor.css` - 編輯器樣式
 
-## Notes
+## 注意事項
 
-- **IndexedDB persistence is NOT included** - removed to keep implementation simple
-- Each browser tab creates its own Y.js client with unique clientID
-- Provider instances are cached per documentId to avoid duplicate connections
-- Awareness updates show user cursors and presence in real-time
+- **不包含 IndexedDB 持久化** - 為保持實作簡潔已移除
+- 每個瀏覽器分頁會建立自己的 Y.js 客戶端，具有唯一的 clientID
+- Provider 實例會依 documentId 快取，以避免重複連線
+- 感知更新會即時顯示使用者游標和在線狀態

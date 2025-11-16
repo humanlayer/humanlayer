@@ -1,44 +1,44 @@
-# Changelog
+# 更新日誌
 
-All notable changes to the HumanLayer CLI (hlyr) will be documented in this file.
+本文件記錄 HumanLayer CLI (hlyr) 的所有重要變更。
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+格式基於 [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)，
+本專案遵循 [Semantic Versioning](https://semver.org/spec/v2.0.0.html)。
 
 ## [0.12.0] - 2025-10-07
 
-### Added
+### 新增
 
-- New `humanlayer claude init` command to copy HumanLayer .claude config files to projects
-- Interactive wizard-style UX with @clack/prompts for file selection
-- Multi-select interface for choosing commands, agents, and settings
-- Arrow key navigation (↑↓ to move, space to toggle, enter to confirm)
-- `--all` flag to copy all files non-interactively
-- `--force` flag to overwrite existing .claude directory
-- Automatic .gitignore entry for settings.local.json
-- End-to-end tests for both interactive and non-interactive modes
+- 新增 `humanlayer claude init` 指令，可將 HumanLayer .claude 設定檔複製到專案中
+- 使用 @clack/prompts 的互動式精靈風格使用者體驗，用於檔案選擇
+- 多重選擇介面，用於選擇指令、代理和設定
+- 方向鍵導航（↑↓ 移動、空白鍵切換、Enter 確認）
+- `--all` 旗標，可非互動式地複製所有檔案
+- `--force` 旗標，可覆寫現有的 .claude 目錄
+- 自動在 .gitignore 中新增 settings.local.json 項目
+- 互動式和非互動式模式的端對端測試
 
-### Changed
+### 變更
 
-- Improved UX from number-based selection to visual multiselect prompts
+- 改善使用者體驗，從基於數字的選擇改為視覺化多重選擇提示
 
 ## [0.11.0] - 2025-01-23
 
-### Added
+### 新增
 
-- Write tool success pattern detection for better feedback
-- Improved session table and conversation view UX
-- Enhanced session title inheritance when continuing sessions
+- Write 工具成功模式偵測，提供更好的回饋
+- 改善工作階段表格和對話檢視的使用者體驗
+- 增強繼續工作階段時的標題繼承功能
 
-### Changed
+### 變更
 
-- Removed visual noise from session launcher (ENG-1714)
-- Updated web research instructions for more explicit guidance
-- Improved bash allowlist configuration
+- 從工作階段啟動器中移除視覺雜訊 (ENG-1714)
+- 更新網路研究說明，提供更明確的指引
+- 改善 bash 允許清單設定
 
-### Fixed
+### 修正
 
-- Edit tool false 'failed' display in WUI
-- Session titles clearing when sending new user messages (ENG-1727)
+- WUI 中 Edit 工具誤顯示「失敗」的問題
+- 傳送新使用者訊息時工作階段標題被清除的問題 (ENG-1727)
 
-## [0.10.0] - Previous release
+## [0.10.0] - 先前版本

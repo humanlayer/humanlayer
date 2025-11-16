@@ -1,158 +1,158 @@
-# WUI Demo System - Marketing Team Guide
+# WUI Demo 系統 - 行銷團隊指南
 
-A simple guide for creating automated product demonstrations and screenshots.
+建立自動化產品示範和截圖的簡單指南。
 
-## Quick Start
+## 快速入門
 
-### 1. Using Pre-built Demos
+### 1. 使用預建示範
 
-The easiest way to get started is using our pre-built demo sequences:
+開始使用最簡單的方法是使用我們的預建示範序列：
 
 ```tsx
 import { QuickDemo } from '@/stores/demo/export'
 import SessionTable from '@/components/internal/SessionTable'
 
-// Launcher workflow demo
+// 啟動器工作流程示範
 <QuickDemo sequence="launcher">
   <SessionTable />
 </QuickDemo>
 
-// Status changes demo
+// 狀態變更示範
 <QuickDemo sequence="status">
   <SessionTable />
 </QuickDemo>
 
-// Theme showcase demo
+// 主題展示示範
 <QuickDemo sequence="themes">
   <SessionTable />
 </QuickDemo>
 ```
 
-### 2. Creating Custom Sequences
+### 2. 建立自訂序列
 
-Use the sequence builder for custom demonstrations:
+使用序列建構器建立自訂示範：
 
 ```tsx
 import { createSequence, createMockSession, SessionStatus, DemoStoreProvider } from '@/stores/demo/export'
 
-// Build your sequence
+// 建立您的序列
 const mySequence = createSequence()
-  .addSessions([])  // Start empty
-  .openLauncher()   // Show launcher
-  .addDelay(3000)   // Wait 3 seconds
-  .addSessions([    // Add some sessions
-    createMockSession('1', 'Implement new feature', SessionStatus.Running),
-    createMockSession('2', 'Write documentation', SessionStatus.Completed)
+  .addSessions([])  // 從空開始
+  .openLauncher()   // 顯示啟動器
+  .addDelay(3000)   // 等待 3 秒
+  .addSessions([    // 新增一些會話
+    createMockSession('1', '實作新功能', SessionStatus.Running),
+    createMockSession('2', '撰寫文件', SessionStatus.Completed)
   ])
-  .closeLauncher()  // Close launcher
-  .showApproval('1', 'Deploy changes?')  // Show approval
-  .setTheme('catppuccin')  // Change theme
+  .closeLauncher()  // 關閉啟動器
+  .showApproval('1', '部署變更？')  // 顯示審批
+  .setTheme('catppuccin')  // 變更主題
   .build()
 
-// Use it in your component
+// 在您的元件中使用它
 <DemoStoreProvider sequence={mySequence}>
   <YourComponents />
 </DemoStoreProvider>
 ```
 
-## Common Scenarios
+## 常見場景
 
-### Product Screenshot Sequence
+### 產品截圖序列
 
-Perfect for capturing different states:
+非常適合捕捉不同狀態：
 
 ```tsx
 const screenshotSequence = createSequence()
-  // Empty state
+  // 空狀態
   .addSessions([])
   .addDelay(2000)
 
-  // Active sessions
+  // 活躍會話
   .addSessions([
-    createMockSession('1', 'Analyzing codebase', SessionStatus.Running),
-    createMockSession('2', 'Running tests', SessionStatus.Running),
-    createMockSession('3', 'Deployment complete', SessionStatus.Completed),
+    createMockSession('1', '分析程式碼庫', SessionStatus.Running),
+    createMockSession('2', '執行測試', SessionStatus.Running),
+    createMockSession('3', '部署完成', SessionStatus.Completed),
   ])
   .addDelay(3000)
 
-  // Approval needed
-  .showApproval('1', 'Update production database?')
+  // 需要審批
+  .showApproval('1', '更新正式資料庫？')
   .addDelay(3000)
 
-  // Theme variations
+  // 主題變化
   .setTheme('solarized-light')
   .addDelay(2000)
   .setTheme('gruvbox-dark')
   .build()
 ```
 
-### Feature Demo Sequence
+### 功能示範序列
 
-Show a complete workflow:
+展示完整工作流程：
 
 ```tsx
 const featureDemo = createSequence()
-  // User opens launcher
+  // 使用者開啟啟動器
   .openLauncher('search')
   .addDelay(2000)
 
-  // Creates a new session
-  .addSessions([createMockSession('1', 'Debug authentication issue', SessionStatus.Starting)])
+  // 建立新會話
+  .addSessions([createMockSession('1', '除錯身份驗證問題', SessionStatus.Starting)])
   .closeLauncher()
   .addDelay(1500)
 
-  // Session becomes active
-  .addSessions([createMockSession('1', 'Debug authentication issue', SessionStatus.Running)])
+  // 會話變為活躍
+  .addSessions([createMockSession('1', '除錯身份驗證問題', SessionStatus.Running)])
   .addDelay(2000)
 
-  // Needs approval
-  .addSessions([createMockSession('1', 'Debug authentication issue', SessionStatus.WaitingInput)])
-  .showApproval('1', 'Modify auth config?')
+  // 需要審批
+  .addSessions([createMockSession('1', '除錯身份驗證問題', SessionStatus.WaitingInput)])
+  .showApproval('1', '修改身份驗證配置？')
   .addDelay(3000)
 
-  // Completes
-  .addSessions([createMockSession('1', 'Debug authentication issue', SessionStatus.Completed)])
+  // 完成
+  .addSessions([createMockSession('1', '除錯身份驗證問題', SessionStatus.Completed)])
   .build()
 ```
 
-## Session States
+## 會話狀態
 
-Available session statuses for realistic demos:
+用於逼真示範的可用會話狀態：
 
-- `SessionStatus.Starting` - Session initializing
-- `SessionStatus.Running` - Actively processing
-- `SessionStatus.WaitingInput` - Needs user approval
-- `SessionStatus.Completed` - Successfully finished
-- `SessionStatus.Failed` - Error occurred
+- `SessionStatus.Starting` - 會話初始化中
+- `SessionStatus.Running` - 主動處理中
+- `SessionStatus.WaitingInput` - 需要使用者核准
+- `SessionStatus.Completed` - 成功完成
+- `SessionStatus.Failed` - 發生錯誤
 
-## Themes
+## 主題
 
-Available themes for showcasing:
+用於展示的可用主題：
 
-- `solarized-dark` (default)
+- `solarized-dark`（預設）
 - `solarized-light`
 - `catppuccin`
 - `framer-dark`
 - `gruvbox-dark`
 - `high-contrast`
 
-## Tips for Great Demos
+## 製作出色示範的技巧
 
-1. **Timing**: Use appropriate delays (1000-3000ms) between actions
-2. **Realism**: Mix different session states for authentic feel
-3. **Progression**: Show logical workflow progressions
-4. **Variety**: Include different scenarios (success, waiting, errors)
+1. **時機**：在動作之間使用適當的延遲（1000-3000ms）
+2. **逼真性**：混合不同的會話狀態以獲得真實感
+3. **進展**：展示邏輯工作流程進展
+4. **多樣性**：包含不同場景（成功、等待、錯誤）
 
-## Recording Animations
+## 錄製動畫
 
-To capture your demo as a video:
+要將您的示範擷取為影片：
 
-1. Set up your demo component with desired sequence
-2. Use screen recording software (OBS, QuickTime, etc.)
-3. Refresh the page to restart the animation
-4. Record the full sequence
+1. 使用所需序列設定您的示範元件
+2. 使用螢幕錄製軟體（OBS、QuickTime 等）
+3. 重新整理頁面以重新啟動動畫
+4. 錄製完整序列
 
-## Example: Complete Marketing Demo
+## 範例：完整行銷示範
 
 ```tsx
 import { QuickDemo } from '@/stores/demo/export'
@@ -166,12 +166,12 @@ export function MarketingDemo() {
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-2">HumanLayer WUI</h1>
-          <p className="text-muted-foreground">AI Session Management Interface</p>
+          <p className="text-muted-foreground">AI 會話管理介面</p>
         </div>
 
         <Card className="p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-semibold">Active Sessions</h2>
+            <h2 className="text-2xl font-semibold">活躍會話</h2>
             <ThemeSelector />
           </div>
 
@@ -185,8 +185,8 @@ export function MarketingDemo() {
 }
 ```
 
-## Need Help?
+## 需要協助？
 
-- Check the main README for technical details
-- Look at `sequences.ts` for more examples
-- Test your sequences in the WuiDemo page first
+- 查看主要 README 以了解技術細節
+- 查看 `sequences.ts` 以獲取更多範例
+- 先在 WuiDemo 頁面中測試您的序列

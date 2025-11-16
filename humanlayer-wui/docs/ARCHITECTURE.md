@@ -1,6 +1,6 @@
-# Architecture Overview
+# 架構概覽
 
-## System Architecture
+## 系統架構
 
 ```mermaid
 graph LR
@@ -28,7 +28,7 @@ graph LR
     HLD -->|"manages"| CC
 ```
 
-## Data Flow Example: Approving a Function Call
+## 資料流範例：核准函式呼叫
 
 ```mermaid
 sequenceDiagram
@@ -52,79 +52,79 @@ sequenceDiagram
     Hook-->>UI: Updated state
 ```
 
-## Code Organization
+## 程式碼組織
 
-### Frontend (src/)
+### 前端 (src/)
 
 ```
 src/
 ├── lib/
-│   └── daemon/          # Low-level daemon interface
-│       ├── types.ts     # Protocol type definitions
-│       ├── client.ts    # DaemonClient class
-│       ├── errors.ts    # Error types
-│       └── index.ts     # Public exports
-├── hooks/               # React hooks layer
-│   ├── useApprovals.ts  # Approval management
-│   ├── useSessions.ts   # Session management
+│   └── daemon/          # 低階 daemon 介面
+│       ├── types.ts     # 協定型別定義
+│       ├── client.ts    # DaemonClient 類別
+│       ├── errors.ts    # 錯誤型別
+│       └── index.ts     # 公開匯出
+├── hooks/               # React hooks 層
+│   ├── useApprovals.ts  # 審批管理
+│   ├── useSessions.ts   # 會話管理
 │   └── useConversation.ts
-├── utils/               # UI utilities
-│   ├── enrichment.ts    # Join approvals with sessions
-│   └── formatting.ts    # Display formatters
+├── utils/               # UI 工具函式
+│   ├── enrichment.ts    # 將審批與會話結合
+│   └── formatting.ts    # 顯示格式化器
 ├── types/
-│   └── ui.ts           # UI-specific types
-└── components/         # React components
+│   └── ui.ts           # UI 特定型別
+└── components/         # React 元件
 ```
 
-### Tauri Bridge (src-tauri/)
+### Tauri 橋接 (src-tauri/)
 
 ```
 src-tauri/
 ├── src/
-│   ├── lib.rs          # Tauri command handlers
-│   └── daemon_client/  # Rust daemon client
-│       ├── mod.rs      # Module exports
-│       ├── types.rs    # Rust type definitions
-│       ├── client.rs   # Client implementation
+│   ├── lib.rs          # Tauri 指令處理器
+│   └── daemon_client/  # Rust daemon 客戶端
+│       ├── mod.rs      # 模組匯出
+│       ├── types.rs    # Rust 型別定義
+│       ├── client.rs   # 客戶端實作
 │       ├── connection.rs
 │       └── subscriptions.rs
 ```
 
-## Key Design Principles
+## 關鍵設計原則
 
-### 1. Layer Separation
+### 1. 層級分離
 
-- **Daemon Client**: Pure protocol implementation, no UI logic
-- **Hooks**: React state management and data enrichment
-- **Components**: Presentation only, use hooks for all logic
+- **Daemon 客戶端**：純協定實作，無 UI 邏輯
+- **Hooks**：React 狀態管理和資料豐富化
+- **元件**：僅展示，所有邏輯使用 hooks
 
-### 2. Type Safety
+### 2. 型別安全
 
-- Full TypeScript types matching Rust/Go protocol
-- Enums for constants (SessionStatus, ApprovalType, etc.)
-- Separate UI types for enriched data
+- 完整的 TypeScript 型別符合 Rust/Go 協定
+- 常數使用列舉（SessionStatus、ApprovalType 等）
+- 豐富化資料的獨立 UI 型別
 
-### 3. Data Enrichment
+### 3. 資料豐富化
 
-- Raw daemon data is enriched in the hooks layer
-- Approvals are joined with session context
-- UI-friendly formatting happens in TypeScript
+- 原始 daemon 資料在 hooks 層豐富化
+- 審批與會話上下文結合
+- UI 友善的格式化在 TypeScript 中進行
 
-### 4. Error Handling
+### 4. 錯誤處理
 
-- Daemon errors are caught and formatted in hooks
-- User-friendly messages replace technical errors
-- Components receive simple error strings
+- Daemon 錯誤在 hooks 中捕獲並格式化
+- 使用者友善的訊息取代技術錯誤
+- 元件接收簡單的錯誤字串
 
-## Protocol Details
+## 協定詳情
 
-The daemon uses JSON-RPC 2.0 over Unix domain sockets. See [hld/PROTOCOL.md](../../hld/PROTOCOL.md) for the full specification.
+daemon 使用透過 Unix domain sockets 的 JSON-RPC 2.0。完整規格請參閱 [hld/PROTOCOL.md](../../hld/PROTOCOL.md)。
 
-Key RPC methods:
+關鍵 RPC 方法：
 
-- `launchSession` - Start a new Claude Code session
-- `listSessions` - Get all sessions
-- `fetchApprovals` - Get pending approvals
-- `sendDecision` - Approve/deny/respond to approvals
-- `getConversation` - Fetch session conversation history
-- `subscribe` - Real-time event updates
+- `launchSession` - 啟動新的 Claude Code 會話
+- `listSessions` - 取得所有會話
+- `fetchApprovals` - 取得待處理的審批
+- `sendDecision` - 核准/拒絕/回應審批
+- `getConversation` - 擷取會話對話歷史記錄
+- `subscribe` - 即時事件更新

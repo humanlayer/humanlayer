@@ -1,63 +1,63 @@
 # HumanLayer Daemon (hld)
 
-## Overview
+## 概述
 
-The HumanLayer Daemon (hld) provides a REST API and JSON-RPC interface for managing Claude Code sessions, approvals, and real-time event streaming.
+HumanLayer Daemon (hld) 提供 REST API 和 JSON-RPC 介面，用於管理 Claude Code session、核准和即時事件串流。
 
-## Configuration
+## 配置
 
-The daemon supports the following environment variables:
+守護程序支援以下環境變數：
 
-- `HUMANLAYER_DAEMON_HTTP_PORT`: HTTP server port (default: 7777, set to 0 to disable)
-- `HUMANLAYER_DAEMON_HTTP_HOST`: HTTP server host (default: 127.0.0.1)
+- `HUMANLAYER_DAEMON_HTTP_PORT`：HTTP 伺服器連接埠（預設：7777，設為 0 以停用）
+- `HUMANLAYER_DAEMON_HTTP_HOST`：HTTP 伺服器主機（預設：127.0.0.1）
 
-### Disabling HTTP Server
+### 停用 HTTP 伺服器
 
-To disable the HTTP server (for example, if you only want to use Unix sockets):
+若要停用 HTTP 伺服器（例如，如果您只想使用 Unix socket）：
 
 ```bash
 export HUMANLAYER_DAEMON_HTTP_PORT=0
 hld start
 ```
 
-## End-to-End Testing
+## 端對端測試
 
-The HLD includes comprehensive e2e tests for the REST API:
+HLD 包含針對 REST API 的完整 e2e 測試：
 
 ```bash
-# Run all e2e tests
+# 執行所有 e2e 測試
 make e2e-test
 
-# Run with verbose output for debugging
+# 使用詳細輸出執行以進行除錯
 make e2e-test-verbose
 
-# Run with manual approval interaction
+# 使用手動核准互動執行
 make e2e-test-manual
 
-# Keep test artifacts for debugging
+# 保留測試產物以進行除錯
 KEEP_TEST_ARTIFACTS=true make e2e-test
 ```
 
-The e2e test suite:
-- Tests all 16 REST API endpoints
-- Validates SSE event streams
-- Exercises approval workflows (deny → retry → approve)
-- Tests session lifecycle operations
-- Verifies error handling
-- Runs in isolation with its own daemon instance
+e2e 測試套件：
+- 測試所有 16 個 REST API 端點
+- 驗證 SSE 事件串流
+- 執行核准工作流程（拒絕 → 重試 → 核准）
+- 測試 session 生命週期操作
+- 驗證錯誤處理
+- 在隔離環境中執行，使用自己的守護程序實例
 
-### Test Structure
+### 測試結構
 
-The e2e tests are located in `hld/e2e/` and consist of:
-- `test-rest-api.ts` - Main test script with 6 test phases
-- `test-utils.ts` - Utilities for test environment setup and assertions
-- `package.json` - Test dependencies
+e2e 測試位於 `hld/e2e/`，包含：
+- `test-rest-api.ts` - 主要測試腳本，包含 6 個測試階段
+- `test-utils.ts` - 測試環境設定和斷言的工具程式
+- `package.json` - 測試相依性
 
-### Known Issues
+### 已知問題
 
-During e2e test development, we discovered some potential upstream bugs:
-1. The list sessions API defaults to `leafOnly` which filters out parent sessions
-2. Error handling returns 500 instead of 404 for non-existent sessions
-3. Error handling for invalid requests might not be returning proper 400 errors
+在 e2e 測試開發期間，我們發現了一些潛在的上游錯誤：
+1. list sessions API 預設為 `leafOnly`，會過濾掉父 session
+2. 錯誤處理對不存在的 session 回傳 500 而不是 404
+3. 無效請求的錯誤處理可能沒有回傳正確的 400 錯誤
 
-These issues are documented in the test code with TODO comments.
+這些問題在測試程式碼中以 TODO 註解記錄。

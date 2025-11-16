@@ -1,70 +1,70 @@
-# WUI Demo Store System
+# WUI Demo Store 系統
 
-A comprehensive demo store system for creating synthetic product shots and marketing animations using Zustand's slice pattern architecture.
+一個全面的示範 store 系統，用於建立合成產品截圖和行銷動畫，使用 Zustand 的 slice 模式架構。
 
-## Overview
+## 概述
 
-The demo store system provides a complete state management solution for creating automated, repeatable animations of the WUI application. It's designed to:
+示範 store 系統提供完整的狀態管理解決方案，用於建立自動化、可重複的 WUI 應用程式動畫。它的設計目的是：
 
-- Generate consistent product demonstrations without manual interaction
-- Create marketing content and screenshots programmatically
-- Test UI components with various state configurations
-- Showcase different themes and workflows
+- 在不需要手動互動的情況下生成一致的產品示範
+- 以程式化方式建立行銷內容和截圖
+- 使用各種狀態配置測試 UI 元件
+- 展示不同的主題和工作流程
 
-## Architecture
+## 架構
 
-### Slice-Based Design
+### 基於 Slice 的設計
 
-The system uses Zustand's slice pattern to separate concerns into focused, composable pieces:
+系統使用 Zustand 的 slice 模式將關注點分離成專注、可組合的片段：
 
 ```typescript
 type ComposedDemoStore = SessionSlice & LauncherSlice & ThemeSlice & AppSlice
 ```
 
-### Core Slices
+### 核心 Slices
 
 #### 1. SessionSlice (`/slices/sessionSlice.ts`)
 
-Manages session data and interactions:
+管理會話資料和互動：
 
-- Session list management (add, update, remove)
-- Focus state and navigation
-- Search functionality
-- Session utilities (find, count, exists)
+- 會話清單管理（新增、更新、移除）
+- 焦點狀態和導航
+- 搜尋功能
+- 會話工具函式（查找、計數、存在）
 
 #### 2. LauncherSlice (`/slices/launcherSlice.ts`)
 
-Controls the session launcher modal:
+控制會話啟動器模態視窗：
 
-- Open/close state
-- Command vs search modes
-- Input handling and validation
-- Menu navigation
-- Launch workflow states
+- 開啟/關閉狀態
+- 指令 vs 搜尋模式
+- 輸入處理和驗證
+- 選單導航
+- 啟動工作流程狀態
 
 #### 3. ThemeSlice (`/slices/themeSlice.ts`)
 
-Handles theme switching and persistence:
+處理主題切換和持久化：
 
-- Theme selection and cycling
-- DOM updates for theme changes
-- LocalStorage persistence
-- Dark/light theme detection
+- 主題選擇和循環
+- 主題變更的 DOM 更新
+- LocalStorage 持久化
+- 深色/淺色主題偵測
 
 #### 4. AppSlice (`/slices/appSlice.ts`)
 
-General application state:
+一般應用程式狀態：
 
-- Connection status
-- Approval management
-- Routing state
-- App-wide workflows (disconnect/reconnect)
+- 連接狀態
+- 審批管理
+- 路由狀態
+- 應用程式範圍的工作流程（斷線/重新連線）
 
-## Animation System
+## 動畫系統
 
-### Animation Sequences
+### 動畫序列
 
-Pre-built sequences demonstrate common workflows:
+預建序列示範常見工作流程：
 
 ```typescript
 import {
@@ -74,9 +74,9 @@ import {
 } from '@/stores/demo/animations/sequences'
 ```
 
-### Animation Step Structure
+### 動畫步驟結構
 
-Each animation step can modify any slice's state:
+每個動畫步驟都可以修改任何 slice 的狀態：
 
 ```typescript
 interface DemoAnimationStep {
@@ -89,19 +89,19 @@ interface DemoAnimationStep {
 }
 ```
 
-### Example Sequence
+### 範例序列
 
 ```typescript
 const mySequence: DemoAnimationStep[] = [
   {
     sessionState: { sessions: [] },
     delay: 1000,
-    description: 'Start with empty sessions',
+    description: '從空會話開始',
   },
   {
     launcherState: { isOpen: true, mode: 'command' },
     delay: 2000,
-    description: 'Open launcher',
+    description: '開啟啟動器',
   },
   {
     sessionState: {
@@ -109,14 +109,14 @@ const mySequence: DemoAnimationStep[] = [
     },
     launcherState: { isOpen: false },
     delay: 2000,
-    description: 'Create session and close launcher',
+    description: '建立會話並關閉啟動器',
   },
 ]
 ```
 
-## Usage
+## 使用方式
 
-### Basic Implementation
+### 基本實作
 
 ```tsx
 import { DemoStoreProvider } from '@/stores/demo/providers/DemoStoreProvider'
@@ -131,7 +131,7 @@ function MyDemo() {
 }
 ```
 
-### Accessing Store State
+### 存取 Store 狀態
 
 ```tsx
 import { useDemoStore } from '@/stores/demo/providers/DemoStoreProvider'
@@ -143,23 +143,23 @@ function MyComponent() {
 
   return (
     <div>
-      <button onClick={() => openLauncher('search')}>Open Search</button>
+      <button onClick={() => openLauncher('search')}>開啟搜尋</button>
     </div>
   )
 }
 ```
 
-### Creating Custom Sequences
+### 建立自訂序列
 
 ```typescript
 const customSequence: DemoAnimationStep[] = [
-  // Initial state
+  // 初始狀態
   {
     sessionState: { sessions: [] },
     themeState: { theme: 'solarized-dark' },
     delay: 1000,
   },
-  // Add multiple sessions
+  // 新增多個會話
   {
     sessionState: {
       sessions: [
@@ -170,13 +170,13 @@ const customSequence: DemoAnimationStep[] = [
     },
     delay: 2000,
   },
-  // Show approval workflow
+  // 顯示審批工作流程
   {
     appState: {
       approvals: [
         {
           id: 'approval-1',
-          title: 'Approve database change',
+          title: '核准資料庫變更',
           status: 'pending',
         },
       ],
@@ -186,37 +186,37 @@ const customSequence: DemoAnimationStep[] = [
 ]
 ```
 
-## Testing
+## 測試
 
-Each slice has comprehensive unit tests following TDD principles:
+每個 slice 都有遵循 TDD 原則的全面單元測試：
 
 ```bash
-# Run all demo store tests
+# 執行所有示範 store 測試
 npm test src/stores/demo
 
-# Run specific slice tests
+# 執行特定 slice 測試
 npm test src/stores/demo/slices/sessionSlice.test.ts
 ```
 
-### Test Coverage
+### 測試涵蓋範圍
 
-- SessionSlice: 21 tests covering all CRUD operations
-- LauncherSlice: 20 tests for modal states and workflows
-- ThemeSlice: 11 tests including localStorage mocking
-- AppSlice: 17 tests for app-wide state management
-- ComposedStore: 7 tests for slice composition
+- SessionSlice：21 個測試涵蓋所有 CRUD 操作
+- LauncherSlice：20 個測試用於模態視窗狀態和工作流程
+- ThemeSlice：11 個測試包括 localStorage 模擬
+- AppSlice：17 個測試用於應用程式範圍的狀態管理
+- ComposedStore：7 個測試用於 slice 組合
 
-## Best Practices
+## 最佳實踐
 
-1. **Keep Slices Focused**: Each slice should manage a single concern
-2. **Use TypeScript**: Leverage strong typing for state and actions
-3. **Test First**: Write tests before implementing new features
-4. **Document Sequences**: Add descriptions to animation steps
-5. **Handle Edge Cases**: Test with empty states and error conditions
+1. **保持 Slices 專注**：每個 slice 應管理單一關注點
+2. **使用 TypeScript**：充分利用強型別進行狀態和操作
+3. **測試優先**：在實作新功能之前編寫測試
+4. **記錄序列**：為動畫步驟新增描述
+5. **處理邊緣情況**：使用空狀態和錯誤條件進行測試
 
-## Common Patterns
+## 常見模式
 
-### Conditional State Updates
+### 條件式狀態更新
 
 ```typescript
 const updateIfFocused = (id: string, updates: Partial<SessionInfo>) => {
@@ -230,16 +230,16 @@ const updateIfFocused = (id: string, updates: Partial<SessionInfo>) => {
 }
 ```
 
-### Workflow Actions
+### 工作流程操作
 
 ```typescript
 const completeApproval = (approvalId: string) => {
   const { removeApproval, sessions, updateSession } = store.getState()
 
-  // Remove approval
+  // 移除審批
   removeApproval(approvalId)
 
-  // Update related session
+  // 更新相關會話
   const session = sessions.find(s => s.status === SessionStatus.WaitingInput)
   if (session) {
     updateSession(session.id, { status: SessionStatus.Running })
@@ -247,28 +247,28 @@ const completeApproval = (approvalId: string) => {
 }
 ```
 
-## Troubleshooting
+## 疑難排解
 
-### Common Issues
+### 常見問題
 
-1. **Theme not applying**: Ensure DOM is available (check for SSR)
-2. **Animation not looping**: Verify animator is started with `autoPlay={true}`
-3. **State not updating**: Check that you're using the correct selector
-4. **Tests failing**: Mock localStorage and document for theme tests
+1. **主題未套用**：確保 DOM 可用（檢查 SSR）
+2. **動畫未循環**：驗證 animator 是否使用 `autoPlay={true}` 啟動
+3. **狀態未更新**：檢查您是否使用正確的選擇器
+4. **測試失敗**：為主題測試模擬 localStorage 和 document
 
-### Debug Mode
+### 除錯模式
 
-Enable Zustand devtools in development:
+在開發中啟用 Zustand devtools：
 
 ```typescript
-// Automatically enabled in development
+// 在開發中自動啟用
 const store = create()(devtools((...args) => ({ ...slices }), { name: 'composed-demo-store' }))
 ```
 
-## Future Enhancements
+## 未來增強
 
-- [ ] Animation speed controls
-- [ ] Sequence recording/playback
-- [ ] Export animations as videos
-- [ ] Visual sequence builder
-- [ ] More pre-built sequences
+- [ ] 動畫速度控制
+- [ ] 序列錄製/播放
+- [ ] 將動畫匯出為影片
+- [ ] 視覺化序列建構器
+- [ ] 更多預建序列

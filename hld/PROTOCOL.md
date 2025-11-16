@@ -1,22 +1,22 @@
-# HumanLayer Daemon (HLD) Protocol Documentation
+# HumanLayer Daemon (HLD) 協定文件
 
-## Overview
+## 概述
 
-The HumanLayer Daemon (HLD) uses a JSON-RPC 2.0 protocol over Unix domain sockets for communication. The daemon provides session management, approval handling, and event subscription capabilities for Claude Code interactions.
+HumanLayer Daemon (HLD) 使用基於 Unix domain socket 的 JSON-RPC 2.0 協定進行通訊。守護程序為 Claude Code 互動提供 session 管理、核准處理和事件訂閱功能。
 
-## Transport Layer
+## 傳輸層
 
-- **Protocol**: Unix domain socket
-- **Socket Path**: Configurable via `HUMANLAYER_DAEMON_SOCKET` environment variable
-- **Default Path**: `~/.humanlayer/daemon.sock`
-- **Permissions**: 0600 (read/write for owner only)
-- **Message Format**: Line-delimited JSON (each JSON-RPC message followed by newline)
+- **協定**：Unix domain socket
+- **Socket 路徑**：可透過 `HUMANLAYER_DAEMON_SOCKET` 環境變數設定
+- **預設路徑**：`~/.humanlayer/daemon.sock`
+- **權限**：0600（僅擁有者可讀/寫）
+- **訊息格式**：行分隔的 JSON（每個 JSON-RPC 訊息後接換行符號）
 
-## JSON-RPC 2.0 Format
+## JSON-RPC 2.0 格式
 
-All requests and responses follow the JSON-RPC 2.0 specification:
+所有請求和回應遵循 JSON-RPC 2.0 規範：
 
-### Request Format
+### 請求格式
 
 ```json
 {
@@ -27,7 +27,7 @@ All requests and responses follow the JSON-RPC 2.0 specification:
 }
 ```
 
-### Response Format
+### 回應格式
 
 ```json
 {
@@ -37,7 +37,7 @@ All requests and responses follow the JSON-RPC 2.0 specification:
 }
 ```
 
-### Error Response Format
+### 錯誤回應格式
 
 ```json
 {
@@ -51,25 +51,25 @@ All requests and responses follow the JSON-RPC 2.0 specification:
 }
 ```
 
-## Error Codes
+## 錯誤碼
 
-Standard JSON-RPC 2.0 error codes:
+標準 JSON-RPC 2.0 錯誤碼：
 
-- `-32700`: Parse error
-- `-32600`: Invalid request
-- `-32601`: Method not found
-- `-32602`: Invalid params
-- `-32603`: Internal error
+- `-32700`：解析錯誤
+- `-32600`：無效請求
+- `-32601`：找不到方法
+- `-32602`：無效參數
+- `-32603`：內部錯誤
 
-## API Methods
+## API 方法
 
-### Health Check
+### 健康檢查
 
-**Method**: `health`
+**方法**：`health`
 
-**Request Parameters**: None
+**請求參數**：無
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -78,13 +78,13 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-### Session Management
+### Session 管理
 
-#### Launch Session
+#### 啟動 Session
 
-**Method**: `launchSession`
+**方法**：`launchSession`
 
-**Request Parameters**:
+**請求參數**：
 
 ```json
 {
@@ -105,7 +105,7 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -114,13 +114,13 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-#### List Sessions
+#### 列出 Session
 
-**Method**: `listSessions`
+**方法**：`listSessions`
 
-**Request Parameters**: None or empty object
+**請求參數**：無或空物件
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -146,11 +146,11 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-#### Get Session State
+#### 取得 Session 狀態
 
-**Method**: `getSessionState`
+**方法**：`getSessionState`
 
-**Request Parameters**:
+**請求參數**：
 
 ```json
 {
@@ -158,7 +158,7 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -182,11 +182,11 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-#### Continue Session
+#### 繼續 Session
 
-**Method**: `continueSession`
+**方法**：`continueSession`
 
-**Request Parameters**:
+**請求參數**：
 
 ```json
 {
@@ -203,7 +203,7 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -214,13 +214,13 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-### Conversation History
+### 對話歷史
 
-#### Get Conversation
+#### 取得對話
 
-**Method**: `getConversation`
+**方法**：`getConversation`
 
-**Request Parameters**:
+**請求參數**：
 
 ```json
 {
@@ -229,9 +229,9 @@ Standard JSON-RPC 2.0 error codes:
 }
 ```
 
-Note: Either `session_id` or `claude_session_id` is required.
+注意：`session_id` 或 `claude_session_id` 必須提供其中之一。
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -258,13 +258,13 @@ Note: Either `session_id` or `claude_session_id` is required.
 }
 ```
 
-### Approval Management
+### 核准管理
 
-#### Fetch Approvals
+#### 取得核准
 
-**Method**: `fetchApprovals`
+**方法**：`fetchApprovals`
 
-**Request Parameters**:
+**請求參數**：
 
 ```json
 {
@@ -272,7 +272,7 @@ Note: Either `session_id` or `claude_session_id` is required.
 }
 ```
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -289,11 +289,11 @@ Note: Either `session_id` or `claude_session_id` is required.
 }
 ```
 
-#### Send Decision
+#### 發送決策
 
-**Method**: `sendDecision`
+**方法**：`sendDecision`
 
-**Request Parameters**:
+**請求參數**：
 
 ```json
 {
@@ -303,12 +303,12 @@ Note: Either `session_id` or `claude_session_id` is required.
 }
 ```
 
-Decision rules:
+決策規則：
 
-- `approve`: Approves the tool call
-- `deny`: Denies the tool call (requires comment)
+- `approve`：核准工具呼叫
+- `deny`：拒絕工具呼叫（需要註解）
 
-**Response**:
+**回應**：
 
 ```json
 {
@@ -317,13 +317,13 @@ Decision rules:
 }
 ```
 
-### Event Subscription
+### 事件訂閱
 
-#### Subscribe to Events
+#### 訂閱事件
 
-**Method**: `Subscribe`
+**方法**：`Subscribe`
 
-**Request Parameters**:
+**請求參數**：
 
 ```json
 {
@@ -333,13 +333,13 @@ Decision rules:
 }
 ```
 
-Event types:
+事件類型：
 
-- `new_approval`: New approval(s) received
-- `approval_resolved`: Approval resolved (approved/denied/responded)
-- `session_status_changed`: Session status changed
+- `new_approval`：收到新核准
+- `approval_resolved`：核准已解決（已核准/已拒絕/已回應）
+- `session_status_changed`：Session 狀態已變更
 
-**Initial Response**:
+**初始回應**：
 
 ```json
 {
@@ -348,7 +348,7 @@ Event types:
 }
 ```
 
-**Event Notifications** (streamed):
+**事件通知**（串流）：
 
 ```json
 {
@@ -362,7 +362,7 @@ Event types:
 }
 ```
 
-**Heartbeat** (sent every 30 seconds):
+**心跳**（每 30 秒發送一次）：
 
 ```json
 {
@@ -371,53 +371,53 @@ Event types:
 }
 ```
 
-Note: The Subscribe method uses long-polling and maintains the connection until closed by the client or server.
+注意：Subscribe 方法使用長輪詢，並保持連接直到客戶端或伺服器關閉。
 
-## Connection Management
+## 連接管理
 
-- Each client connection is handled independently
-- Connections can be closed at any time
-- The daemon supports concurrent connections
-- Socket buffer size: 1MB
+- 每個客戶端連接獨立處理
+- 連接可以隨時關閉
+- 守護程序支援並行連接
+- Socket 緩衝區大小：1MB
 
-## Data Types
+## 資料類型
 
-### Session Status Values
+### Session 狀態值
 
-- `starting`: Session is initializing
-- `running`: Session is actively processing
-- `completed`: Session finished successfully
-- `failed`: Session encountered an error
-- `waiting_input`: Session is waiting for user input
+- `starting`：Session 正在初始化
+- `running`：Session 正在積極處理
+- `completed`：Session 成功完成
+- `failed`：Session 遇到錯誤
+- `waiting_input`：Session 正在等待使用者輸入
 
-### Approval Status Values
+### 核准狀態值
 
-- `NULL`: No approval needed
-- `pending`: Awaiting approval decision
-- `approved`: Approved
-- `denied`: Denied
-- `resolved`: Generically resolved (external resolution)
+- `NULL`：不需要核准
+- `pending`：等待核准決策
+- `approved`：已核准
+- `denied`：已拒絕
+- `resolved`：一般性解決（外部解決）
 
-### Event Types
+### 事件類型
 
-- `message`: Chat message (user/assistant/system)
-- `tool_call`: Tool invocation
-- `tool_result`: Tool execution result
-- `system`: System event
+- `message`：聊天訊息（使用者/助理/系統）
+- `tool_call`：工具呼叫
+- `tool_result`：工具執行結果
+- `system`：系統事件
 
-## Example Usage
+## 使用範例
 
-### Connecting to the daemon
+### 連接到守護程序
 
 ```bash
-# Using netcat (for testing)
+# 使用 netcat（用於測試）
 nc -U ~/.humanlayer/daemon.sock
 
-# Send a health check
+# 發送健康檢查
 {"jsonrpc":"2.0","method":"health","id":1}
 ```
 
-### Launching a session
+### 啟動 session
 
 ```json
 {
@@ -432,7 +432,7 @@ nc -U ~/.humanlayer/daemon.sock
 }
 ```
 
-### Subscribing to events
+### 訂閱事件
 
 ```json
 {
@@ -446,9 +446,9 @@ nc -U ~/.humanlayer/daemon.sock
 }
 ```
 
-## Security Considerations
+## 安全性考量
 
-- The daemon only accepts connections via Unix domain socket
-- Socket permissions are set to 0600 (owner read/write only)
-- No authentication is required as security is handled by filesystem permissions
-- The daemon runs with the same privileges as the user who started it
+- 守護程序僅接受透過 Unix domain socket 的連接
+- Socket 權限設定為 0600（僅擁有者可讀/寫）
+- 不需要身份驗證，因為安全性由檔案系統權限處理
+- 守護程序以啟動它的使用者相同權限執行

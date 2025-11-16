@@ -1,206 +1,206 @@
-# Documentation System
+# 文件系統
 
-## Version Control and Releases
+## 版本控制與發布
 
-### Release Process
+### 發布流程
 
-- Version tags follow semver (vX.Y.Z)
-- Features added in main branch
-- Examples updated alongside feature development
-- Changelog maintained for each version
-- Both Python and TypeScript packages versioned together
-- Generate release notes using git commands:
-  - Use `git diff v0.5.11..v0.6.0` to see file changes between versions
-  - Always query changes from git before updating CHANGELOG.md
-- Changelog priorities:
-  - Document API changes first, especially new fields and parameters
-  - Internal changes (testing, docs, etc) are lower priority
-  - Always document new parameters in models.py or models.ts with their exact names
-  - Link to relevant documentation when adding new features
-- Changelog organization:
-  - Document features in their final release version, not in prep/RC versions
-  - Prep/RC versions should have minimal changelog entries pointing to their final version
-  - Link to docs using humanlayer.dev/docs/... format
-  - Link to examples using full GitHub paths (https://github.com/humanlayer/humanlayer/tree/main/examples/...)
-- The steps to create a new release are:
-  - merge all the code to main in github
-  - checkout the latest on `main`
-  - edit pyproject.toml and/or package.json with the current version, e.g. change 0.6.1-rc1 to 0.6.1
-  - run make build-and-publish for python, npm publish for ts
-  - commit and tag the changes with the release tag, e.g. v0.6.1, push the commit+tag
-  - update all the examples versions to use the new tag with `make update... version=0.6.1`
-  - bump the versions in pyproject and package.json to ${NEXT_PATCH_VERSION}-rc1
+- 版本標籤遵循 semver（vX.Y.Z）
+- 功能新增於主分支
+- 範例與功能開發同步更新
+- 為每個版本維護變更日誌
+- Python 和 TypeScript 套件一起進行版本控制
+- 使用 git 命令產生發布說明：
+  - 使用 `git diff v0.5.11..v0.6.0` 查看版本之間的檔案變更
+  - 更新 CHANGELOG.md 之前，務必從 git 查詢變更
+- 變更日誌優先順序：
+  - 首先記錄 API 變更，特別是新欄位和參數
+  - 內部變更（測試、文件等）優先順序較低
+  - 務必記錄 models.py 或 models.ts 中的新參數及其確切名稱
+  - 新增功能時連結至相關文件
+- 變更日誌組織：
+  - 在最終發布版本中記錄功能，而非在準備/RC 版本中
+  - 準備/RC 版本應有最少的變更日誌條目，指向其最終版本
+  - 使用 humanlayer.dev/docs/... 格式連結至文件
+  - 使用完整的 GitHub 路徑連結至範例（https://github.com/humanlayer/humanlayer/tree/main/examples/...）
+- 建立新發布的步驟：
+  - 在 github 中將所有程式碼合併至 main
+  - 檢出 `main` 上的最新版本
+  - 使用目前版本編輯 pyproject.toml 和/或 package.json，例如將 0.6.1-rc1 改為 0.6.1
+  - 為 python 執行 make build-and-publish，為 ts 執行 npm publish
+  - 使用發布標籤提交並標記變更，例如 v0.6.1，推送提交+標籤
+  - 使用 `make update... version=0.6.1` 更新所有範例版本以使用新標籤
+  - 將 pyproject 和 package.json 中的版本提升至 ${NEXT_PATCH_VERSION}-rc1
 
-### Feature Development Pattern
+### 功能開發模式
 
-- New features accompanied by examples
-- Examples directory organized by framework integration
-- Changes coordinated across Python/TypeScript implementations
-- Email channel example: subject lines, threading, and framework-specific implementations
+- 新功能附帶範例
+- 範例目錄按框架整合組織
+- Python/TypeScript 實作之間協調變更
+- Email 通道範例：主旨行、執行緒和框架特定實作
 
-## Version Control and Releases
+## 版本控制與發布
 
-### Release Process
+### 發布流程
 
-- Version tags follow semver (vX.Y.Z)
-- Features added in main branch
-- Examples updated alongside feature development
-- Changelog maintained for each version
-- Both Python and TypeScript packages versioned together
+- 版本標籤遵循 semver（vX.Y.Z）
+- 功能新增於主分支
+- 範例與功能開發同步更新
+- 為每個版本維護變更日誌
+- Python 和 TypeScript 套件一起進行版本控制
 
-### Feature Development Pattern
+### 功能開發模式
 
-- New features accompanied by examples
-- Examples directory organized by framework integration
-- Changes coordinated across Python/TypeScript implementations
-- Email channel example: subject lines, threading, and framework-specific implementations
+- 新功能附帶範例
+- 範例目錄按框架整合組織
+- Python/TypeScript 實作之間協調變更
+- Email 通道範例：主旨行、執行緒和框架特定實作
 
-## Platform Choice
+## 平台選擇
 
-Mintlify is the chosen documentation platform. It provides:
+Mintlify 是選定的文件平台。它提供：
 
-- MDX support for interactive documentation
-- API documentation features
-- Local preview capabilities
-- Vercel deployment integration
+- MDX 支援互動式文件
+- API 文件功能
+- 本機預覽功能
+- Vercel 部署整合
 
-## Local Development
+## 本機開發
 
-Run documentation locally using either:
+使用以下任一方式在本機執行文件：
 
-1. Mintlify CLI (recommended)
+1. Mintlify CLI（建議）
 
 ```bash
 npm i -g mintlify
 mintlify dev
 ```
 
-2. Docker container (alternative)
+2. Docker 容器（替代方案）
 
 ```bash
 # TODO: Dockerfile to be added
 ```
 
-## Deployment
+## 部署
 
-Documentation is automatically deployed to docs.humanlayer.dev via Vercel integration.
+文件透過 Vercel 整合自動部署至 docs.humanlayer.dev。
 
-## DNS Configuration
+## DNS 設定
 
-The docs site is served from docs.humanlayer.dev, configured as a CNAME record pointing to Vercel's DNS.
+文件網站從 docs.humanlayer.dev 提供服務，設定為指向 Vercel DNS 的 CNAME 記錄。
 
-## Branding Requirements
+## 品牌要求
 
-Documentation uses Humanlayer branding. Required assets:
+文件使用 Humanlayer 品牌。所需資源：
 
-- Light/dark theme variants required for logos
-- Images stored in docs/images/
-- Logo variants in docs/logo/
-- All images must be < 5MB
+- Logo 需要亮色/深色主題變體
+- 圖片儲存在 docs/images/
+- Logo 變體儲存在 docs/logo/
+- 所有圖片必須 < 5MB
 
-### Asset Management
+### 資源管理
 
-When creating new documentation:
+建立新文件時：
 
-- Copy images from docs-md/images/ to docs/images/ before referencing them
-- Ensure image paths in .mdx files match the docs/images/ location
-- Verify images are < 5MB before copying
-- For images hosted on humanlayer.dev, use full URLs (e.g., https://humanlayer.dev/img-approval-social.png)
-- For local images, use relative paths from the docs/images/ directory
+- 在引用圖片之前，先將圖片從 docs-md/images/ 複製到 docs/images/
+- 確保 .mdx 檔案中的圖片路徑與 docs/images/ 位置相符
+- 複製前驗證圖片 < 5MB
+- 對於 humanlayer.dev 上託管的圖片，使用完整 URL（例如 https://humanlayer.dev/img-approval-social.png）
+- 對於本機圖片，使用來自 docs/images/ 目錄的相對路徑
 
-The project is transitioning from Metalytics to Humanlayer branding - ensure new documentation uses Humanlayer assets.
+該專案正在從 Metalytics 過渡到 Humanlayer 品牌——確保新文件使用 Humanlayer 資源。
 
-## Documentation Structure
+## 文件結構
 
-### Link Management
+### 連結管理
 
-Documentation links follow these rules:
+文件連結遵循這些規則：
 
-- Keep external package/tool links (npm, pip) pointing to their original sources
-- Documentation links should use humanlayer.dev/docs/... format (e.g., humanlayer.dev/docs/channels/email)
-- Use relative links for internal navigation between doc pages
-- Example links should point to GitHub repository with full path (e.g., https://github.com/humanlayer/humanlayer/tree/main/examples/langchain)
-- Framework documentation must link to examples repository (https://github.com/humanlayer/humanlayer/tree/main/examples)
+- 保持外部套件/工具連結（npm、pip）指向其原始來源
+- 文件連結應使用 humanlayer.dev/docs/... 格式（例如 humanlayer.dev/docs/channels/email）
+- 對文件頁面之間的內部導覽使用相對連結
+- 範例連結應指向具有完整路徑的 GitHub 儲存庫（例如 https://github.com/humanlayer/humanlayer/tree/main/examples/langchain）
+- 框架文件必須連結至範例儲存庫（https://github.com/humanlayer/humanlayer/tree/main/examples）
 
-The documentation is organized around AI framework integrations:
+文件圍繞 AI 框架整合組織：
 
-- OpenAI integration
-- Langchain integration
-- CrewAI integration
-- ControlFlow integration (supports function calling and human approvals)
+- OpenAI 整合
+- Langchain 整合
+- CrewAI 整合
+- ControlFlow 整合（支援函式呼叫和人工核准）
 
-Style guidelines for framework documentation:
+框架文件的風格指南：
 
-- Use concise titles (e.g. "LangChain" not "LangChain Integration")
-- Focus on practical, real-world examples
-- Follow consistent structure: Overview, Installation, Basic Example, How it Works, Running the Example, Next Steps
+- 使用簡潔的標題（例如「LangChain」而非「LangChain 整合」）
+- 專注於實用的真實世界範例
+- 遵循一致的結構：概述、安裝、基本範例、運作原理、執行範例、後續步驟
 
-Documentation structure for framework integrations:
+框架整合的文件結構：
 
-- Overview: Brief introduction to the framework and Humanlayer integration
-- Installation: Required packages with pip install commands
-- Basic Example: Complete working example with environment setup
-- How it Works: Step-by-step breakdown of the example
-- Running the Example: Clear steps to execute the code
-- Next Steps: Links to core concepts (require_approval, contact channels, etc.)
+- 概述：框架和 Humanlayer 整合的簡要介紹
+- 安裝：使用 pip install 命令的所需套件
+- 基本範例：包含環境設定的完整可用範例
+- 運作原理：範例的逐步分解
+- 執行範例：執行程式碼的明確步驟
+- 後續步驟：連結至核心概念（require_approval、聯絡通道等）
 
-Example patterns:
+範例模式：
 
-- Math operations for simple demonstrations
-- Customer onboarding for real-world use cases
+- 數學運算用於簡單示範
+- 客戶入職用於真實世界使用案例
 
-Focus documentation on framework integration patterns and examples rather than basic features.
+將文件重點放在框架整合模式和範例上，而非基本功能。
 
-## Contact Channel System
+## 聯絡通道系統
 
-Core concepts around contact channels:
+關於聯絡通道的核心概念：
 
-### Channel Types
+### 通道類型
 
-- Slack: Real-time team communication
-- Email: Asynchronous communication with threading
-- Web: React embeds for custom UIs and in-app approval flows
-  - Requires backend proxy to handle authentication and API keys
-  - Frontend components communicate through backend proxy
-  - Never expose HumanLayer API key to frontend
-  - Use JWT-based authentication for web embeds:
-    - Frontend should pass JWTs that encode tenant/user context
-    - Backend validates JWTs before proxying to HumanLayer
-    - Keep authentication simple and stateless where possible
-    - Prefer tenant-based authorization over user-based
-  - Security principles:
-    - API keys stay in backend only
-    - Frontend uses short-lived JWTs
-    - Tenant isolation is enforced at proxy layer
-- SMS/WhatsApp: Mobile-first communication (beta)
+- Slack：即時團隊溝通
+- Email：具有執行緒的非同步通訊
+- Web：用於自訂 UI 和應用程式內核准流程的 React 嵌入
+  - 需要後端代理處理驗證和 API 金鑰
+  - 前端元件透過後端代理通訊
+  - 絕不將 HumanLayer API 金鑰暴露給前端
+  - 對 Web 嵌入使用基於 JWT 的驗證：
+    - 前端應傳遞編碼租戶/使用者上下文的 JWT
+    - 後端在代理至 HumanLayer 之前驗證 JWT
+    - 盡可能保持驗證簡單和無狀態
+    - 偏好基於租戶的授權而非基於使用者的授權
+  - 安全原則：
+    - API 金鑰僅保留在後端
+    - 前端使用短期 JWT
+    - 在代理層強制執行租戶隔離
+- SMS/WhatsApp：以行動裝置為主的通訊（測試版）
 
-### Channel Selection Guidelines
+### 通道選擇指南
 
-- Slack for team collaboration and real-time approvals
-- Email for external communication and formal approvals
-- Web embeds for custom workflows and UIs
-- Mobile channels for field operations
+- Slack 用於團隊協作和即時核准
+- Email 用於外部通訊和正式核准
+- Web 嵌入用於自訂工作流程和 UI
+- 行動通道用於現場作業
 
-### Channel Architecture
+### 通道架構
 
-- Channels are composable - can be combined for multi-channel approval flows
-- Each channel has unique properties (context, threading, etc)
-- Email channel supports custom Jinja2 templates for full HTML control
-  - Template variables:
-    - event: The full event object (function call or human contact)
-    - type: Event type ("v1beta2.function_call" or "v1beta2.human_contact")
-    - urls: Contains base_url for approval/response actions
-  - Falls back to default HTML template if no custom template provided
-- Implementation patterns:
+- 通道是可組合的——可以組合用於多通道核准流程
+- 每個通道都有獨特的屬性（上下文、執行緒等）
+- Email 通道支援自訂 Jinja2 範本以完全控制 HTML
+  - 範本變數：
+    - event：完整的事件物件（函式呼叫或人工聯絡）
+    - type：事件類型（「v1beta2.function_call」或「v1beta2.human_contact」）
+    - urls：包含核准/回應動作的 base_url
+  - 如果未提供自訂範本，則回退到預設 HTML 範本
+- 實作模式：
 
-  - Python is the primary implementation language, TypeScript/JavaScript examples should be secondary
-  - Use full ContactChannel objects in examples rather than simplified primitives
-  - Examples should match actual implementation patterns used in production code
-  - Composite channels feature is in active development:
-    - Community feedback welcome on the design
-    - Contact team to participate in feature development
-    - Current direction favors nested ContactChannel objects over separate policy types
-  - Composite channels are created by nesting ContactChannel objects:
+  - Python 是主要實作語言，TypeScript/JavaScript 範例應為次要
+  - 在範例中使用完整的 ContactChannel 物件，而非簡化的原始型別
+  - 範例應與生產程式碼中使用的實際實作模式相符
+  - 複合通道功能正在積極開發中：
+    - 歡迎社群對設計提供回饋
+    - 聯絡團隊參與功能開發
+    - 目前方向偏好巢狀 ContactChannel 物件而非單獨的策略類型
+  - 複合通道透過巢狀 ContactChannel 物件建立：
 
     ```python
     # Single channel
@@ -219,143 +219,143 @@ Core concepts around contact channels:
     ])
     ```
 
-- Three-level configuration hierarchy:
-  1. Operation Level: Configured per-function via require_approval() or human_as_tool()
-  2. SDK Level: Configured on HumanLayer instance creation
-  3. Project Level: Configured in HumanLayer dashboard as project defaults
-- Configuration precedence follows hierarchy (operation overrides SDK overrides project)
-- Default channel fallback based on project settings
+- 三層級設定階層：
+  1. 操作層級：透過 require_approval() 或 human_as_tool() 按函式設定
+  2. SDK 層級：在 HumanLayer 實例建立時設定
+  3. 專案層級：在 HumanLayer 儀表板中設定為專案預設值
+- 設定優先順序遵循階層（操作覆寫 SDK，SDK 覆寫專案）
+- 基於專案設定的預設通道回退
 
-### Framework Integration Principles
+### 框架整合原則
 
-- Provide first-class support for major web frameworks (FastAPI, Django, Express)
-- Framework-specific packages preferred over generic implementations
-- React integration features:
-  - Hooks-first approach for data fetching and state management
-  - Components handle their own authentication flow
-  - Minimal configuration required in parent components
-  - Keep token management internal to components where possible
+- 為主要 Web 框架（FastAPI、Django、Express）提供一流支援
+- 偏好框架特定套件而非通用實作
+- React 整合功能：
+  - 資料擷取和狀態管理的 Hooks 優先方法
+  - 元件處理自己的驗證流程
+  - 父元件中所需的最少設定
+  - 盡可能在元件內部保持權杖管理
 
-### Async Framework Integration
+### 非同步框架整合
 
-- Use AsyncHumanLayer for async frameworks (FastAPI, Chainlit, etc.)
-- All HumanLayer methods become async (create_function_call, get_function_call, etc.)
-- No need for make_async wrappers or other async adapters
-- Polling loops should use framework-specific sleep functions (e.g., cl.sleep for Chainlit)
+- 對非同步框架（FastAPI、Chainlit 等）使用 AsyncHumanLayer
+- 所有 HumanLayer 方法變為非同步（create_function_call、get_function_call 等）
+- 不需要 make_async 包裝器或其他非同步適配器
+- 輪詢迴圈應使用框架特定的睡眠函式（例如 Chainlit 的 cl.sleep）
 
-### Vercel AI SDK Integration
+### Vercel AI SDK 整合
 
-- Use raw JSON schema for tool parameters instead of zod
-- Tools should be defined with parameters in OpenAI function format
-- Streaming responses require OpenAIStream and StreamingTextResponse from 'ai'
-- Tool execution should be async and return strings
-- Tool definitions don't use zod schemas directly, convert to JSON schema format
-- For injecting messages during tool calls:
+- 對工具參數使用原始 JSON schema 而非 zod
+- 工具應以 OpenAI 函式格式的參數定義
+- 串流回應需要來自 'ai' 的 OpenAIStream 和 StreamingTextResponse
+- 工具執行應為非同步並回傳字串
+- 工具定義不直接使用 zod schema，轉換為 JSON schema 格式
+- 在工具呼叫期間注入訊息：
 
-  - Use TransformStream to modify the stream
-  - Add newlines around injected messages for clean separation
-  - Track first chunk if special handling is needed
-  - Use TextEncoder for converting messages to stream format
-  - Return text-delta type chunks for proper streaming
-  - Inject messages after the original chunk to maintain flow
+  - 使用 TransformStream 修改串流
+  - 在注入的訊息周圍新增換行以實現乾淨的分離
+  - 如果需要特殊處理，追蹤第一個區塊
+  - 使用 TextEncoder 將訊息轉換為串流格式
+  - 回傳 text-delta 類型區塊以實現適當的串流
+  - 在原始區塊之後注入訊息以維持流程
 
-- Authentication handled at multiple levels:
-  - JWT token generation in framework-specific auth endpoints
-  - Signing key configuration in HumanLayer dashboard
-  - Framework-specific middleware and request handling
-- Each framework integration includes:
-  - Framework-specific package (e.g. humanlayer-embed[fastapi])
-  - Dedicated request handlers
-  - Authentication middleware examples
-  - Type-safe interfaces where possible
+- 在多個層級處理驗證：
+  - 在框架特定的驗證端點中產生 JWT 權杖
+  - 在 HumanLayer 儀表板中設定簽署金鑰
+  - 框架特定的中介軟體和請求處理
+- 每個框架整合包括：
+  - 框架特定套件（例如 humanlayer-embed[fastapi]）
+  - 專用請求處理程式
+  - 驗證中介軟體範例
+  - 盡可能使用型別安全介面
 
-### Channel Selection Guidelines
+### 通道選擇指南
 
-- Slack for team collaboration and real-time approvals
-- Email for external communication and formal approvals
-- Web embeds for custom workflows and UIs
-- Mobile channels for field operations
+- Slack 用於團隊協作和即時核准
+- Email 用於外部通訊和正式核准
+- Web 嵌入用於自訂工作流程和 UI
+- 行動通道用於現場作業
 
-## Tool Calling Concepts
+## 工具呼叫概念
 
-Core concepts around LLM tool calling and human oversight:
+關於 LLM 工具呼叫和人工監督的核心概念：
 
-### Function Stakes Framework
+### 函式風險框架
 
-Categorize functions by risk level:
+按風險等級對函式分類：
 
-- Low Stakes: Read-only access to public data
-- Medium Stakes: Read-only access to private data, templated communication
-- High Stakes: Write access to systems, free-form communication on behalf of users/company
+- 低風險：對公開資料的唯讀存取
+- 中風險：對私人資料的唯讀存取、範本化通訊
+- 高風險：對系統的寫入存取、代表使用者/公司的自由形式通訊
 
-### Human Oversight Philosophy
+### 人工監督理念
 
-- Even with advanced LLMs, high-stakes functions require human oversight
-- 90% accuracy is insufficient for critical operations
-- Oversight must be deterministic, not probabilistic
-- Human feedback can be used for evaluation/fine-tuning
+- 即使使用進階 LLM，高風險函式也需要人工監督
+- 對於關鍵操作，90% 的準確率是不夠的
+- 監督必須是確定性的，而非概率性的
+- 人工回饋可用於評估/微調
 
-### LLM Application Evolution
+### LLM 應用程式演進
 
-Document the progression of LLM applications:
+記錄 LLM 應用程式的進展：
 
-- Gen 1: Chat - human-initiated question / response interface
-- Gen 2: Agentic Assistants - frameworks drive prompt routing, tool calling, chain of thought, and context window management. Most workflows are initiated by humans in single-shot "here's a task, go do it" or rolling chat interfaces.
-- Gen 3: Autonomous Agents - no longer human initiated, agents live in the "outer loop" driving toward their goals using various tools and functions. Human/Agent communication is Agent-initiated rather than human-initiated.
+- 第一代：聊天——人工發起的問答介面
+- 第二代：代理助理——框架驅動提示路由、工具呼叫、思考鏈和上下文視窗管理。大多數工作流程由人類在單次「這是任務，去做」或滾動聊天介面中發起。
+- 第三代：自主代理——不再由人類發起，代理存在於「外部迴圈」中，使用各種工具和函式朝著目標前進。人類/代理通訊由代理發起，而非由人類發起。
 
-#### Autonomous Agent Requirements
+#### 自主代理需求
 
-Gen 3 autonomous agents need:
+第三代自主代理需要：
 
-- Ways to consult humans for input on various tasks
-- Human oversight for sensitive operations
-- Contact channels across chat, email, sms, etc.
-- Self-managed scheduling and cost management
-- Durable serialization and resumption of workflows across long-running tool calls
-- Context window management by a "manager LLM"
-- Ability to fork sub-chains for specialized tasks and roles
+- 向人類諮詢各種任務輸入的方式
+- 對敏感操作的人工監督
+- 跨聊天、email、簡訊等的聯絡通道
+- 自我管理的排程和成本管理
+- 跨長時間執行的工具呼叫的工作流程持久化序列化和恢復
+- 由「管理 LLM」進行上下文視窗管理
+- 為專業任務和角色分叉子鏈的能力
 
-Example use cases:
+使用案例範例：
 
-- LinkedIn inbox assistant
-- Customer onboarding assistant
+- LinkedIn 收件箱助理
+- 客戶入職助理
 
-## Response Option Patterns
+## 回應選項模式
 
-Common patterns for structuring response options:
+結構化回應選項的常見模式：
 
-- Detecting user frustration/emotion - Use response options to guide agent responses to emotional states
-- Approval flows - Provide clear approve/reject options with descriptions
-- Guided responses - Use response options to structure human feedback into actionable formats
-- Multi-step workflows - Chain response options across multiple human interactions
+- 偵測使用者挫折/情緒——使用回應選項指導代理對情緒狀態的回應
+- 核准流程——提供包含描述的明確核准/拒絕選項
+- 引導回應——使用回應選項將人工回饋結構化為可操作的格式
+- 多步驟工作流程——在多個人工互動中鏈結回應選項
 
-Example: When detecting user frustration, provide response options that:
+範例：偵測使用者挫折時，提供以下回應選項：
 
-- Acknowledge the emotion ("User sounds frustrated")
-- Suggest concrete next steps ("Offer discount", "Escalate to manager")
-- Include context in descriptions
+- 承認情緒（「使用者聽起來很沮喪」）
+- 建議具體的後續步驟（「提供折扣」、「升級給經理」）
+- 在描述中包含上下文
 
-## Core Architecture
+## 核心架構
 
-### Run IDs and Call IDs
+### Run ID 和 Call ID
 
-- Run IDs track a single agent execution/conversation
-- Call IDs uniquely identify individual function calls or human contacts
-- Hierarchy: One run can have many calls
-- Run IDs help group related approvals/contacts
-- Call IDs enable tracking individual request status
-- Both IDs are used for:
-  - Audit trails
-  - Status lookups
-  - Response routing
-  - Request deduplication
-  - Dashboard organization
+- Run ID 追蹤單一代理執行/對話
+- Call ID 唯一識別個別函式呼叫或人工聯絡
+- 階層：一個 run 可以有多個 call
+- Run ID 幫助分組相關的核准/聯絡
+- Call ID 啟用追蹤個別請求狀態
+- 兩個 ID 都用於：
+  - 稽核軌跡
+  - 狀態查詢
+  - 回應路由
+  - 請求去重
+  - 儀表板組織
 
-## Documentation Style
+## 文件風格
 
-### TypeScript Constructor Pattern
+### TypeScript 建構子模式
 
-In TypeScript, always use the `humanlayer()` function instead of `new HumanLayer()`:
+在 TypeScript 中，務必使用 `humanlayer()` 函式而非 `new HumanLayer()`：
 
 ```typescript
 // Preferred
@@ -367,17 +367,17 @@ import { HumanLayer } from "humanlayer";
 const hl = new HumanLayer({ runId: "my-agent" });
 ```
 
-Documentation should follow these principles:
+文件應遵循這些原則：
 
-- Use precise technical terminology (e.g. "HumanLayer SDK" not just "HumanLayer")
-- Provide complete, working examples that can be copy-pasted
-- Include both the happy path and error handling in examples
-- Show full context around async operations (polling, webhooks, etc)
-- Distinguish between SDK operations and backend operations
-- Use consistent terminology across all docs
+- 使用精確的技術術語（例如「HumanLayer SDK」而非只是「HumanLayer」）
+- 提供可以複製貼上的完整可用範例
+- 在範例中包含成功路徑和錯誤處理
+- 顯示非同步操作的完整上下文（輪詢、webhook 等）
+- 區分 SDK 操作和後端操作
+- 在所有文件中使用一致的術語
 
-## Community
+## 社群
 
-- Primary community engagement through Discord
-- Documentation should link to Discord for community support
-- GitHub repository serves as secondary community hub
+- 透過 Discord 進行主要社群互動
+- 文件應連結至 Discord 以獲得社群支援
+- GitHub 儲存庫作為次要社群中心

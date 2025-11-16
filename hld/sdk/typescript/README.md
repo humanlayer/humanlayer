@@ -1,53 +1,53 @@
 # HumanLayer Daemon TypeScript SDK
 
-This SDK provides a TypeScript/JavaScript client for the HumanLayer Daemon (HLD) REST API.
+此 SDK 為 HumanLayer Daemon (HLD) REST API 提供 TypeScript/JavaScript 客戶端。
 
-## Features
+## 功能
 
-- ✅ Full REST API coverage (sessions, approvals, system endpoints)
-- ✅ Server-Sent Events (SSE) support for real-time updates
-- ✅ Works in both Node.js and browser environments
-- ✅ TypeScript types generated from OpenAPI specification
-- ✅ Automatic reconnection for SSE streams
-- ✅ Docker-based code generation (no Java required)
+- ✅ 完整的 REST API 覆蓋（session、核准、系統端點）
+- ✅ Server-Sent Events (SSE) 支援即時更新
+- ✅ 適用於 Node.js 和瀏覽器環境
+- ✅ 從 OpenAPI 規範生成的 TypeScript 類型
+- ✅ SSE 串流的自動重新連接
+- ✅ 基於 Docker 的程式碼生成（不需要 Java）
 
-## Installation
+## 安裝
 
 ```bash
 cd hld/sdk/typescript
 bun install
 ```
 
-## Building
+## 建置
 
 ```bash
-# Generate client code from OpenAPI spec (uses Docker)
+# 從 OpenAPI 規範生成客戶端程式碼（使用 Docker）
 bun run generate
 
-# Build TypeScript to JavaScript
+# 建置 TypeScript 為 JavaScript
 bun run build
 ```
 
-## Usage
+## 使用方式
 
 ```typescript
 import { HLDClient } from '@humanlayer/hld-sdk';
 
 const client = new HLDClient({
-    port: 7777  // Default HLD REST API port
+    port: 7777  // 預設 HLD REST API 連接埠
 });
 
-// Create a session
+// 建立 session
 const session = await client.createSession({
     query: "Help me fix a bug",
     model: "claude-3.5-sonnet",
     workingDir: "/path/to/project"
 });
 
-// List sessions
+// 列出 session
 const sessions = await client.listSessions({ leafOnly: true });
 
-// Subscribe to events
+// 訂閱事件
 const unsubscribe = await client.subscribeToEvents(
     { sessionId: session.sessionId },
     {
@@ -57,32 +57,32 @@ const unsubscribe = await client.subscribeToEvents(
 );
 ```
 
-## Testing SSE
+## 測試 SSE
 
-Run the test script to verify SSE functionality:
+執行測試腳本以驗證 SSE 功能：
 
 ```bash
-# Make sure HLD is running with REST API enabled:
+# 確保 HLD 正在執行並啟用 REST API：
 HUMANLAYER_DAEMON_HTTP_PORT=7777 hld
 
-# In another terminal:
+# 在另一個終端機：
 node test-sse.js
 ```
 
-## Development
+## 開發
 
-The SDK uses Docker for code generation, so no Java installation is required. The generated code is committed to the repository for ease of use.
+SDK 使用 Docker 進行程式碼生成，因此不需要安裝 Java。生成的程式碼已提交到儲存庫以便於使用。
 
-### Project Structure
+### 專案結構
 
-- `src/client.ts` - Main SDK client with SSE support
-- `src/generated/` - Generated code from OpenAPI spec (do not edit)
-- `scripts/generate.sh` - Generation script using Docker
-- `openapitools.json` - OpenAPI Generator configuration
+- `src/client.ts` - 主要 SDK 客戶端，支援 SSE
+- `src/generated/` - 從 OpenAPI 規範生成的程式碼（請勿編輯）
+- `scripts/generate.sh` - 使用 Docker 的生成腳本
+- `openapitools.json` - OpenAPI Generator 配置
 
-### Regenerating Code
+### 重新生成程式碼
 
-If the OpenAPI spec changes:
+如果 OpenAPI 規範有變更：
 
 ```bash
 bun run generate
@@ -91,10 +91,10 @@ bun run build
 
 ## Go SDK
 
-For Go applications, use the internal client package directly instead of a standalone SDK:
+對於 Go 應用程式，請直接使用內部客戶端套件，而不是獨立的 SDK：
 
 ```go
 import "github.com/humanlayer/humanlayer/hld/client"
 ```
 
-The Go client provides the same functionality as the TypeScript SDK and is used by internal components like the TUI.
+Go 客戶端提供與 TypeScript SDK 相同的功能，並由內部元件（如 TUI）使用。

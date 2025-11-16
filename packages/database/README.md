@@ -1,15 +1,15 @@
 # database
 
-To install dependencies:
+安裝相依套件：
 
 ```bash
 bun install
 ```
 
-To run:
+執行專案：
 
 ```bash
 bun run index.ts
 ```
 
-This project was created using `bun init` in bun v1.2.23. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+此專案使用 bun v1.2.23 中的 `bun init` 建立。[Bun](https://bun.com) 是一個快速的全方位 JavaScript 執行環境。

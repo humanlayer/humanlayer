@@ -1,26 +1,26 @@
 
-Default to using Bun instead of Node.js.
+預設使用 Bun 而非 Node.js。
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Bun automatically loads .env, so don't use dotenv.
+- 使用 `bun <file>` 而非 `node <file>` 或 `ts-node <file>`
+- 使用 `bun test` 而非 `jest` 或 `vitest`
+- 使用 `bun build <file.html|file.ts|file.css>` 而非 `webpack` 或 `esbuild`
+- 使用 `bun install` 而非 `npm install` 或 `yarn install` 或 `pnpm install`
+- 使用 `bun run <script>` 而非 `npm run <script>` 或 `yarn run <script>` 或 `pnpm run <script>`
+- Bun 會自動載入 .env，因此不需要使用 dotenv。
 
 ## APIs
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+- `Bun.serve()` 支援 WebSockets、HTTPS 和路由。不要使用 `express`。
+- `bun:sqlite` 用於 SQLite。不要使用 `better-sqlite3`。
+- `Bun.redis` 用於 Redis。不要使用 `ioredis`。
+- `Bun.sql` 用於 Postgres。不要使用 `pg` 或 `postgres.js`。
+- `WebSocket` 為內建功能。不要使用 `ws`。
+- 優先使用 `Bun.file` 而非 `node:fs` 的 readFile/writeFile
+- 使用 Bun.$`ls` 而非 execa。
 
 ## Testing
 
-Use `bun test` to run tests.
+使用 `bun test` 執行測試。
 
 ```ts#index.test.ts
 import { test, expect } from "bun:test";
@@ -32,9 +32,9 @@ test("hello world", () => {
 
 ## Frontend
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+搭配 `Bun.serve()` 使用 HTML imports。不要使用 `vite`。HTML imports 完全支援 React、CSS、Tailwind。
 
-Server:
+伺服器端：
 
 ```ts#index.ts
 import index from "./index.html"
@@ -67,7 +67,7 @@ Bun.serve({
 })
 ```
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
+HTML 檔案可以直接匯入 .tsx、.jsx 或 .js 檔案，Bun 的打包工具會自動進行轉譯和打包。`<link>` 標籤可以指向樣式表，Bun 的 CSS 打包工具會進行打包。
 
 ```html#index.html
 <html>
@@ -78,7 +78,7 @@ HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will tr
 </html>
 ```
 
-With the following `frontend.tsx`:
+搭配以下 `frontend.tsx`：
 
 ```tsx#frontend.tsx
 import React from "react";
@@ -97,10 +97,10 @@ export default function Frontend() {
 root.render(<Frontend />);
 ```
 
-Then, run index.ts
+接著，執行 index.ts
 
 ```sh
 bun --hot ./index.ts
 ```
 
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.md`.
+更多資訊請參閱 `node_modules/bun-types/docs/**.md` 中的 Bun API 文件。

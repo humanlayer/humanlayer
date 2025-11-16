@@ -1,10 +1,10 @@
-# API Reference
+# API 參考
 
 ## React Hooks
 
 ### useApprovals()
 
-Fetch and manage approval requests.
+擷取和管理審批請求。
 
 ```typescript
 const {
@@ -20,11 +20,11 @@ const {
 
 ### useApprovalsWithSubscription()
 
-Same as `useApprovals()` but with real-time updates (polls every 5 seconds).
+與 `useApprovals()` 相同，但具有即時更新功能（每 5 秒輪詢一次）。
 
 ### useSessions()
 
-List and launch Claude Code sessions.
+列出和啟動 Claude Code 會話。
 
 ```typescript
 const {
@@ -38,7 +38,7 @@ const {
 
 ### useSession(sessionId)
 
-Get details for a specific session.
+取得特定會話的詳細資訊。
 
 ```typescript
 const {
@@ -51,7 +51,7 @@ const {
 
 ### useConversation(sessionId?, claudeSessionId?)
 
-Fetch conversation history.
+擷取對話歷史記錄。
 
 ```typescript
 const {
@@ -64,7 +64,7 @@ const {
 
 ### useDaemonConnection()
 
-Monitor daemon connection health.
+監控 daemon 連接健康狀態。
 
 ```typescript
 const {
@@ -77,11 +77,11 @@ const {
 } = useDaemonConnection()
 ```
 
-## Types
+## 型別
 
 ### UnifiedApprovalRequest
 
-UI-friendly approval type that combines FunctionCall and HumanContact.
+結合 FunctionCall 和 HumanContact 的 UI 友善審批型別。
 
 ```typescript
 interface UnifiedApprovalRequest {
@@ -89,14 +89,14 @@ interface UnifiedApprovalRequest {
   callId: string
   runId: string
   type: ApprovalType
-  title: string // Formatted for display
-  description: string // Full details
-  tool?: string // Function name
+  title: string // 格式化用於顯示
+  description: string // 完整詳細資訊
+  tool?: string // 函式名稱
   parameters?: Record<string, any>
   createdAt: Date
-  sessionId?: string // Enriched data
-  sessionQuery?: string // Enriched data
-  sessionModel?: string // Enriched data
+  sessionId?: string // 豐富化資料
+  sessionQuery?: string // 豐富化資料
+  sessionModel?: string // 豐富化資料
 }
 ```
 
@@ -108,24 +108,24 @@ interface LaunchSessionRequest {
   model?: string // 'opus' | 'sonnet'
   working_dir?: string
   max_turns?: number
-  // ... see types.ts for all options
+  // ... 查看 types.ts 以了解所有選項
 }
 ```
 
-## Utilities
+## 工具函式
 
 ### formatTimestamp(date)
 
-Format dates for display (e.g., "5m ago", "2h ago")
+格式化日期以供顯示（例如「5 分鐘前」、「2 小時前」）
 
 ### truncate(text, maxLength)
 
-Truncate text with ellipsis
+使用省略號截斷文字
 
 ### formatError(error)
 
-Convert technical errors to user-friendly messages
+將技術錯誤轉換為使用者友善的訊息
 
 ### enrichApprovals(approvals, sessions)
 
-Join approval data with session context
+將審批資料與會話上下文結合

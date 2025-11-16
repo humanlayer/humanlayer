@@ -1,167 +1,167 @@
-# Testing Guidelines for HLD
+# HLD 測試指南
 
-## Database Isolation
+## 資料庫隔離
 
-All tests MUST use isolated databases to prevent corruption of user data.
+所有測試必須使用隔離的資料庫以防止使用者資料損壞。
 
-### Required for Integration Tests
+### 整合測試的必要設定
 
-Every integration test that spawns a daemon MUST set database isolation:
+每個啟動守護程序的整合測試都必須設定資料庫隔離：
 
 ```go
-// Option 1: In-memory database (fastest, no persistence)
+// 選項 1：記憶體內資料庫（最快，無持久化）
 t.Setenv("HUMANLAYER_DATABASE_PATH", ":memory:")
 
-// Option 2: testutil helper (allows persistence testing)
+// 選項 2：testutil 輔助函式（允許持久化測試）
 _ = testutil.DatabasePath(t, "descriptive-name")
 
-// Option 3: Manual temp file (for special cases)
+// 選項 3：手動暫存檔案（用於特殊情況）
 dbPath := filepath.Join(t.TempDir(), "test.db")
 t.Setenv("HUMANLAYER_DATABASE_PATH", dbPath)
 ```
 
-### Never Do This
+### 絕對不要這樣做
 
 ```go
-// BAD: No database path set - uses production!
+// 錯誤：沒有設定資料庫路徑 - 使用正式環境！
 t.Setenv("HUMANLAYER_DAEMON_SOCKET", socketPath)
-// Missing: t.Setenv("HUMANLAYER_DATABASE_PATH", ...)
+// 缺少：t.Setenv("HUMANLAYER_DATABASE_PATH", ...)
 ```
 
-## Running Integration Tests
+## 執行整合測試
 
 ```bash
-# Run all integration tests
+# 執行所有整合測試
 cd hld && go test -tags=integration ./...
 
-# Run specific integration test
+# 執行特定整合測試
 cd hld && go test -tags=integration ./daemon/daemon_integration_test.go -v
 ```
 
 ---
 
-# Testing HumanLayer Daemon + TUI Integration
+# 測試 HumanLayer Daemon + TUI 整合
 
-This guide covers testing the Phase 4 integration where the TUI communicates with the daemon instead of directly with the HumanLayer API.
+本指南涵蓋第 4 階段整合的測試，其中 TUI 與守護程序通訊，而不是直接與 HumanLayer API 通訊。
 
-## Prerequisites
+## 前置條件
 
-1. Build the hlyr package (includes both daemon and TUI binaries):
+1. 建置 hlyr 套件（包含守護程序和 TUI 執行檔）：
 
    ```bash
    cd hlyr
    npm run build
    ```
 
-2. Ensure you have your HumanLayer API key configured:
+2. 確保您已設定 HumanLayer API 金鑰：
    ```bash
    export HUMANLAYER_API_KEY=your-api-key
-   # or use: npx humanlayer login
+   # 或使用：npx humanlayer login
    ```
 
-## Testing Flow
+## 測試流程
 
-### 1. Start the Daemon
+### 1. 啟動守護程序
 
-The daemon manages all HumanLayer API communication and Claude Code sessions:
+守護程序管理所有 HumanLayer API 通訊和 Claude Code session：
 
 ```bash
-# Option 1: Run the daemon directly (if built)
+# 選項 1：直接執行守護程序（如果已建置）
 hld
 
-# Option 2: The TUI will auto-start the daemon if needed
+# 選項 2：TUI 會在需要時自動啟動守護程序
 npx humanlayer tui
 ```
 
-The daemon will:
+守護程序會：
 
-- Listen on `~/.humanlayer/daemon.sock`
-- Load API configuration from environment/config
-- Start polling for approvals
+- 監聽 `~/.humanlayer/daemon.sock`
+- 從環境/配置載入 API 配置
+- 開始輪詢核准請求
 
-### 2. Launch a Claude Code Session
+### 2. 啟動 Claude Code Session
 
-Launch a new Claude Code session through the daemon:
+透過守護程序啟動新的 Claude Code session：
 
 ```bash
-# Basic usage (approvals enabled by default)
+# 基本用法（預設啟用核准）
 npx humanlayer launch "Write a function to calculate fibonacci numbers"
 
-# With options
+# 使用選項
 npx humanlayer launch "Build a web scraper" --model opus --max-turns 20
 
-# Disable approvals (not recommended in general)
+# 停用核准（一般不建議）
 npx humanlayer launch "Simple task" --no-approvals
 ```
 
-This command will:
+此指令會：
 
-- Connect to the daemon
-- Create a new Claude Code session with a unique `run_id`
-- Configure the MCP approvals server
-- Return the session ID and run ID
+- 連接到守護程序
+- 使用唯一的 `run_id` 建立新的 Claude Code session
+- 配置 MCP 核准伺服器
+- 回傳 session ID 和 run ID
 
-### 3. Monitor Approvals with TUI
+### 3. 使用 TUI 監控核准
 
-Open the TUI to see and manage approval requests:
+開啟 TUI 以查看和管理核准請求：
 
 ```bash
 npx humanlayer tui
 ```
 
-The TUI will:
+TUI 會：
 
-- Connect to the daemon (auto-start if needed)
-- Display all pending approvals
-- Show which session each approval belongs to (via run_id)
-- Allow you to approve/deny function calls
-- Allow you to respond to human contact requests
+- 連接到守護程序（如需要會自動啟動）
+- 顯示所有待處理的核准
+- 顯示每個核准所屬的 session（透過 run_id）
+- 允許您核准/拒絕函式呼叫
+- 允許您回應人工聯絡請求
 
-## Testing Scenarios
+## 測試場景
 
-### Basic Approval Flow
+### 基本核准流程
 
-1. Launch a session that will trigger approvals:
+1. 啟動會觸發核准的 session：
 
    ```bash
    npx humanlayer launch "Create a new Python file with a hello world function"
    ```
 
-2. Open the TUI and watch for approval requests
-3. Approve the file write operation
-4. Verify Claude completes the task
+2. 開啟 TUI 並等待核准請求
+3. 核准檔案寫入操作
+4. 驗證 Claude 完成任務
 
-### Multiple Concurrent Sessions
+### 多個並行 Session
 
-1. Launch multiple sessions:
+1. 啟動多個 session：
 
    ```bash
    npx humanlayer launch "Task 1: Write a README"
    npx humanlayer launch "Task 2: Create a test file"
    ```
 
-2. Open the TUI to see approvals from both sessions
-3. Verify you can manage approvals independently
+2. 開啟 TUI 查看兩個 session 的核准
+3. 驗證您可以獨立管理核准
 
-### Daemon Restart Resilience
+### 守護程序重啟彈性
 
-1. Launch a session
-2. Stop the daemon (Ctrl+C)
-3. Restart the daemon
-4. Open TUI - pending approvals should still appear
+1. 啟動一個 session
+2. 停止守護程序（Ctrl+C）
+3. 重啟守護程序
+4. 開啟 TUI - 待處理的核准應該仍然出現
 
-## Manual Testing with JSON-RPC
+## 使用 JSON-RPC 進行手動測試
 
-You can also test the daemon directly using JSON-RPC:
+您也可以直接使用 JSON-RPC 測試守護程序：
 
 ```bash
-# Health check
+# 健康檢查
 echo '{"jsonrpc":"2.0","method":"health","id":1}' | nc -U ~/.humanlayer/daemon.sock
 
-# List sessions
+# 列出 session
 echo '{"jsonrpc":"2.0","method":"listSessions","id":1}' | nc -U ~/.humanlayer/daemon.sock
 
-# Launch session with MCP config
+# 使用 MCP 配置啟動 session
 echo '{
   "jsonrpc":"2.0",
   "method":"launchSession",
@@ -179,81 +179,81 @@ echo '{
   "id":1
 }' | nc -U ~/.humanlayer/daemon.sock
 
-# Fetch approvals
+# 取得核准
 echo '{"jsonrpc":"2.0","method":"fetchApprovals","params":{},"id":1}' | nc -U ~/.humanlayer/daemon.sock
 ```
 
-## Debugging Tips
+## 除錯技巧
 
-### Enable Debug Logging
+### 啟用除錯日誌
 
 ```bash
-# Run daemon with debug logging
+# 使用除錯日誌執行守護程序
 hld -debug
 
-# Or use environment variable
+# 或使用環境變數
 HUMANLAYER_DEBUG=true hld
 ```
 
-Debug mode will show:
+除錯模式會顯示：
 
-- MCP server configuration details
-- Polling attempts and results
-- API request/response details
-- Session lifecycle events
+- MCP 伺服器配置詳細資訊
+- 輪詢嘗試和結果
+- API 請求/回應詳細資訊
+- Session 生命週期事件
 
-### Check Daemon Logs
+### 檢查守護程序日誌
 
-The daemon logs to stdout, showing:
+守護程序會輸出到 stdout，顯示：
 
-- Session launches with run_id
-- Polling activity (every 5 seconds)
-- Approval correlation
-- API communication errors
+- 帶有 run_id 的 session 啟動
+- 輪詢活動（每 5 秒）
+- 核准關聯
+- API 通訊錯誤
 
-### Verify Socket Connection
+### 驗證 Socket 連接
 
 ```bash
-# Check if socket exists
+# 檢查 socket 是否存在
 ls -la ~/.humanlayer/daemon.sock
 
-# Check if daemon is listening
+# 檢查守護程序是否正在監聽
 lsof -U | grep daemon.sock
 ```
 
-### Environment Variables
+### 環境變數
 
-- `HUMANLAYER_DAEMON_SOCKET`: Override default socket path
-- `HUMANLAYER_API_KEY`: Required for daemon operation
-- `HUMANLAYER_API_BASE_URL`: Override API base URL (default: https://api.humanlayer.dev/humanlayer/v1)
-- `HUMANLAYER_RUN_ID`: Automatically set by daemon for MCP servers
-- `HUMANLAYER_DEBUG`: Enable debug logging (set to "true")
+- `HUMANLAYER_DAEMON_SOCKET`：覆寫預設 socket 路徑
+- `HUMANLAYER_API_KEY`：守護程序運作所需
+- `HUMANLAYER_API_BASE_URL`：覆寫 API 基礎 URL（預設：https://api.humanlayer.dev/humanlayer/v1）
+- `HUMANLAYER_RUN_ID`：守護程序為 MCP 伺服器自動設定
+- `HUMANLAYER_DEBUG`：啟用除錯日誌（設定為 "true"）
 
-## Success Criteria
+## 成功標準
 
-- [ ] Daemon starts and creates socket
-- [ ] `npx humanlayer launch` creates Claude session
-- [ ] Approvals appear in daemon logs
-- [ ] TUI connects to daemon (not API directly)
-- [ ] TUI shows pending approvals with session context
-- [ ] Approve/deny operations work through daemon
-- [ ] Multiple concurrent sessions work correctly
-- [ ] Daemon auto-start from TUI works
+- [ ] 守護程序啟動並建立 socket
+- [ ] `npx humanlayer launch` 建立 Claude session
+- [ ] 核准出現在守護程序日誌中
+- [ ] TUI 連接到守護程序（而非直接連接 API）
+- [ ] TUI 顯示帶有 session 上下文的待處理核准
+- [ ] 透過守護程序進行核准/拒絕操作
+- [ ] 多個並行 session 正常運作
+- [ ] 從 TUI 自動啟動守護程序正常運作
 
-## Common Issues
+## 常見問題
 
-### No Approvals Showing
+### 沒有顯示核准
 
-1. Check daemon is running with debug logging
-2. Verify API key is configured: `echo $HUMANLAYER_API_KEY`
-3. Look for "approval poller started" in daemon logs
-4. Check for "fetched function calls" messages every 5 seconds
-5. Verify MCP server is configured in session (look for "configured MCP server" log)
-6. Ensure the Claude session is actually making tool calls that require approval
+1. 使用除錯日誌檢查守護程序是否執行
+2. 驗證 API 金鑰已設定：`echo $HUMANLAYER_API_KEY`
+3. 在守護程序日誌中尋找 "approval poller started"
+4. 每 5 秒檢查 "fetched function calls" 訊息
+5. 驗證 session 中已設定 MCP 伺服器（尋找 "configured MCP server" 日誌）
+6. 確保 Claude session 確實進行了需要核准的工具呼叫
 
-### API Connection Issues
+### API 連接問題
 
-- Check API base URL is correct
-- Verify API key is valid
-- Look for HTTP error codes in daemon logs
-- Try manual API test: `curl -H "Authorization: Bearer $HUMANLAYER_API_KEY" https://api.humanlayer.dev/humanlayer/v1/function_calls`
+- 檢查 API 基礎 URL 是否正確
+- 驗證 API 金鑰是否有效
+- 在守護程序日誌中尋找 HTTP 錯誤碼
+- 嘗試手動 API 測試：`curl -H "Authorization: Bearer $HUMANLAYER_API_KEY" https://api.humanlayer.dev/humanlayer/v1/function_calls`

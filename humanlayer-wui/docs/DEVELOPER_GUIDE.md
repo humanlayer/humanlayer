@@ -1,12 +1,12 @@
-# Developer Guide
+# 開發者指南
 
-## For Frontend Developers
+## 給前端開發者
 
-This guide helps you build UI components that interact with the HumanLayer daemon.
+本指南幫助您建構與 HumanLayer daemon 互動的 UI 元件。
 
-### ✅ DO
+### ✅ 建議做法
 
-#### Use Hooks for Everything
+#### 使用 Hooks 處理所有事情
 
 ```tsx
 import { useApprovals, useSessions } from '@/hooks'
@@ -15,62 +15,62 @@ function MyComponent() {
   const { approvals, loading, error, approve, deny } = useApprovals()
   const { sessions, launchSession } = useSessions()
 
-  // Hooks handle all the complexity
+  // Hooks 處理所有複雜性
 }
 ```
 
-#### Use UI Types for Props
+#### 使用 UI 型別作為 Props
 
 ```tsx
 import { UnifiedApprovalRequest } from '@/types/ui'
 
 interface Props {
-  approval: UnifiedApprovalRequest // ✅ UI type
+  approval: UnifiedApprovalRequest // ✅ UI 型別
 }
 ```
 
-#### Import Enums When Needed
+#### 在需要時匯入列舉
 
 ```tsx
 import { ApprovalType, SessionStatus } from '@/lib/daemon/types'
 
 if (approval.type === ApprovalType.FunctionCall) {
-  // This is fine - enums are meant to be used
+  // 這樣沒問題 - 列舉本來就是用來使用的
 }
 ```
 
-### ❌ DON'T
+### ❌ 不建議做法
 
-#### Don't Use the Daemon Client Directly
+#### 不要直接使用 Daemon 客戶端
 
 ```tsx
-// ❌ WRONG - Never do this in components
+// ❌ 錯誤 - 絕不要在元件中這樣做
 import { daemonClient } from '@/lib/daemon'
 const approvals = await daemonClient.fetchApprovals()
 
-// ✅ CORRECT - Use hooks instead
+// ✅ 正確 - 改用 hooks
 const { approvals } = useApprovals()
 ```
 
-#### Don't Use Raw Protocol Types in Components
+#### 不要在元件中使用原始協定型別
 
 ```tsx
-// ❌ WRONG - FunctionCall is a protocol type
+// ❌ 錯誤 - FunctionCall 是協定型別
 import { FunctionCall } from '@/lib/daemon/types'
 interface Props {
   approval: FunctionCall
 }
 
-// ✅ CORRECT - Use UI types
+// ✅ 正確 - 使用 UI 型別
 import { UnifiedApprovalRequest } from '@/types/ui'
 interface Props {
   approval: UnifiedApprovalRequest
 }
 ```
 
-## Common Patterns
+## 常見模式
 
-### Handling Approvals
+### 處理審批
 
 ```tsx
 function ApprovalCard({ approval }: { approval: UnifiedApprovalRequest }) {
@@ -101,7 +101,7 @@ function ApprovalCard({ approval }: { approval: UnifiedApprovalRequest }) {
 }
 ```
 
-### Launching Sessions
+### 啟動會話
 
 ```tsx
 function LaunchButton() {
@@ -130,11 +130,11 @@ function LaunchButton() {
 }
 ```
 
-### Real-time Updates
+### 即時更新
 
 ```tsx
 function LiveApprovals() {
-  // This hook automatically polls for updates
+  // 此 hook 會自動輪詢更新
   const { approvals } = useApprovalsWithSubscription()
 
   return (
@@ -147,43 +147,43 @@ function LiveApprovals() {
 }
 ```
 
-## Understanding the Layers
+## 理解各層級
 
-### 1. Components (Your Code)
+### 1. 元件（您的程式碼）
 
-- Import hooks and UI types
-- Handle user interactions
-- Render UI
+- 匯入 hooks 和 UI 型別
+- 處理使用者互動
+- 渲染 UI
 
-### 2. Hooks (React Layer)
+### 2. Hooks（React 層）
 
-- Manage state with useState
-- Handle loading/error states
-- Enrich data (join approvals + sessions)
-- Format errors for display
+- 使用 useState 管理狀態
+- 處理載入/錯誤狀態
+- 豐富化資料（結合審批 + 會話）
+- 格式化錯誤以供顯示
 
-### 3. Daemon Client (Protocol Layer)
+### 3. Daemon 客戶端（協定層）
 
-- Type-safe Tauri invocations
-- 1:1 mapping to Rust API
-- No business logic
+- 型別安全的 Tauri 調用
+- 與 Rust API 1:1 映射
+- 無業務邏輯
 
 ### 4. Rust/Daemon
 
-- Handles actual daemon communication
-- Manages Unix socket connection
-- Protocol implementation
+- 處理實際的 daemon 通訊
+- 管理 Unix socket 連接
+- 協定實作
 
-## Tips
+## 提示
 
-- **Loading States**: All hooks provide `loading` - use it!
-- **Error Handling**: Hooks format errors, just display `error` string
-- **Refreshing**: Actions like `approve()` auto-refresh the list
-- **Polling**: `useApprovalsWithSubscription` polls every 5 seconds
-- **Types**: When in doubt, check what the hook returns
+- **載入狀態**：所有 hooks 都提供 `loading` - 使用它！
+- **錯誤處理**：Hooks 會格式化錯誤，只需顯示 `error` 字串
+- **重新整理**：像 `approve()` 這樣的操作會自動重新整理清單
+- **輪詢**：`useApprovalsWithSubscription` 每 5 秒輪詢一次
+- **型別**：有疑問時，檢查 hook 回傳什麼
 
-## Need Help?
+## 需要協助？
 
-- Check the [API Reference](API.md) for all available hooks
-- Look at existing components for examples
-- The TypeScript compiler will guide you - trust the types!
+- 查看 [API 參考](API.md) 以了解所有可用的 hooks
+- 查看現有元件的範例
+- TypeScript 編譯器會引導您 - 相信型別！

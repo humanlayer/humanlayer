@@ -1,23 +1,23 @@
-# Contributing to HumanLayer
+# 為 HumanLayer 做出貢獻
 
-If you're looking to contribute, please:
+如果您想貢獻，請：
 
-- fork the repository.
-- create a new branch for your feature.
-- add your feature or improvement.
-- send a pull request.
-- we appreciate your input!
+- fork 此儲存庫
+- 為您的功能建立一個新分支
+- 新增您的功能或改進
+- 發送 pull request
+- 我們感謝您的貢獻！
 
-## Running CodeLayer
+## 執行 CodeLayer
 
 ```
 make setup
 make codelayer-dev
 ```
 
-When the Web UI launches in dev mode, you'll need to launch a managed daemon with it - click the 🐞 icon in the bottom right and launch a managed daemon.
+當 Web UI 在開發模式下啟動時，您需要隨之啟動一個託管的 daemon - 點擊右下角的 🐞 圖示並啟動託管 daemon。
 
-## Commands cheat sheet
+## 指令速查表
 
 1. `/research_codebase`
 2. `/create_plan`
@@ -26,20 +26,20 @@ When the Web UI launches in dev mode, you'll need to launch a managed daemon wit
 5. `gh pr create --fill`
 6. `/describe_pr`
 
-## Running Tests
+## 執行測試
 
-Before submitting a pull request, please run the tests and linter:
+在提交 pull request 之前，請執行測試和 linter：
 
 ```shell
 make check test
 ```
 
-Right now the linting rules are from an off-the-shelf config, and many rules are still being refined/removed. Well-justified per-file or per-rule ignores are welcome.
+目前的 linting 規則來自現成的配置，許多規則仍在調整/移除中。合理的針對單個檔案或規則的忽略設定是歡迎的。
 
-You can run
+您可以執行
 
 ```shell
 make githooks
 ```
 
-to install a git pre-push hook that will run the checks before pushing.
+來安裝 git pre-push hook，會在推送前執行檢查。

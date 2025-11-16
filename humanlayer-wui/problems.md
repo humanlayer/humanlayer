@@ -1,4 +1,4 @@
-- 'c' on session table doesn't launch the session creator
-- selecting "create new session" from the cmd+k launch takes me to a blank screen
-- search view still doesn't work - the max height should be 80% of the screen height, and only display as many items as can fit
-- selecting a session from the search view should navigate to the session details
+- 在會話表格上按 'c' 不會啟動會話建立器
+- 從 cmd+k 啟動選單中選擇「建立新會話」會帶我到空白畫面
+- 搜尋檢視仍然無法正常運作 - 最大高度應為螢幕高度的 80%，並且只顯示能夠容納的項目數量
+- 從搜尋檢視中選擇會話應導航到會話詳細資訊

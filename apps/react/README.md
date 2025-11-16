@@ -1,21 +1,21 @@
 # bun-react-tailwind-shadcn-template
 
-To install dependencies:
+安裝相依套件：
 
 ```bash
 bun install
 ```
 
-To start a development server:
+啟動開發伺服器：
 
 ```bash
 bun dev
 ```
 
-To run for production:
+正式環境執行：
 
 ```bash
 bun start
 ```
 
-This project was created using `bun init` in bun v1.2.23. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+此專案使用 bun v1.2.23 的 `bun init` 指令建立。[Bun](https://bun.com) 是一個快速的多合一 JavaScript 執行環境。

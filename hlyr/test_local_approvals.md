@@ -1,46 +1,46 @@
-# Testing Local MCP Approvals
+# 測試本地 MCP 核准
 
-This guide explains how to test the local MCP approvals system without requiring HumanLayer API access.
+本指南說明如何在不需要 HumanLayer API 存取權限的情況下測試本地 MCP 核准系統。
 
-## Overview
+## 概述
 
-The `hack/test-local-approvals.ts` script provides a comprehensive testing tool for verifying that the MCP server, daemon, and approval flow are working correctly with local-only approvals.
+`hack/test-local-approvals.ts` 指令稿提供完整的測試工具，用於驗證 MCP 伺服器、守護程式和核准流程在僅使用本地核准時是否正常運作。
 
-## Prerequisites
+## 先決條件
 
-1. Build hlyr and the daemon:
+1. 建置 hlyr 和守護程式：
 
    ```bash
    npm run build
    ```
 
-2. Start the daemon with debug logging:
+2. 以除錯記錄模式啟動守護程式：
 
    ```bash
    ./dist/bin/hld -debug
    ```
 
-3. Have Bun installed (for running TypeScript directly)
+3. 已安裝 Bun（用於直接執行 TypeScript）
 
-## Running Tests
+## 執行測試
 
-### Automated Test Mode
+### 自動化測試模式
 
-Launches a Claude session, triggers a file write approval, and automatically approves it after 2 seconds:
+啟動 Claude 工作階段，觸發檔案寫入核准，並在 2 秒後自動核准：
 
 ```bash
 bun hack/test-local-approvals.ts --test
 ```
 
-This mode is useful for:
+此模式適用於：
 
-- CI/CD pipelines
-- Quick verification that the system is working
-- Debugging the approval flow
+- CI/CD 管線
+- 快速驗證系統是否正常運作
+- 除錯核准流程
 
-### Interactive Mode (Default)
+### 互動式模式（預設）
 
-Launches a Claude session with a query that will trigger an approval, then monitors for events:
+啟動 Claude 工作階段，使用會觸發核准的查詢，然後監控事件：
 
 ```bash
 # Default query (writes to blah.txt with random content)
@@ -53,27 +53,27 @@ bun hack/test-local-approvals.ts -q "Help me analyze this codebase"
 bun hack/test-local-approvals.ts -q "Hello, how are you?"
 ```
 
-While running in interactive mode:
+在互動式模式下執行時：
 
-- Approval requests will be highlighted in the console
-- Use CodeLayer UI to approve/deny
-- Press Ctrl+C to stop monitoring
+- 核准請求將在主控台中突出顯示
+- 使用 CodeLayer UI 核准/拒絕
+- 按 Ctrl+C 停止監控
 
-## What the Test Does
+## 測試的功能
 
-1. **Connects to the daemon** via Unix socket
-2. **Launches a Claude session** with MCP approvals enabled
-3. **Monitors MCP logs** in real-time at `~/.humanlayer/logs/`
-4. **Subscribes to daemon events**:
-   - `new_approval` - When an approval is requested
-   - `approval_resolved` - When an approval is approved/denied
-   - `session_status_changed` - When session status changes
-5. **In test mode**: Automatically approves after 2 seconds
-6. **In interactive mode**: Waits for manual approval via TUI/WUI
+1. **透過 Unix socket 連接到守護程式**
+2. **啟動 Claude 工作階段**，並啟用 MCP 核准
+3. **監控 MCP 記錄**，即時於 `~/.humanlayer/logs/`
+4. **訂閱守護程式事件**：
+   - `new_approval` - 請求核准時
+   - `approval_resolved` - 核准被核准/拒絕時
+   - `session_status_changed` - 工作階段狀態變更時
+5. **測試模式**：2 秒後自動核准
+6. **互動式模式**：透過 TUI/WUI 等待手動核准
 
-## Understanding the Output
+## 理解輸出
 
-### Successful Automated Test
+### 成功的自動化測試
 
 ```
 [INFO] === Automated MCP Approval Test ===
@@ -85,7 +85,7 @@ While running in interactive mode:
 [SUCCESS] ✓ No errors in MCP logs
 ```
 
-### Interactive Mode Events
+### 互動式模式事件
 
 ```
 🔔 NEW APPROVAL REQUEST!
@@ -93,28 +93,28 @@ Approval ID: local-XXXX
 Tool: Write
 ```
 
-## Troubleshooting
+## 疑難排解
 
-### "Failed to connect to daemon"
+### "Failed to connect to daemon"（無法連接到守護程式）
 
-- Ensure the daemon is running: `./dist/bin/hld -debug`
-- Check the socket exists: `ls ~/.humanlayer/daemon.sock`
+- 確保守護程式正在執行：`./dist/bin/hld -debug`
+- 檢查 socket 是否存在：`ls ~/.humanlayer/daemon.sock`
 
-### "hlyr is not built"
+### "hlyr is not built"（hlyr 未建置）
 
-- Run `npm run build` from the hlyr directory
+- 從 hlyr 目錄執行 `npm run build`
 
-### No approval triggered
+### 未觸發核准
 
-- The default query includes random content to ensure uniqueness
-- If using a custom query, make sure it requests an action (like writing a file)
+- 預設查詢包含隨機內容以確保唯一性
+- 如果使用自訂查詢，請確保它請求一個動作（例如寫入檔案）
 
-### MCP errors in logs
+### 記錄中的 MCP 錯誤
 
-- Check `~/.humanlayer/logs/mcp-claude-approvals-*.log` for details
-- Ensure you're using the latest built version
+- 檢查 `~/.humanlayer/logs/mcp-claude-approvals-*.log` 以獲取詳細資訊
+- 確保您使用的是最新建置的版本
 
-## Command Reference
+## 指令參考
 
 ```bash
 Options:

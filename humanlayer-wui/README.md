@@ -1,128 +1,128 @@
 # humanlayer-wui
 
-Web/desktop UI for the HumanLayer daemon (`hld`) built with Tauri and React.
+使用 Tauri 和 React 建構的 HumanLayer daemon (`hld`) Web/桌面 UI。
 
-## Development
+## 開發
 
-### Running in Development Mode
+### 在開發模式下執行
 
-1. Build the daemon (required for auto-launch):
+1. 建置 daemon（自動啟動所需）：
 
    ```bash
    make daemon-dev-build
    ```
 
-2. Start CodeLayer in development mode:
+2. 在開發模式下啟動 CodeLayer：
    ```bash
    make codelayer-dev
    ```
 
-The daemon starts automatically and invisibly when the app launches. No manual daemon management needed.
+當應用程式啟動時，daemon 會自動且不可見地啟動。無需手動管理 daemon。
 
-### Disabling Auto-Launch (Advanced Users)
+### 停用自動啟動（進階使用者）
 
-If you prefer to manage the daemon manually:
+如果您偏好手動管理 daemon：
 
 ```bash
 export HUMANLAYER_WUI_AUTOLAUNCH_DAEMON=false
 make codelayer-dev
 ```
 
-### Using an External Daemon
+### 使用外部 Daemon
 
-To connect to a daemon running on a specific port:
+要連接到在特定埠上執行的 daemon：
 
 ```bash
 export HUMANLAYER_DAEMON_HTTP_PORT=7777
 make codelayer-dev
 ```
 
-### Building for Production
+### 建置正式版本
 
-To build CodeLayer with bundled daemon:
+要建置帶有內建 daemon 的 CodeLayer：
 
 ```bash
 make codelayer-bundle
 ```
 
-This will:
+這將會：
 
-1. Build the daemon for macOS ARM64
-2. Build the humanlayer CLI for macOS ARM64
-3. Copy both to the Tauri resources
-4. Build CodeLayer with the bundled binaries
+1. 為 macOS ARM64 建置 daemon
+2. 為 macOS ARM64 建置 humanlayer CLI
+3. 將兩者複製到 Tauri 資源
+4. 使用內建的二進位檔建置 CodeLayer
 
-The resulting DMG will include both binaries and automatically manage their lifecycle.
+產生的 DMG 將包含兩個二進位檔並自動管理它們的生命週期。
 
-### Daemon Management
+### Daemon 管理
 
-The daemon lifecycle is completely automatic:
+daemon 生命週期完全自動化：
 
-**In development mode:**
+**在開發模式下：**
 
-- Daemon starts invisibly when CodeLayer launches
-- Each git branch gets its own daemon instance
-- Database is copied from `daemon-dev.db` to `daemon-{branch}.db`
-- Socket and port are isolated per branch
-- Use debug panel (bottom-left settings icon) for manual control if needed
+- 當 CodeLayer 啟動時，daemon 會不可見地啟動
+- 每個 git 分支都有自己的 daemon 實例
+- 資料庫從 `daemon-dev.db` 複製到 `daemon-{branch}.db`
+- Socket 和埠按分支隔離
+- 如有需要，可使用除錯面板（左下角設定圖示）進行手動控制
 
-**In production mode:**
+**在正式模式下：**
 
-- Daemon starts invisibly when CodeLayer launches
-- Uses default paths (`~/.humanlayer/daemon.db`)
-- Stops automatically when the app exits
-- No user interaction or awareness required
+- 當 CodeLayer 啟動時，daemon 會不可見地啟動
+- 使用預設路徑（`~/.humanlayer/daemon.db`）
+- 當應用程式退出時自動停止
+- 不需要使用者互動或感知
 
-**Error Handling:**
+**錯誤處理：**
 
-- If daemon fails to start, app continues normally
-- Connection can be established later via debug panel (dev) or automatically on retry
-- All errors are logged but never interrupt the user experience
+- 如果 daemon 啟動失敗，應用程式會正常繼續
+- 稍後可以透過除錯面板（開發）或自動重試建立連接
+- 所有錯誤都會記錄，但絕不會中斷使用者體驗
 
-### MCP Testing
+### MCP 測試
 
-To test MCP functionality:
+要測試 MCP 功能：
 
-**In development:**
+**在開發中：**
 
-- Ensure you have `humanlayer` installed globally: `npm install -g humanlayer`
-- Start CodeLayer: `make codelayer-dev`
-- Configure Claude Code to use `humanlayer mcp claude_approvals`
-- The MCP server will connect to your running daemon
+- 確保您已全域安裝 `humanlayer`：`npm install -g humanlayer`
+- 啟動 CodeLayer：`make codelayer-dev`
+- 設定 Claude Code 使用 `humanlayer mcp claude_approvals`
+- MCP 伺服器將連接到您正在執行的 daemon
 
-**In production (after Homebrew installation):**
+**在正式環境中（Homebrew 安裝後）：**
 
-- Claude Code can directly execute `humanlayer mcp claude_approvals`
-- No npm or npx required - Homebrew automatically created symlinks in PATH
-- The MCP server connects to the daemon started by CodeLayer
-- Verify PATH setup is working: `which humanlayer` should show `/usr/local/bin/humanlayer`
+- Claude Code 可以直接執行 `humanlayer mcp claude_approvals`
+- 不需要 npm 或 npx - Homebrew 會自動在 PATH 中建立符號連結
+- MCP 伺服器連接到 CodeLayer 啟動的 daemon
+- 驗證 PATH 設定是否正常運作：`which humanlayer` 應顯示 `/usr/local/bin/humanlayer`
 
-**Troubleshooting MCP connection:**
+**疑難排解 MCP 連接：**
 
-- If MCP can't find `humanlayer`, restart Claude Code after installation
-- If launched from Dock, Claude Code may have limited PATH - launch from Terminal instead
-- Check daemon is running: `ps aux | grep hld`
-- Check MCP logs in Claude Code for connection errors
+- 如果 MCP 找不到 `humanlayer`，請在安裝後重新啟動 Claude Code
+- 如果從 Dock 啟動，Claude Code 可能有受限的 PATH - 改從 Terminal 啟動
+- 檢查 daemon 是否正在執行：`ps aux | grep hld`
+- 檢查 Claude Code 中的 MCP 日誌以查看連接錯誤
 
-## Quick Start for Frontend Development
+## 前端開發快速入門
 
-Always use React hooks, never the daemon client directly:
+始終使用 React hooks，絕不直接使用 daemon 客戶端：
 
 ```tsx
 import { useApprovals } from '@/hooks'
 
 function MyComponent() {
   const { approvals, loading, error, approve } = useApprovals()
-  // ... render UI
+  // ... 渲染 UI
 }
 ```
 
-## Documentation
+## 文件
 
-- [Architecture Overview](docs/ARCHITECTURE.md) - System design and data flow
-- [Developer Guide](docs/DEVELOPER_GUIDE.md) - Best practices and examples
-- [API Reference](docs/API.md) - Hook and type documentation
+- [架構概覽](docs/ARCHITECTURE.md) - 系統設計和資料流
+- [開發者指南](docs/DEVELOPER_GUIDE.md) - 最佳實踐和範例
+- [API 參考](docs/API.md) - Hook 和型別文件
 
-## Status
+## 狀態
 
-⚠️ Experimental - APIs may change
+⚠️ 實驗性 - API 可能會變更

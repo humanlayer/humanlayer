@@ -1,17 +1,17 @@
-# HumanLayer CLI Configuration
+# HumanLayer CLI 設定
 
-This document describes how the HumanLayer CLI (`hlyr`) handles configuration, including the precedence of configuration sources and how values are resolved.
+本文件說明 HumanLayer CLI (`hlyr`) 如何處理設定，包括設定來源的優先順序以及值的解析方式。
 
-## Configuration Sources
+## 設定來源
 
-The HumanLayer CLI supports multiple configuration sources with a clear precedence order:
+HumanLayer CLI 支援多個設定來源，具有明確的優先順序：
 
-1. **CLI Flags** (highest priority)
-2. **Environment Variables**
-3. **Configuration Files**
-4. **Default Values** (lowest priority)
+1. **CLI 旗標**（最高優先）
+2. **環境變數**
+3. **設定檔**
+4. **預設值**（最低優先）
 
-## Configuration Value Resolution Flow
+## 設定值解析流程
 
 ```mermaid
 flowchart TD
@@ -36,9 +36,9 @@ flowchart TD
     style H fill:#ffebee
 ```
 
-## Configuration File Discovery
+## 設定檔探索
 
-The CLI searches for configuration files in the following order:
+CLI 按以下順序搜尋設定檔：
 
 ```mermaid
 flowchart TD
@@ -59,16 +59,16 @@ flowchart TD
     style I fill:#c8e6c9
 ```
 
-### Default Configuration Path
+### 預設設定路徑
 
-The default configuration path follows XDG Base Directory specification:
+預設設定路徑遵循 XDG Base Directory 規範：
 
-- **Path**: `$XDG_CONFIG_HOME/humanlayer/humanlayer.json`
-- **Fallback**: `$HOME/.config/humanlayer/humanlayer.json` (when `XDG_CONFIG_HOME` is not set)
+- **路徑**：`$XDG_CONFIG_HOME/humanlayer/humanlayer.json`
+- **備用路徑**：`$HOME/.config/humanlayer/humanlayer.json`（當未設定 `XDG_CONFIG_HOME` 時）
 
-## Contact Channel Configuration
+## 聯絡頻道設定
 
-Contact channels (Slack/Email) are built by merging values from all sources:
+聯絡頻道（Slack/Email）透過合併所有來源的值來建立：
 
 ```mermaid
 flowchart TD
@@ -98,7 +98,7 @@ flowchart TD
     style E fill:#c8e6c9
 ```
 
-## Token Resolution and Authentication
+## 令牌解析與驗證
 
 ```mermaid
 flowchart TD
@@ -128,28 +128,28 @@ flowchart TD
     style O fill:#ffcdd2
 ```
 
-## Environment Variables
+## 環境變數
 
-The following environment variables are supported:
+支援以下環境變數：
 
-| Variable                     | Purpose                         | Example                      |
+| 變數                         | 用途                         | 範例                      |
 | ---------------------------- | ------------------------------- | ---------------------------- |
-| `HUMANLAYER_API_KEY`         | API authentication token        | `hl_live_abc123...`          |
-| `HUMANLAYER_API_BASE`        | API server base URL             | `https://api.humanlayer.dev` |
-| `HUMANLAYER_APP_URL`         | Web app base URL                | `https://app.humanlayer.dev` |
-| `HUMANLAYER_WWW_BASE_URL`    | WWW/marketing site base URL     | `https://www.humanlayer.dev` |
-| `HUMANLAYER_SLACK_CHANNEL`   | Slack channel/user ID           | `C1234567890`                |
-| `HUMANLAYER_SLACK_BOT_TOKEN` | Slack bot token                 | `xoxb-...`                   |
-| `HUMANLAYER_SLACK_CONTEXT`   | Slack channel context           | `engineering team`           |
-| `HUMANLAYER_SLACK_THREAD_TS` | Slack thread timestamp          | `1234567890.123456`          |
-| `HUMANLAYER_SLACK_BLOCKS`    | Enable Slack blocks UI          | `true`                       |
-| `HUMANLAYER_EMAIL_ADDRESS`   | Email address for notifications | `user@example.com`           |
-| `HUMANLAYER_EMAIL_CONTEXT`   | Email user context              | `project manager`            |
-| `XDG_CONFIG_HOME`            | Config directory override       | `/custom/config/path`        |
+| `HUMANLAYER_API_KEY`         | API 驗證令牌        | `hl_live_abc123...`          |
+| `HUMANLAYER_API_BASE`        | API 伺服器基礎 URL             | `https://api.humanlayer.dev` |
+| `HUMANLAYER_APP_URL`         | Web 應用程式基礎 URL                | `https://app.humanlayer.dev` |
+| `HUMANLAYER_WWW_BASE_URL`    | WWW/行銷網站基礎 URL     | `https://www.humanlayer.dev` |
+| `HUMANLAYER_SLACK_CHANNEL`   | Slack 頻道/使用者 ID           | `C1234567890`                |
+| `HUMANLAYER_SLACK_BOT_TOKEN` | Slack 機器人令牌                 | `xoxb-...`                   |
+| `HUMANLAYER_SLACK_CONTEXT`   | Slack 頻道上下文           | `engineering team`           |
+| `HUMANLAYER_SLACK_THREAD_TS` | Slack 討論串時間戳記          | `1234567890.123456`          |
+| `HUMANLAYER_SLACK_BLOCKS`    | 啟用 Slack blocks UI          | `true`                       |
+| `HUMANLAYER_EMAIL_ADDRESS`   | 通知用的電子郵件地址 | `user@example.com`           |
+| `HUMANLAYER_EMAIL_CONTEXT`   | 電子郵件使用者上下文              | `project manager`            |
+| `XDG_CONFIG_HOME`            | 設定目錄覆寫       | `/custom/config/path`        |
 
-## Configuration File Format
+## 設定檔格式
 
-The configuration file is JSON with the following structure:
+設定檔為 JSON 格式，具有以下結構：
 
 ```json
 {
@@ -173,11 +173,11 @@ The configuration file is JSON with the following structure:
 }
 ```
 
-## CLI Commands and Configuration
+## CLI 指令與設定
 
 ### `config show`
 
-Displays the resolved configuration from all sources:
+顯示從所有來源解析的設定：
 
 ```bash
 npx humanlayer config show [--json] [--config-file path]
@@ -185,42 +185,42 @@ npx humanlayer config show [--json] [--config-file path]
 
 ### `login`
 
-Authenticates and saves API token to configuration:
+驗證並將 API 令牌儲存到設定：
 
 ```bash
 npx humanlayer login [--api-base url] [--app-base url] [--config-file path]
 ```
 
-## Configuration Precedence Examples
+## 設定優先順序範例
 
-### Example 1: Slack Channel Resolution
+### 範例 1：Slack 頻道解析
 
-Given:
+給定：
 
-- CLI flag: `--slack-channel C9999999999`
-- Environment: `HUMANLAYER_SLACK_CHANNEL=C8888888888`
-- Config file: `"channel_or_user_id": "C7777777777"`
+- CLI 旗標：`--slack-channel C9999999999`
+- 環境變數：`HUMANLAYER_SLACK_CHANNEL=C8888888888`
+- 設定檔：`"channel_or_user_id": "C7777777777"`
 
-**Result**: `C9999999999` (CLI flag wins)
+**結果**：`C9999999999`（CLI 旗標優先）
 
-### Example 2: API Token Resolution
+### 範例 2：API 令牌解析
 
-Given:
+給定：
 
-- Environment: `HUMANLAYER_API_KEY=env_token_123`
-- Config file: `"api_key": "file_token_456"`
+- 環境變數：`HUMANLAYER_API_KEY=env_token_123`
+- 設定檔：`"api_key": "file_token_456"`
 
-**Result**: `env_token_123` (environment variable wins)
+**結果**：`env_token_123`（環境變數優先）
 
-### Example 3: Mixed Source Resolution
+### 範例 3：混合來源解析
 
-Given:
+給定：
 
-- CLI: `--slack-channel C1111111111`
-- Environment: `HUMANLAYER_SLACK_BOT_TOKEN=xoxb-env-token`
-- Config file: `"context_about_channel_or_user": "dev team"`
+- CLI：`--slack-channel C1111111111`
+- 環境變數：`HUMANLAYER_SLACK_BOT_TOKEN=xoxb-env-token`
+- 設定檔：`"context_about_channel_or_user": "dev team"`
 
-**Result**:
+**結果**：
 
 ```json
 {
@@ -232,25 +232,25 @@ Given:
 }
 ```
 
-## Security Considerations
+## 安全性考量
 
-- **Token Storage**: API tokens are stored in configuration files with restricted permissions
-- **Token Display**: Tokens are masked in `config show` output (shows only first 6 characters)
-- **Environment Variables**: Sensitive environment variables are masked in debug output
-- **File Permissions**: Configuration files should have appropriate read permissions (600 recommended)
+- **令牌儲存**：API 令牌儲存在具有限制權限的設定檔中
+- **令牌顯示**：令牌在 `config show` 輸出中被遮罩（僅顯示前 6 個字元）
+- **環境變數**：敏感的環境變數在除錯輸出中被遮罩
+- **檔案權限**：設定檔應具有適當的讀取權限（建議 600）
 
-## Troubleshooting
+## 疑難排解
 
-### Common Issues
+### 常見問題
 
-1. **Config file not found**: Check file permissions and path
-2. **Token authentication failed**: Verify token is valid and not expired
-3. **Slack bot token invalid**: Ensure bot has proper permissions in workspace
-4. **Email not configured**: Verify email address is properly formatted
+1. **找不到設定檔**：檢查檔案權限和路徑
+2. **令牌驗證失敗**：驗證令牌是否有效且未過期
+3. **Slack 機器人令牌無效**：確保機器人在工作區中具有適當的權限
+4. **未設定電子郵件**：驗證電子郵件地址格式是否正確
 
-### Debug Configuration
+### 除錯設定
 
-Use `config show` to verify your configuration is resolved correctly:
+使用 `config show` 驗證您的設定是否正確解析：
 
 ```bash
 # Show human-readable configuration

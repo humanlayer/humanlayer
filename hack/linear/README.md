@@ -1,84 +1,84 @@
 # Linear CLI
 
-A command-line interface for interacting with Linear issue tracking.
+用於與 Linear 問題追蹤互動的命令列介面。
 
-## Features
+## 功能特色
 
-- List your active assigned issues (`list-issues`)
-- View issue details and comments (`get-issue`)
-- Add comments to issues (`add-comment`)
-- Download all images from issues (`fetch-images`)
-- Automatically detect issue IDs from git branch names
-- Shell completions for fish, zsh, and bash
-- Cross-platform with support for multiple JavaScript runtimes
-- Smart handling of environment variables (only requires API key for operations)
+- 列出您主動指派的問題（`list-issues`）
+- 檢視問題詳細資訊和評論（`get-issue`）
+- 在問題中新增評論（`add-comment`）
+- 從問題下載所有圖片（`fetch-images`）
+- 從 git 分支名稱自動偵測問題 ID
+- 支援 fish、zsh 和 bash 的 Shell 自動完成
+- 跨平台，支援多種 JavaScript 執行時期
+- 智慧處理環境變數（僅在操作時需要 API 金鑰）
 
-## Setup
+## 設定
 
-1. Make sure you have a Linear API key (you'll need it for actual operations, but not for help/completion):
+1. 確保您有 Linear API 金鑰（實際操作需要，但說明/自動完成不需要）：
    ```
    export LINEAR_API_KEY=your_api_key
    ```
 
-2. Install the CLI, from this directory run:
+2. 安裝 CLI，從此目錄執行：
    ```
    npm install -g .
    ```
 
-3. Alternatively, you can add the directory to your PATH or create a symlink manually.
+3. 或者，您可以手動將目錄新增到您的 PATH 或建立符號連結。
 
-## Usage
+## 使用方式
 
 ```bash
-# List your assigned active issues (only shows issues not marked as done/canceled)
+# 列出您指派的主動問題（僅顯示未標記為完成/已取消的問題）
 linear list-issues
 
-# View details of an issue
+# 檢視問題詳細資訊
 linear get-issue ENG-123
-# Or if your git branch contains the issue ID (e.g., feature/ENG-123-something)
+# 或如果您的 git 分支包含問題 ID（例如 feature/ENG-123-something）
 linear get-issue
 
-# Add a comment to an issue (requires message as first parameter)
+# 在問題中新增評論（需要訊息作為第一個參數）
 linear add-comment "This is my comment" --issue-id ENG-123  # Explicit ID
 linear add-comment "This is my comment"  # Uses git branch auto-detection
 
-# Download all images from an issue to local thoughts directory
+# 從問題下載所有圖片至本機 thoughts 目錄
 linear fetch-images ENG-123
 ```
 
-### Fetch Images
+### 擷取圖片
 
-Download all images from a Linear issue to the local thoughts directory:
+從 Linear 問題下載所有圖片至本機 thoughts 目錄：
 
 ```bash
 linear fetch-images ENG-123
 ```
 
-This command:
-- Downloads all images embedded in the issue description and comments
-- Saves them to `thoughts/shared/images/ENG-123/`
-- Names files as `ENG-123-01.png`, `ENG-123-02.jpg`, etc.
-- Outputs the list of saved file paths (one per line)
-- Shows progress messages to stderr
+此命令：
+- 下載嵌入在問題描述和評論中的所有圖片
+- 將它們儲存至 `thoughts/shared/images/ENG-123/`
+- 將檔案命名為 `ENG-123-01.png`、`ENG-123-02.jpg` 等
+- 輸出已儲存檔案路徑清單（每行一個）
+- 將進度訊息顯示至 stderr
 
-Example output:
+輸出範例：
 ```
 Downloaded 2 images:
 thoughts/shared/images/ENG-123/ENG-123-01.png
 thoughts/shared/images/ENG-123/ENG-123-02.jpg
 ```
 
-### Add Comment Requirements
+### 新增評論需求
 
-- Message is required as the first parameter
-- Issue ID is either:
-  - Auto-detected from git branch name (e.g., `feature/ENG-123-something`)
-  - Provided with the `--issue-id` or `-i` option (e.g., `-i ENG-123`) 
-- If neither is available, the tool will prompt you to use one of these options
+- 訊息為必需的第一個參數
+- 問題 ID 可以是：
+  - 從 git 分支名稱自動偵測（例如 `feature/ENG-123-something`）
+  - 使用 `--issue-id` 或 `-i` 選項提供（例如 `-i ENG-123`）
+- 如果兩者都不可用，工具將提示您使用其中一個選項
 
-## Shell Completions
+## Shell 自動完成
 
-You can also manually generate and install completions for your shell with:
+您也可以手動為您的 Shell 產生並安裝自動完成：
 
 ```bash
 # Fish
@@ -96,41 +96,41 @@ linear completion --bash > ~/.bash_completion.d/linear
 # Add to .bashrc: source ~/.bash_completion.d/linear
 ```
 
-## Requirements
+## 需求
 
-One of the following JavaScript runtimes:
-- Bun (recommended for speed)
-- Node.js with ts-node or tsx
-- npm with npx
+以下 JavaScript 執行時期之一：
+- Bun（建議使用以獲得速度）
+- Node.js 搭配 ts-node 或 tsx
+- npm 搭配 npx
 
-Required npm packages (installed automatically by setup.sh):
+所需的 npm 套件（由 setup.sh 自動安裝）：
 - @linear/sdk
 - commander
 - chalk
 - inquirer
 
-## Development
+## 開發
 
-Clone the repository and install dependencies:
+複製儲存庫並安裝相依性：
 
 ```bash
 cd hack/linear
 bun install  # or npm install
 ```
 
-### Files Overview
+### 檔案概述
 
-- `linear-cli.ts` - Main CLI implementation
-- `linear` - Shell wrapper script (detects runtime and executes the TypeScript)
-- `setup.sh` - Installation and setup helper
-- `package.json` - Dependencies and configuration
-- `tsconfig.json` - TypeScript configuration
+- `linear-cli.ts` - 主要 CLI 實作
+- `linear` - Shell 包裝腳本（偵測執行時期並執行 TypeScript）
+- `setup.sh` - 安裝和設定協助程式
+- `package.json` - 相依性和設定
+- `tsconfig.json` - TypeScript 設定
 
-## Update your CLAUDE.md
+## 更新您的 CLAUDE.md
 
-You may find it helpful to add a note to your `~/.claude/CLAUDE.md`:
+您可能會發現在 `~/.claude/CLAUDE.md` 中新增註記很有幫助：
 
 ```md
 ## Linear
-When asked to fetch a Linear ticket, use the globally installed Linear CLI: `linear get-issue ENG-XXXX > thoughts/shared/tickets/eng-XXXX.md`
+當被要求擷取 Linear 票證時，使用全域安裝的 Linear CLI：`linear get-issue ENG-XXXX > thoughts/shared/tickets/eng-XXXX.md`
 ```

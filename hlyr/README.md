@@ -1,17 +1,17 @@
 # HumanLayer CLI
 
-HumanLayer, but on your command-line.
+HumanLayer，在您的命令列上。
 
-A unified CLI tool that provides:
+統一的 CLI 工具，提供：
 
-- Direct human contact from terminal or scripts
-- MCP (Model Context Protocol) server functionality
-- Integration with Claude Code SDK for approval workflows
-- Thoughts management system for developer notes and documentation
+- 從終端機或指令稿直接聯絡人類
+- MCP（Model Context Protocol）伺服器功能
+- 與 Claude Code SDK 整合的核准工作流程
+- 開發者筆記和文件的思維管理系統
 
-## Quickstart
+## 快速開始
 
-### Run directly with npx
+### 使用 npx 直接執行
 
 ```bash
 # Contact a human with a message
@@ -21,21 +21,21 @@ npx humanlayer contact_human -m "Need help with deployment approval"
 npx humanlayer contact_human --message "Review this pull request"
 ```
 
-### Configuration
+### 設定
 
-you will probably always want:
+您可能會需要：
 
 ```bash
 export HUMANLAYER_API_KEY=...
 ```
 
-Using cli flags:
+使用 CLI 旗標：
 
 ```bash
 humanlayer contact_human --message "Review this pull request" --slack-channel "C08G5C3V552"
 ```
 
-using environment variables:
+使用環境變數：
 
 ```bash
 export HUMANLAYER_SLACK_CHANNEL=C08G5C3V552
@@ -49,9 +49,9 @@ export HUMANLAYER_EMAIL_ADDRESS=human@example.com
 humanlayer contact_human --message "Review this pull request"
 ```
 
-**Note:** If no contact channel is configured, HumanLayer will default to the web UI for human interactions.
+**注意：** 如果未設定聯絡頻道，HumanLayer 將預設使用網頁 UI 進行人類互動。
 
-using a config file:
+使用設定檔：
 
 ```bash
 echo '
@@ -69,9 +69,9 @@ echo '
 humanlayer contact_human --message "Review this pull request" --config-file .hlyr.json
 ```
 
-### MCP Server Usage
+### MCP 伺服器用法
 
-Start an MCP server for integration with MCP clients like Claude Desktop:
+啟動 MCP 伺服器以與 Claude Desktop 等 MCP 客戶端整合：
 
 ```bash
 # Contact human functionality
@@ -85,9 +85,9 @@ humanlayer mcp inspector serve
 humanlayer mcp inspector claude_approvals
 ```
 
-### Claude Code SDK Integration
+### Claude Code SDK 整合
 
-For automated approval workflows with Claude Code SDK:
+使用 Claude Code SDK 的自動化核准工作流程：
 
 `mcp-config.json`:
 
@@ -111,7 +111,7 @@ claude --print "write hello world to a file" \
   --permission-prompt-tool mcp__approvals__request_permission
 ```
 
-### Run with claude code
+### 與 claude code 一起執行
 
 ```
 claude --print "do some work" | npx humanlayer contact_human -m -
@@ -131,7 +131,7 @@ claude_answer=$(claude --print "$message" --allowedTools "$allowedTools" --conti
 done
 ```
 
-### Install globally
+### 全域安裝
 
 ```bash
 npm install -g hlyr
@@ -140,21 +140,21 @@ npm install -g hlyr
 humanlayer contact_human -m "Production database needs review"
 ```
 
-## Commands
+## 指令
 
 ### `contact_human`
 
-Contact a human with a message and wait for a response.
+向人類傳送訊息並等待回應。
 
 ```bash
 humanlayer contact_human -m "Your message here"
 ```
 
-**Options:**
+**選項：**
 
-- `-m, --message <text>` - The message to send (required)
+- `-m, --message <text>` - 要傳送的訊息（必填）
 
-**Examples:**
+**範例：**
 
 ```bash
 # Simple message
@@ -172,35 +172,35 @@ fi
 
 ### `mcp`
 
-Model Context Protocol server functionality.
+Model Context Protocol 伺服器功能。
 
 ```bash
 humanlayer mcp <subcommand>
 ```
 
-**Subcommands:**
+**子指令：**
 
-- `serve` - Start the default MCP server for contact_human functionality
-- `claude_approvals` - Start the Claude approvals MCP server for permission requests
-- `wrapper` - Wrap an existing MCP server with human approval functionality (not implemented yet)
-- `inspector [command]` - Run MCP inspector for debugging MCP servers (defaults to 'serve')
+- `serve` - 啟動預設的 MCP 伺服器以提供 contact_human 功能
+- `claude_approvals` - 啟動 Claude 核准 MCP 伺服器以處理權限請求
+- `wrapper` - 將現有的 MCP 伺服器包裝為具有人類核准功能（尚未實作）
+- `inspector [command]` - 執行 MCP 檢查器以除錯 MCP 伺服器（預設為 'serve'）
 
 ### `thoughts`
 
-Manage developer thoughts and notes separately from code repositories.
+管理開發者思維和筆記，與程式碼儲存庫分開。
 
 ```bash
 humanlayer thoughts <subcommand>
 ```
 
-**Subcommands:**
+**子指令：**
 
-- `init` - Initialize thoughts for the current repository
-- `sync` - Manually sync thoughts and update searchable index
-- `status` - Check the status of your thoughts setup
-- `config` - View or edit thoughts configuration
+- `init` - 為目前的儲存庫初始化思維
+- `sync` - 手動同步思維並更新可搜尋索引
+- `status` - 檢查思維設定的狀態
+- `config` - 檢視或編輯思維設定
 
-**Examples:**
+**範例：**
 
 ```bash
 # Initialize thoughts for a new project
@@ -216,21 +216,21 @@ humanlayer thoughts status
 humanlayer thoughts config --json
 ```
 
-The thoughts system keeps your notes separate from code while making them easily accessible to AI assistants. See the [Thoughts documentation](./THOUGHTS.md) for detailed information.
+思維系統將您的筆記與程式碼分開，同時讓 AI 助手可以輕鬆存取。詳細資訊請參閱 [Thoughts 文件](./THOUGHTS.md)。
 
 ### `claude`
 
-Manage Claude Code configuration.
+管理 Claude Code 設定。
 
 ```bash
 humanlayer claude <subcommand>
 ```
 
-**Subcommands:**
+**子指令：**
 
-- `init` - Initialize Claude Code configuration in current directory
+- `init` - 在目前目錄中初始化 Claude Code 設定
 
-**Examples:**
+**範例：**
 
 ```bash
 # Initialize Claude Code configuration interactively
@@ -243,50 +243,50 @@ humanlayer claude init --all
 humanlayer claude init --force
 ```
 
-#### Interactive Selection
+#### 互動式選擇
 
-The `claude init` command provides an interactive experience with arrow key navigation:
+`claude init` 指令提供具有方向鍵導航的互動式體驗：
 
-- Use **↑↓** arrow keys to navigate options
-- Press **space** to toggle selections
-- Press **enter** to confirm your choices
-- Press **Ctrl+C** to cancel at any time
+- 使用 **↑↓** 方向鍵導航選項
+- 按 **空白鍵** 切換選擇
+- 按 **Enter** 確認您的選擇
+- 隨時按 **Ctrl+C** 取消
 
-#### What Gets Copied
+#### 複製的內容
 
-The command copies Claude Code configuration files to your project's `.claude` directory:
+此指令會將 Claude Code 設定檔複製到專案的 `.claude` 目錄：
 
-- **Commands** (30 files) - Workflow commands for planning, research, CI, code generation, testing, and more
-- **Agents** (6 files) - Specialized sub-agents for code analysis, debugging, and architecture review
-- **Settings** (1 file) - Project permissions configuration (`settings.local.json` is excluded via `.gitignore`)
+- **Commands**（30 個檔案）- 用於規劃、研究、CI、程式碼生成、測試等的工作流程指令
+- **Agents**（6 個檔案）- 用於程式碼分析、除錯和架構審查的專用子代理
+- **Settings**（1 個檔案）- 專案權限設定（`settings.local.json` 透過 `.gitignore` 排除）
 
-#### Command Options
+#### 指令選項
 
-- `--all` - Copy all files without prompting (useful for CI/CD or automated setup)
-- `--force` - Overwrite existing `.claude` directory without confirmation
+- `--all` - 複製所有檔案而不提示（適用於 CI/CD 或自動化設定）
+- `--force` - 無需確認即覆寫現有的 `.claude` 目錄
 
-#### Non-Interactive Mode
+#### 非互動式模式
 
-For automated environments (CI/CD, scripts), use the `--all` flag:
+對於自動化環境（CI/CD、指令稿），使用 `--all` 旗標：
 
 ```bash
 humanlayer claude init --all
 ```
 
-Without `--all`, the command requires an interactive terminal and will exit with an error in non-TTY environments.
+如果不使用 `--all`，此指令需要互動式終端機，在非 TTY 環境中會以錯誤退出。
 
-## Use Cases
+## 使用案例
 
-- **CI/CD Pipelines**: Get human approval before deploying
-- **Monitoring Scripts**: Alert humans when automated checks fail
-- **Development Workflows**: Ask for code review or architectural decisions
-- **Operations**: Escalate issues that require human judgment
+- **CI/CD 管線**：在部署前取得人類核准
+- **監控指令稿**：當自動檢查失敗時提醒人類
+- **開發工作流程**：要求程式碼審查或架構決策
+- **維運**：將需要人類判斷的問題升級
 
-## Configuration
+## 設定
 
-hlyr uses HumanLayer's configuration system. Set up your contact channels through environment variables or configuration files as documented in the main [HumanLayer documentation](https://humanlayer.dev/docs).
+hlyr 使用 HumanLayer 的設定系統。透過環境變數或設定檔設定聯絡頻道，如主要 [HumanLayer 文件](https://humanlayer.dev/docs)中所述。
 
-## Development
+## 開發
 
 ```bash
 # Install dependencies
@@ -302,10 +302,10 @@ npm test
 npm run dev
 ```
 
-### Testing Local Approvals
+### 測試本地核准
 
-For testing the local MCP approvals system without HumanLayer API access, see [test_local_approvals.md](./test_local_approvals.md).
+若要在沒有 HumanLayer API 存取權限的情況下測試本地 MCP 核准系統，請參閱 [test_local_approvals.md](./test_local_approvals.md)。
 
-## License
+## 授權
 
 Apache-2.0

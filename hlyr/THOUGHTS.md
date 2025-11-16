@@ -1,18 +1,18 @@
-# HumanLayer Thoughts Management System
+# HumanLayer 思維管理系統
 
-The HumanLayer Thoughts system helps developers manage their notes, architecture decisions, and development thoughts separately from code repositories while keeping them tightly integrated with their development workflow.
+HumanLayer 思維系統協助開發者將筆記、架構決策和開發思路與程式碼儲存庫分開管理，同時保持與開發工作流程的緊密整合。
 
-## Overview
+## 概述
 
-The thoughts system provides:
+思維系統提供：
 
-- 📝 **Separate storage** - Keep thoughts in a dedicated git repository
-- 🔗 **Seamless integration** - Access thoughts as if they're part of your code repo
-- 🚫 **Accident prevention** - Never accidentally commit private thoughts to code repos
-- 🤖 **AI-friendly** - Structured for easy access by AI coding assistants
-- 👥 **Team collaboration** - Share thoughts with your team when appropriate
+- 📝 **獨立儲存** - 將思維保存在專用的 git 儲存庫中
+- 🔗 **無縫整合** - 存取思維就像它們是程式碼儲存庫的一部分
+- 🚫 **防止意外** - 永遠不會意外將私人思維提交到程式碼儲存庫
+- 🤖 **AI 友善** - 結構化設計，方便 AI 編碼助手存取
+- 👥 **團隊協作** - 在適當時與團隊分享思維
 
-## Quick Start
+## 快速開始
 
 ```bash
 # Initialize thoughts for your current repository
@@ -29,11 +29,11 @@ humanlayer thoughts config
 humanlayer thoughts config --edit
 ```
 
-## How It Works
+## 運作原理
 
-### Directory Structure
+### 目錄結構
 
-After initialization, your code repository will have:
+初始化後，您的程式碼儲存庫將包含：
 
 ```
 your-project/
@@ -53,7 +53,7 @@ your-project/
 └── .gitignore
 ```
 
-Your central thoughts repository:
+您的中央思維儲存庫：
 
 ```
 ~/thoughts/
@@ -69,29 +69,29 @@ Your central thoughts repository:
     └── shared/
 ```
 
-### Automatic Syncing
+### 自動同步
 
-The system automatically syncs your thoughts when you commit code:
+系統會在您提交程式碼時自動同步思維：
 
-1. **Pre-commit hook** - Prevents thoughts/ from being committed to your code repo
-2. **Post-commit hook** - Syncs thoughts changes to your thoughts repository and updates the searchable directory
+1. **Pre-commit 掛鉤** - 防止 thoughts/ 被提交到程式碼儲存庫
+2. **Post-commit 掛鉤** - 將思維變更同步到思維儲存庫，並更新可搜尋目錄
 
-This means you can work naturally - edit thoughts alongside code, and they'll be kept in sync automatically.
+這意味著您可以自然地工作 - 在編輯程式碼的同時編輯思維，它們會自動保持同步。
 
-### Searchable Directory
+### 可搜尋目錄
 
-The `thoughts/searchable/` directory contains read-only hard links to all thoughts files. This allows AI tools to search your thoughts content without needing to follow symlinks. The searchable directory:
+`thoughts/searchable/` 目錄包含所有思維檔案的唯讀硬連結。這讓 AI 工具可以搜尋思維內容，而無需追蹤符號連結。可搜尋目錄：
 
-- Is automatically updated when you run `humanlayer thoughts sync`
-- Contains hard links (not copies) to preserve disk space
-- Is read-only to prevent accidental edits
-- Should not be edited directly - always edit the original files
+- 執行 `humanlayer thoughts sync` 時會自動更新
+- 包含硬連結（而非副本）以節省磁碟空間
+- 為唯讀狀態以防止意外編輯
+- 不應直接編輯 - 請始終編輯原始檔案
 
-## Commands
+## 指令
 
 ### `humanlayer thoughts init`
 
-Initialize thoughts for the current repository.
+為目前的儲存庫初始化思維。
 
 ```bash
 humanlayer thoughts init [options]
@@ -101,17 +101,17 @@ Options:
   --config-file <path> Use a specific config file
 ```
 
-**What it does:**
+**功能說明：**
 
-1. Creates thoughts configuration if needed
-2. Maps your repository to a thoughts directory
-3. Sets up symlinks for easy access
-4. Installs git hooks for protection and auto-sync
-5. Generates CLAUDE.md for AI context
+1. 如有需要，建立思維設定
+2. 將您的儲存庫對應到思維目錄
+3. 設定符號連結以便存取
+4. 安裝 git 掛鉤以提供保護和自動同步
+5. 產生 CLAUDE.md 供 AI 使用
 
 ### `humanlayer thoughts sync`
 
-Manually sync thoughts to your thoughts repository.
+手動將思維同步到思維儲存庫。
 
 ```bash
 humanlayer thoughts sync [options]
@@ -121,11 +121,11 @@ Options:
   --config-file <path> Use a specific config file
 ```
 
-**Note:** Usually you don't need this - thoughts sync automatically on commits!
+**注意：** 通常您不需要此指令 - 思維會在提交時自動同步！
 
 ### `humanlayer thoughts status`
 
-Check the status of your thoughts setup.
+檢查思維設定的狀態。
 
 ```bash
 humanlayer thoughts status [options]
@@ -134,16 +134,16 @@ Options:
   --config-file <path> Use a specific config file
 ```
 
-Shows:
+顯示：
 
-- Current configuration
-- Repository mappings
-- Git status of thoughts repo
-- Any uncommitted changes
+- 目前設定
+- 儲存庫對應
+- 思維儲存庫的 Git 狀態
+- 任何未提交的變更
 
 ### `humanlayer thoughts config`
 
-View or edit thoughts configuration.
+檢視或編輯思維設定。
 
 ```bash
 humanlayer thoughts config [options]
@@ -154,9 +154,9 @@ Options:
   --config-file <path> Use a specific config file
 ```
 
-## Configuration
+## 設定
 
-Thoughts configuration is stored in your HumanLayer config file:
+思維設定儲存在您的 HumanLayer 設定檔中：
 
 ```json
 {
@@ -174,77 +174,77 @@ Thoughts configuration is stored in your HumanLayer config file:
 }
 ```
 
-## Best Practices
+## 最佳實踐
 
-### What to Put in Thoughts
+### 思維中應放入什麼
 
-**Repository-specific thoughts (`thoughts/alice/`):**
+**儲存庫特定思維 (`thoughts/alice/`)：**
 
-- Architecture decisions specific to this project
-- TODO lists and planning notes
-- Investigation results and debugging notes
-- Design decisions and trade-offs
-- Meeting notes about this project
+- 此專案的架構決策
+- 待辦事項清單和規劃筆記
+- 調查結果和除錯筆記
+- 設計決策和取捨
+- 關於此專案的會議記錄
 
-**Global thoughts (`thoughts/global/alice/`):**
+**全域思維 (`thoughts/global/alice/`)：**
 
-- Company coding standards
-- Personal development notes
-- Cross-project patterns and utilities
-- Team processes and workflows
-- Learning notes and references
+- 公司編碼標準
+- 個人開發筆記
+- 跨專案模式和工具
+- 團隊流程和工作流程
+- 學習筆記和參考資料
 
-### Organization Tips
+### 組織技巧
 
-1. **Use Markdown files** - AI assistants can easily read and understand them
-2. **Name files clearly** - `architecture.md`, `todo.md`, `investigation-auth-bug.md`
-3. **Link between files** - Use relative paths to connect related thoughts
-4. **Date your notes** - Add dates to investigation and decision files
-5. **Clean up regularly** - Archive or delete outdated thoughts
-6. **Quick access** - Just use `thoughts/yourname/` for most notes!
+1. **使用 Markdown 檔案** - AI 助手可以輕鬆讀取和理解
+2. **清楚命名檔案** - `architecture.md`、`todo.md`、`investigation-auth-bug.md`
+3. **在檔案之間建立連結** - 使用相對路徑連接相關思維
+4. **為筆記加上日期** - 在調查和決策檔案中加入日期
+5. **定期清理** - 封存或刪除過時的思維
+6. **快速存取** - 大多數筆記只需使用 `thoughts/yourname/`！
 
-### Team Collaboration
+### 團隊協作
 
-- Put team-relevant notes in `shared/` directories
-- Personal experiments and drafts go in your user directory
-- Consider making your thoughts repo accessible to your team
-- Use clear commit messages when syncing shared thoughts
+- 將團隊相關筆記放在 `shared/` 目錄中
+- 個人實驗和草稿放在您的使用者目錄中
+- 考慮讓團隊成員可存取您的思維儲存庫
+- 同步共享思維時使用清楚的提交訊息
 
-## Troubleshooting
+## 疑難排解
 
-### "Thoughts not configured"
+### "Thoughts not configured"（思維未設定）
 
-Run `humanlayer thoughts init` to set up thoughts for the first time.
+執行 `humanlayer thoughts init` 首次設定思維。
 
-### "Not in a git repository"
+### "Not in a git repository"（不在 git 儲存庫中）
 
-The thoughts system requires your code to be in a git repository. Run `git init` first.
+思維系統需要您的程式碼位於 git 儲存庫中。請先執行 `git init`。
 
-### Sync Issues
+### 同步問題
 
-If automatic sync isn't working:
+如果自動同步無法運作：
 
-1. Check git hooks are installed: `ls -la .git/hooks/`
-2. Manually sync: `humanlayer thoughts sync`
-3. Check thoughts repo status: `humanlayer thoughts status`
+1. 檢查 git 掛鉤是否已安裝：`ls -la .git/hooks/`
+2. 手動同步：`humanlayer thoughts sync`
+3. 檢查思維儲存庫狀態：`humanlayer thoughts status`
 
-### Permission Issues
+### 權限問題
 
-Make sure you have write access to your thoughts repository location (default: `~/thoughts`).
+確保您對思維儲存庫位置具有寫入權限（預設：`~/thoughts`）。
 
-## Advanced Usage
+## 進階用法
 
-### Multiple Machines
+### 多台機器
 
-To use thoughts across multiple machines:
+在多台機器上使用思維：
 
-1. Push your thoughts repo to a private GitHub/GitLab repository
-2. Clone it on other machines
-3. Update the config to point to the cloned location
+1. 將思維儲存庫推送到私人 GitHub/GitLab 儲存庫
+2. 在其他機器上複製它
+3. 更新設定以指向複製的位置
 
 ### Monorepos
 
-For monorepos, you can initialize thoughts at the root level or for individual packages:
+對於 monorepos，您可以在根層級或個別套件中初始化思維：
 
 ```bash
 # Root level (recommended)
@@ -256,52 +256,52 @@ cd /path/to/monorepo/packages/frontend
 humanlayer thoughts init
 ```
 
-### CI/CD Integration
+### CI/CD 整合
 
-The thoughts directory is protected by a pre-commit hook that prevents accidental commits to your code repository. This ensures clean CI/CD pipelines while keeping thoughts accessible for searching and development.
+思維目錄受 pre-commit 掛鉤保護，防止意外提交到程式碼儲存庫。這確保了乾淨的 CI/CD 管線，同時保持思維可供搜尋和開發使用。
 
-## Privacy & Security
+## 隱私與安全
 
-- Thoughts are stored separately from your code
-- Never committed to code repositories
-- Can be stored in a private git repository
-- Each user has their own private directory
-- Team sharing is opt-in via `shared/` directories
+- 思維與程式碼分開儲存
+- 永遠不會提交到程式碼儲存庫
+- 可儲存在私人 git 儲存庫中
+- 每個使用者都有自己的私人目錄
+- 團隊分享透過 `shared/` 目錄選擇性啟用
 
-## FAQ
+## 常見問題
 
-**Q: Can I use this without HumanLayer's other features?**
-A: Yes! The thoughts system is independent of HumanLayer's approval and communication features.
+**Q: 我可以在不使用 HumanLayer 其他功能的情況下使用此系統嗎？**
+A: 可以！思維系統獨立於 HumanLayer 的核准和通訊功能。
 
-**Q: What if I accidentally delete my thoughts?**
-A: Since thoughts are in a git repository, you can recover them using `git restore` or `git checkout`.
+**Q: 如果我不小心刪除了思維怎麼辦？**
+A: 由於思維位於 git 儲存庫中，您可以使用 `git restore` 或 `git checkout` 復原它們。
 
-**Q: Can I share some thoughts but not others?**
-A: Yes! Put shareable thoughts in `shared/` directories and keep private ones in your user directory.
+**Q: 我可以分享部分思維而不分享其他思維嗎？**
+A: 可以！將可分享的思維放在 `shared/` 目錄中，將私人思維保留在您的使用者目錄中。
 
-**Q: How do I archive old thoughts?**
-A: Create an `archive/` directory in your thoughts and move old files there, or delete them (git keeps history).
+**Q: 如何封存舊思維？**
+A: 在思維中建立 `archive/` 目錄並將舊檔案移至該處，或刪除它們（git 會保留歷史記錄）。
 
-**Q: Can I use a different thoughts repo for different projects?**
-A: Currently all projects share the same thoughts repo, but use different subdirectories.
+**Q: 我可以為不同專案使用不同的思維儲存庫嗎？**
+A: 目前所有專案共享同一個思維儲存庫，但使用不同的子目錄。
 
-**Q: Why can't I use "global" as my username?**
-A: "global" is reserved for cross-project thoughts. This ensures the directory structure remains clear.
+**Q: 為什麼我不能使用 "global" 作為使用者名稱？**
+A: "global" 保留用於跨專案思維。這確保目錄結構保持清晰。
 
-**Q: Why do I need a searchable directory?**
-A: Many search tools don't follow symlinks by default. The searchable directory contains hard links to all your thoughts files, making them easily searchable by AI assistants and other tools.
+**Q: 為什麼需要可搜尋目錄？**
+A: 許多搜尋工具預設不會追蹤符號連結。可搜尋目錄包含所有思維檔案的硬連結，使 AI 助手和其他工具可以輕鬆搜尋它們。
 
-**Q: Can I edit files in the searchable directory?**
-A: No, files in searchable/ are read-only. Always edit the original files (e.g., edit thoughts/alice/todo.md, not thoughts/searchable/alice/todo.md).
+**Q: 我可以編輯可搜尋目錄中的檔案嗎？**
+A: 不可以，searchable/ 中的檔案為唯讀。請始終編輯原始檔案（例如，編輯 thoughts/alice/todo.md，而非 thoughts/searchable/alice/todo.md）。
 
-## Contributing
+## 貢獻
 
-The thoughts system is part of HumanLayer. To contribute:
+思維系統是 HumanLayer 的一部分。若要貢獻：
 
-1. Check out the implementation in `hlyr/src/commands/thoughts/`
-2. Read the original specification in `thoughts.md`
-3. Submit PRs to improve the thoughts system
+1. 查看 `hlyr/src/commands/thoughts/` 中的實作
+2. 閱讀 `thoughts.md` 中的原始規格
+3. 提交 PR 以改進思維系統
 
 ---
 
-Happy thinking! 🧠✨
+祝您思考愉快！🧠✨

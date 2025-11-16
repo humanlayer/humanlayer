@@ -6,13 +6,13 @@
 
 <div align="center">
 
-## The best way to get Coding Agents to solve hard problems in complex codebases
+## 讓 AI 編碼代理在複雜程式碼庫中解決困難問題的最佳方法
 
-**CodeLayer is an open source IDE that lets you orchestrate AI coding agents.**
+**CodeLayer 是一個開源 IDE，讓您能夠編排 AI 編碼代理。**
 
-It comes with battle-tested workflows that enable AI to solve hard problems in large, complex codebases.
+它配備久經考驗的工作流程，使 AI 能夠在大型、複雜的程式碼庫中解決困難問題。
 
-Built on Claude Code. Open source. Scale from your laptop to your entire team.
+基於 Claude Code 打造。開源。從您的筆電擴展到整個團隊。
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/humanlayer/humanlayer)](https://github.com/humanlayer/humanlayer)
 [![License: Apache-2](https://img.shields.io/badge/License-Apache-green.svg)](https://opensource.org/licenses/Apache-2)
@@ -29,81 +29,81 @@ Built on Claude Code. Open source. Scale from your laptop to your entire team.
 
 ---
 
-> "Our entire company is using CodeLayer now. We're shipping one banger PR after the other. It is so f-ing good. Unbelievable dude."
+> 「我們整個公司現在都在使用 CodeLayer。我們一個接一個地推出超讚的 PR。這真的太好用了。難以置信。」
 >
-> **– René Brandel, Founder @ Casco (YC X25)**
+> **– René Brandel，Casco 創辦人（YC X25）**
 
 ---
 
-- **Superhuman for Claude Code** - Keyboard-first workflows designed for builders who value speed and control.
+- **Claude Code 的 Superhuman** - 為重視速度和控制的開發者設計的鍵盤優先工作流程。
 
-- **Advanced Context Engineering** - Scale AI-first dev to your entire team, without devolving into a chaotic slop-fest.
+- **進階情境工程** - 將 AI 優先的開發擴展到整個團隊，而不會演變成混亂的爛攤子。
 
-- **M U L T I C L A U D E** - Run Claude Code sessions in parallel. Worktrees? Done. Remote cloud workers? You got it.
+- **M U L T I C L A U D E** - 平行執行 Claude Code 會話。Worktrees？搞定。遠端雲端 worker？沒問題。
 
 ---
 
-> "This has improved my productivity (and token consumption) by at least 50%. Taking a superhuman style approach just makes soo much sense. Also, its so freaking cool to look back at all the work you've done in a day."
+> 「這讓我的生產力（和 token 消耗）提升了至少 50%。採用 superhuman 風格的方法非常合理。而且，回顧一天完成的所有工作真的超酷。」
 >
-> **– Tyler Brown, Founder @ Revlo.ai**
+> **– Tyler Brown，Revlo.ai 創辦人**
 
 ---
 
-## From the team that brought you "Context Engineering"
+## 來自「情境工程」團隊
 
-Leading experts on getting the most out of today's models.
+充分利用當今模型的領先專家。
 
-#### [Advanced Context Engineering for Coding Agents](https://github.com/humanlayer/humanlayer)
-This talk, given at YC on August 20th, 2025 lays out the groundwork for using AI to solve hard problems in complex codebases.
+#### [編碼代理的進階情境工程](https://github.com/humanlayer/humanlayer)
+這場於 2025 年 8 月 20 日在 YC 的演講，為使用 AI 解決複雜程式碼庫中的困難問題奠定了基礎。
 - [GitHub](https://github.com/humanlayer/humanlayer)
 - [YouTube](https://humanlayer.dev/youtube)
 
 #### [12 Factor Agents](https://github.com/humanlayer/humanlayer)
-A set of principles for building reliable and scalable LLM applications, inspired by the original 12-Factor App methodology.
+一套建構可靠且可擴展的 LLM 應用程式的原則，靈感來自原始的 12-Factor App 方法論。
 - [GitHub](https://github.com/humanlayer/humanlayer)
 - [YouTube](https://humanlayer.dev/youtube)
 
-The original repo that coined the term "context engineering" back in April 2025.
+這是在 2025 年 4 月創造「情境工程」一詞的原始儲存庫。
 
 #### [🦄 AI That Works](https://humanlayer.dev/podcast)
-A weekly conversation about how we can all get the most juice out of todays models with @hellovai & @dexhorthy
+每週與 @hellovai 和 @dexhorthy 討論我們如何從當今模型中獲得最大效益
 - [GitHub](https://github.com/humanlayer/humanlayer)
 - [Podcast](https://humanlayer.dev/podcast)
 
 ---
 
-## For Teams
+## 團隊方案
 
-**Invest in outcomes, not tools.**
+**投資成果，而非工具。**
 
-Want to scale AI-first development to your entire org? Get tailored workflows, custom integrations, and cutting-edge advice.
+想要將 AI 優先的開發擴展到整個組織？獲得量身打造的工作流程、客製整合，以及最尖端的建議。
 
-HumanLayer's expert engineers will ship in the trenches with you and your team until everyone is a 100x engineer.
+HumanLayer 的專家工程師將與您和您的團隊並肩作戰，直到每個人都成為 100 倍工程師。
 
-📧 Shoot us an email at **contact@humanlayer.dev**, mention your team size and current AI development stack.
+📧 寄信給我們：**contact@humanlayer.dev**，請註明您的團隊規模和目前的 AI 開發技術棧。
 
 ---
 
-## Quick Start
+## 快速開始
 
 ```bash
-# Coming soon - join the waitlist for early access
+# 即將推出 - 加入等候名單以取得早期存取權限
 npx humanlayer join-waitlist --email ...
 ```
 
 ---
 
-## Legacy Documentation
+## 舊版文件
 
-Looking for the HumanLayer SDK documentation? See [humanlayer.md](./humanlayer.md)
+尋找 HumanLayer SDK 文件？請參閱 [humanlayer.md](./humanlayer.md)
 
-## Contributing
+## 貢獻
 
-CodeLayer and the HumanLayer SDK are open-source and we welcome contributions in the form of issues, documentation, pull requests, and more. See [CONTRIBUTING.md](./CONTRIBUTING.md) for more details.
+CodeLayer 和 HumanLayer SDK 是開源的，我們歡迎以 issue、文件、pull request 等形式做出貢獻。更多詳情請參閱 [CONTRIBUTING.md](./CONTRIBUTING.md)。
 
-## License
+## 授權條款
 
-The HumanLayer SDK and CodeLayer sources in this repo are licensed under the Apache 2 License.
+此儲存庫中的 HumanLayer SDK 和 CodeLayer 原始碼採用 Apache 2 授權條款。
 
 ---
 

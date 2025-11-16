@@ -1,138 +1,138 @@
 # HumanLayer Daemon (HLD) - TODO
 
-## Bugs
+## 錯誤
 
-## Features (Planned)
+## 功能（已規劃）
 
-### Conversation History Bulk Endpoint
+### 對話歷史批次端點
 
-**Goal**: Reduce N+1 problem for TUI message count display
-**Current issue**: TUI needs separate `GetConversation` call per session to count messages
-**Proposed solution**: Add bulk endpoint that returns conversation metadata (message count, last message, etc.) for multiple sessions
-**Alternative**: Extend `ListSessions` to include conversation metadata
-**Performance impact**: Would significantly improve TUI session list load times
-**Files**: `rpc/handlers.go` (new endpoint), `rpc/types.go` (new types)
-**Priority**: Medium - would enable TUI message count feature without performance penalty
+**目標**：減少 TUI 訊息計數顯示的 N+1 問題
+**目前問題**：TUI 需要為每個 session 分別呼叫 `GetConversation` 來計算訊息數
+**建議解決方案**：新增批次端點，為多個 session 回傳對話中繼資料（訊息計數、最後訊息等）
+**替代方案**：擴充 `ListSessions` 以包含對話中繼資料
+**效能影響**：將顯著改善 TUI session 列表的載入時間
+**檔案**：`rpc/handlers.go`（新端點）、`rpc/types.go`（新類型）
+**優先級**：中 - 可在不影響效能的情況下啟用 TUI 訊息計數功能
 
-### Session Status Real-time Updates
+### Session 狀態即時更新
 
-**Goal**: Ensure session status accurately reflects current state including approval blocking
-**Current limitation**: Status may not update when sessions are blocked on approvals
-**Implementation**: Improve status propagation between approval system and session manager
-**Files**: `approval/manager.go`, `session/manager.go`, event bus integration
-**Dependencies**: May require event bus improvements for cross-component communication
-**Priority**: High - accurate status is critical for user understanding
+**目標**：確保 session 狀態準確反映目前狀態，包括核准阻塞
+**目前限制**：當 session 被核准阻塞時，狀態可能不會更新
+**實作方式**：改善核准系統與 session 管理器之間的狀態傳播
+**檔案**：`approval/manager.go`、`session/manager.go`、事件匯流排整合
+**相依性**：可能需要改進事件匯流排以實現跨元件通訊
+**優先級**：高 - 準確的狀態對使用者理解至關重要
 
-### Full-Text Search for Sessions
+### Session 全文搜尋
 
-**Goal**: Enable TUI to search session content, not just metadata
-**Implementation**: Add search indexing for conversation content
-**Considerations**:
+**目標**：讓 TUI 能夠搜尋 session 內容，而不僅僅是中繼資料
+**實作方式**：為對話內容新增搜尋索引
+**考量事項**：
 
-- SQLite FTS (Full-Text Search) extension
-- Elasticsearch/similar for advanced search
-- Simple LIKE queries for basic search
-  **Performance**: Would need to index conversation content on creation/update
-  **Files**: `store/sqlite.go` (search methods), `rpc/handlers.go` (search endpoint)
-  **Priority**: Low - complex to implement, unclear user need initially
+- SQLite FTS（全文搜尋）擴充功能
+- Elasticsearch/類似工具用於進階搜尋
+- 簡單的 LIKE 查詢用於基本搜尋
+  **效能**：需要在建立/更新時對對話內容建立索引
+  **檔案**：`store/sqlite.go`（搜尋方法）、`rpc/handlers.go`（搜尋端點）
+  **優先級**：低 - 實作複雜，初期使用者需求不明確
 
-### Enhanced Session Metrics
+### 增強的 Session 指標
 
-**Goal**: Provide more detailed session analytics for TUI display
-**Current data**: Basic cost, token count, duration
-**Additional metrics**:
+**目標**：為 TUI 顯示提供更詳細的 session 分析
+**目前資料**：基本成本、token 計數、持續時間
+**額外指標**：
 
-- Tool call counts by type
-- Approval response times
-- Session complexity scores
-- Resource usage patterns
-  **Storage**: Could extend session storage or create separate metrics tables
-  **Files**: `session/manager.go` (metrics collection), `store/sqlite.go` (metrics storage)
-  **Priority**: Low - nice to have for power users
+- 按類型分類的工具呼叫計數
+- 核准回應時間
+- Session 複雜度分數
+- 資源使用模式
+  **儲存**：可以擴充 session 儲存或建立單獨的指標表
+  **檔案**：`session/manager.go`（指標收集）、`store/sqlite.go`（指標儲存）
+  **優先級**：低 - 對進階使用者來說是不錯的功能
 
-### Conversation Export API
+### 對話匯出 API
 
-**Goal**: Enable TUI to export session data in various formats
-**Formats**: JSON, CSV, Markdown conversation logs
-**Implementation**: New RPC endpoints for data export
-**Considerations**:
+**目標**：讓 TUI 能夠以各種格式匯出 session 資料
+**格式**：JSON、CSV、Markdown 對話日誌
+**實作方式**：新的 RPC 端點用於資料匯出
+**考量事項**：
 
-- Large conversation handling
-- Streaming vs. bulk export
-- Format-specific processing
-  **Files**: `rpc/handlers.go` (export endpoints), potentially new export package
-  **Priority**: Low - users can access data through other means currently
+- 大型對話處理
+- 串流與批次匯出
+- 格式特定處理
+  **檔案**：`rpc/handlers.go`（匯出端點）、可能需要新的匯出套件
+  **優先級**：低 - 使用者目前可以透過其他方式存取資料
 
-### Bulk Session Operations
+### 批次 Session 操作
 
-**Goal**: Support bulk operations on sessions (delete, archive, etc.)
-**Current limitation**: Only single-session operations supported
-**Use cases**: Cleanup, batch processing, administrative operations
-**Implementation**: New RPC endpoints for bulk operations with transaction support
-**Files**: `rpc/handlers.go` (bulk endpoints), `session/manager.go` (bulk operations)
-**Priority**: Low - single operations sufficient for most use cases initially
+**目標**：支援對 session 進行批次操作（刪除、封存等）
+**目前限制**：僅支援單一 session 操作
+**使用案例**：清理、批次處理、管理操作
+**實作方式**：新的 RPC 端點用於批次操作，並支援交易
+**檔案**：`rpc/handlers.go`（批次端點）、`session/manager.go`（批次操作）
+**優先級**：低 - 單一操作對大多數初期使用案例已足夠
 
-## Technical Debt
+## 技術債務
 
-### Event Bus Improvements
+### 事件匯流排改進
 
-**Goal**: Better cross-component communication for status updates
-**Current limitation**: Limited event propagation between approval and session systems
-**Improvements needed**:
+**目標**：更好的跨元件通訊以進行狀態更新
+**目前限制**：核准和 session 系統之間的事件傳播有限
+**需要改進的地方**：
 
-- More granular event types
-- Better error handling in event processing
-- Event persistence/replay for reliability
-  **Files**: `bus/events.go`, integration points in `approval/` and `session/`
-  **Priority**: Medium - would solve several status update issues
+- 更細緻的事件類型
+- 更好的事件處理錯誤處理
+- 事件持久化/重播以提高可靠性
+  **檔案**：`bus/events.go`、`approval/` 和 `session/` 中的整合點
+  **優先級**：中 - 可以解決幾個狀態更新問題
 
-### Database Schema Optimization
+### 資料庫結構最佳化
 
-**Goal**: Optimize queries and storage for growing session data
-**Areas for improvement**:
+**目標**：為不斷增長的 session 資料最佳化查詢和儲存
+**改進領域**：
 
-- Index optimization for common queries
-- Conversation storage efficiency
-- Session metadata normalization
-  **Tools**: SQLite ANALYZE, query profiling
-  **Files**: `store/sqlite.go`, potentially migration scripts
-  **Priority**: Low - current performance is acceptable for expected scale
+- 常見查詢的索引最佳化
+- 對話儲存效率
+- Session 中繼資料正規化
+  **工具**：SQLite ANALYZE、查詢效能分析
+  **檔案**：`store/sqlite.go`、可能需要遷移腳本
+  **優先級**：低 - 目前效能對預期規模可接受
 
-### Error Handling Standardization
+### 錯誤處理標準化
 
-**Goal**: Consistent error responses across all RPC endpoints
-**Current issue**: Inconsistent error formats make debugging harder
-**Implementation**: Standardized error types and response formatting
-**Files**: `rpc/handlers.go`, `rpc/types.go` (error types)
-**Priority**: Low - functional but could improve developer experience
+**目標**：所有 RPC 端點的一致錯誤回應
+**目前問題**：不一致的錯誤格式使除錯更困難
+**實作方式**：標準化錯誤類型和回應格式
+**檔案**：`rpc/handlers.go`、`rpc/types.go`（錯誤類型）
+**優先級**：低 - 功能正常但可以改善開發者體驗
 
-## Future Features
+## 未來功能
 
-### WebSocket/Streaming Support
+### WebSocket/串流支援
 
-**Goal**: Real-time updates for active sessions instead of polling
-**Current limitation**: TUI polls for updates every 3 seconds
-**Implementation**: WebSocket or Server-Sent Events for live updates
-**Complexity**: High - requires significant architecture changes
-**Priority**: Low - polling works well enough for current scale
+**目標**：為活動 session 提供即時更新，而不是輪詢
+**目前限制**：TUI 每 3 秒輪詢一次更新
+**實作方式**：WebSocket 或 Server-Sent Events 用於即時更新
+**複雜度**：高 - 需要重大架構變更
+**優先級**：低 - 輪詢對目前規模運作良好
 
-### Multi-User Session Sharing
+### 多使用者 Session 共享
 
-**Goal**: Allow multiple users to collaborate on sessions
-**Implementation**: Session permissions, user management, collaborative editing
-**Complexity**: Very high - requires authentication, authorization, conflict resolution
-**Priority**: Very low - single-user focus for now
+**目標**：允許多個使用者協作處理 session
+**實作方式**：Session 權限、使用者管理、協作編輯
+**複雜度**：非常高 - 需要身份驗證、授權、衝突解決
+**優先級**：非常低 - 目前專注於單一使用者
 
-### Session Templates
+### Session 範本
 
-**Goal**: Save and reuse session configurations
-**Implementation**: Template storage, template management API
-**Files**: New template storage, `rpc/handlers.go` (template endpoints)
-**Priority**: Low - can be implemented client-side initially
+**目標**：儲存和重複使用 session 配置
+**實作方式**：範本儲存、範本管理 API
+**檔案**：新的範本儲存、`rpc/handlers.go`（範本端點）
+**優先級**：低 - 初期可以在客戶端實作
 
-### Advanced Analytics
+### 進階分析
 
-**Goal**: Usage patterns, performance analytics, optimization insights
-**Implementation**: Analytics collection, aggregation, reporting APIs
-**Privacy considerations**: What data to collect, retention policies
-**Priority**: Very low - basic metrics sufficient initially
+**目標**：使用模式、效能分析、最佳化見解
+**實作方式**：分析收集、彙總、報告 API
+**隱私考量**：要收集哪些資料、保留政策
+**優先級**：非常低 - 初期基本指標已足夠
