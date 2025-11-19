@@ -30,7 +30,7 @@ When this command is invoked:
    - Then propose a course of action to the user and confirm, or ask for clarification on direction.
 
 3. **If no parameters provided**, respond with:
-```
+```md
 I'll help you resume work from a handoff document. Let me find the available handoffs.
 
 Which handoff would you like to resume from?
@@ -59,7 +59,7 @@ Then wait for the user's input.
 2. **Spawn focused research tasks**:
    Based on the handoff content, spawn parallel research tasks to verify current state:
 
-   ```
+   ```md
    Task 1 - Gather artifact context:
    Read all artifacts mentioned in the handoff.
    1. Read feature documents listed in "Artifacts"
@@ -80,7 +80,7 @@ Then wait for the user's input.
 ### Step 2: Synthesize and Present Analysis
 
 1. **Present comprehensive analysis**:
-   ```
+   ```md
    I've analyzed the handoff from [date] by [researcher]. Here's the current situation:
 
    **Original Tasks:**
@@ -122,7 +122,7 @@ Then wait for the user's input.
    - Prioritize based on dependencies and handoff guidance
 
 2. **Present the plan**:
-   ```
+   ```md
    I've created a task list based on the handoff and current analysis:
 
    [Show todo list]
@@ -197,7 +197,7 @@ Then wait for the user's input.
 
 ## Example Interaction Flow
 
-```
+```md
 User: /resume_handoff specification/feature/handoffs/handoff-0.md
 Assistant: Let me read and analyze that handoff document...
 

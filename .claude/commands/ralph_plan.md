@@ -38,7 +38,7 @@ think deeply, use TodoWrite to track your tasks. When fetching from linear, get 
 
 Print a message for the user (replace placeholders with actual values):
 
-```
+```md
 ✅ Completed implementation plan for ENG-XXXX: [ticket title]
 
 Approach: [selected approach description]

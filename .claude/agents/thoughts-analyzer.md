@@ -57,7 +57,7 @@ Remove:
 
 Structure your analysis like this:
 
-```
+```md
 ## Analysis of: [Document Path]
 
 ### Document Context
@@ -117,7 +117,7 @@ Structure your analysis like this:
 "I've been thinking about rate limiting and there are so many options. We could use Redis, or maybe in-memory, or perhaps a distributed solution. Redis seems nice because it's battle-tested, but adds a dependency. In-memory is simple but doesn't work for multiple instances. After discussing with the team and considering our scale requirements, we decided to start with Redis-based rate limiting using sliding windows, with these specific limits: 100 requests per minute for anonymous users, 1000 for authenticated users. We'll revisit if we need more granular controls. Oh, and we should probably think about websockets too at some point."
 
 ### To Analysis:
-```
+```md
 ### Key Decisions
 1. **Rate Limiting Implementation**: Redis-based with sliding windows
    - Rationale: Battle-tested, works across multiple instances

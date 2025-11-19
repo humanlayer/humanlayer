@@ -25,7 +25,7 @@ Use the following information to understand how to create your document:
 using the above conventions, write your document. use the defined filepath, and the following YAML frontmatter pattern. Use the metadata gathered in step 1, Structure the document with YAML frontmatter followed by content:
 
 Use the following template structure:
-```markdown
+```md
 ---
 date: [Current date and time with timezone in ISO format]
 researcher: [Researcher name from thoughts status]

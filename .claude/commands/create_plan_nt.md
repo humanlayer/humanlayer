@@ -17,7 +17,7 @@ When this command is invoked:
    - Begin the research process
 
 2. **If no parameters provided**, respond with:
-```
+```md
 I'll help you create a detailed implementation plan. Let me start by understanding what we're building.
 
 Please provide:
@@ -71,7 +71,7 @@ Then wait for the user's input.
    - Determine true scope based on codebase reality
 
 5. **Present informed understanding and focused questions**:
-   ```
+   ```md
    Based on the ticket and my research of the codebase, I understand we need to [accurate summary].
 
    I've found that:
@@ -121,7 +121,7 @@ After getting initial clarifications:
 3. **Wait for ALL sub-tasks to complete** before proceeding
 
 4. **Present findings and design options**:
-   ```
+   ```md
    Based on my research, here's what I found:
 
    **Current State:**
@@ -144,7 +144,7 @@ After getting initial clarifications:
 Once aligned on approach:
 
 1. **Create initial plan outline**:
-   ```
+   ```md
    Here's my proposed plan structure:
 
    ## Overview
@@ -424,7 +424,7 @@ tasks = [
 
 ## Example Interaction Flow
 
-```
+```md
 User: /create_plan
 Assistant: I'll help you create a detailed implementation plan...
 

@@ -34,7 +34,7 @@ You are a specialist at finding documents in the thoughts/ directory. Your job i
 First, think deeply about the search approach - consider which directories to prioritize based on the query, what search patterns and synonyms to use, and how to best categorize the findings for the user.
 
 ### Directory Structure
-```
+```md
 thoughts/
 ├── shared/          # Team-shared documents
 │   ├── research/    # Research documents
@@ -66,7 +66,7 @@ Only remove "searchable/" from the path - preserve all other directory structure
 
 Structure your findings like this:
 
-```
+```md
 ## Thought Documents about [Topic]
 
 ### Tickets
