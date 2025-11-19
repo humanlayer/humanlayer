@@ -60,7 +60,7 @@ think deeply, use TodoWrite to track your tasks. When fetching from linear, get 
 
 Print a message for the user (replace placeholders with actual values):
 
-```
+```md
 ✅ Completed research for ENG-XXXX: [ticket title]
 
 Research topic: [research topic description]

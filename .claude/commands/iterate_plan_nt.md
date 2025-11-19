@@ -18,7 +18,7 @@ When this command is invoked:
 2. **Handle different input scenarios**:
 
    **If NO plan file provided**:
-   ```
+   ```md
    I'll help you iterate on an existing implementation plan.
 
    Which plan would you like to update? Please provide the path to the plan file (e.g., `thoughts/shared/plans/2025-10-16-feature.md`).
@@ -28,7 +28,7 @@ When this command is invoked:
    Wait for user input, then re-check for feedback.
 
    **If plan file provided but NO feedback**:
-   ```
+   ```md
    I've found the plan at [path]. What changes would you like to make?
 
    For example:
@@ -86,7 +86,7 @@ If the user's feedback requires understanding new code patterns or validating as
 
 Before making changes, confirm your understanding:
 
-```
+```md
 Based on your feedback, I understand you want to:
 - [Change 1 with specific detail]
 - [Change 2 with specific detail]
@@ -214,13 +214,13 @@ When spawning research sub-tasks:
 ## Example Interaction Flows
 
 **Scenario 1: User provides everything upfront**
-```
+```md
 User: /iterate_plan thoughts/shared/plans/2025-10-16-feature.md - add phase for error handling
 Assistant: [Reads plan, researches error handling patterns, updates plan]
 ```
 
 **Scenario 2: User provides just plan file**
-```
+```md
 User: /iterate_plan thoughts/shared/plans/2025-10-16-feature.md
 Assistant: I've found the plan. What changes would you like to make?
 User: Split Phase 2 into two phases - one for backend, one for frontend
@@ -228,7 +228,7 @@ Assistant: [Proceeds with update]
 ```
 
 **Scenario 3: User provides no arguments**
-```
+```md
 User: /iterate_plan
 Assistant: Which plan would you like to update? Please provide the path...
 User: thoughts/shared/plans/2025-10-16-feature.md

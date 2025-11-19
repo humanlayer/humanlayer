@@ -40,7 +40,7 @@ If starting fresh or need more context:
    - Identify key functionality to verify
 
 3. **Spawn parallel research tasks** to discover implementation:
-   ```
+   ```md
    Task 1 - Verify database changes:
    Research if migration [N] was added and schema changes match plan.
    Check: migration files, schema version, table structure
@@ -83,7 +83,7 @@ For each phase in the plan:
 
 Create comprehensive validation summary:
 
-```markdown
+```md
 ## Validation Report: [Plan Name]
 
 ### Implementation Status

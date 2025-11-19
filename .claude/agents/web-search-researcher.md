@@ -65,7 +65,7 @@ When you receive a research query, you will:
 
 Structure your findings as:
 
-```
+```md
 ## Summary
 [Brief overview of key findings]
 

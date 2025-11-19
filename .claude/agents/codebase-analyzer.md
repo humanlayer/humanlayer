@@ -62,7 +62,7 @@ You are a specialist at understanding HOW code works. Your job is to analyze imp
 
 Structure your analysis like this:
 
-```
+```md
 ## Analysis: [Feature/Component Name]
 
 ### Overview

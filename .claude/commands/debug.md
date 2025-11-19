@@ -9,7 +9,7 @@ You are tasked with helping debug issues during manual testing or implementation
 ## Initial Response
 
 When invoked WITH a plan/ticket file:
-```
+```md
 I'll help debug issues with [file name]. Let me understand the current state.
 
 What specific problem are you encountering?
@@ -21,7 +21,7 @@ I'll investigate the logs, database, and git state to help figure out what's hap
 ```
 
 When invoked WITHOUT parameters:
-```
+```md
 I'll help debug your current issue.
 
 Please describe what's going wrong:
@@ -75,7 +75,7 @@ After the user describes the issue:
 
 Spawn parallel Task agents for efficient investigation:
 
-```
+```md
 Task 1 - Check Recent Logs:
 Find and analyze the most recent logs for errors:
 1. Find latest daemon log: ls -t ~/.humanlayer/logs/daemon-*.log | head -1
@@ -86,7 +86,7 @@ Find and analyze the most recent logs for errors:
 Return: Key errors/warnings with timestamps
 ```
 
-```
+```md
 Task 2 - Database State:
 Check the current database state:
 1. Connect to database: sqlite3 ~/.humanlayer/daemon.db
@@ -99,7 +99,7 @@ Check the current database state:
 Return: Relevant database findings
 ```
 
-```
+```md
 Task 3 - Git and File State:
 Understand what changed recently:
 1. Check git status and current branch

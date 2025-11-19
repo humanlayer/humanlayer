@@ -65,7 +65,7 @@ First, think deeply about the most effective search patterns for the requested f
 
 Structure your findings like this:
 
-```
+```md
 ## File Locations for [Feature/Topic]
 
 ### Implementation Files
