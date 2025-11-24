@@ -32,6 +32,7 @@ const themes: { value: Theme; label: string; icon: React.ComponentType<{ classNa
   { value: 'high-contrast', label: 'High Contrast', icon: ScanEye },
   { value: 'framer-dark', label: 'Framer Dark', icon: Framer },
   { value: 'framer-light', label: 'Framer Light', icon: Framer },
+  { value: 'framer-light-hc', label: 'Framer Light HC', icon: Framer },
   { value: 'gruvbox-dark', label: 'Gruvbox Dark', icon: Box },
   { value: 'gruvbox-light', label: 'Gruvbox Light', icon: Box },
   { value: 'monokai', label: 'Monokai', icon: Palette },
