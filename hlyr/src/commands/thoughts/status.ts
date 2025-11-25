@@ -2,7 +2,14 @@ import fs from 'fs'
 import path from 'path'
 import { execSync } from 'child_process'
 import chalk from 'chalk'
-import { loadThoughtsConfig, getCurrentRepoPath, expandPath } from '../../thoughtsConfig.js'
+import {
+  loadThoughtsConfig,
+  getCurrentRepoPath,
+  expandPath,
+  getRepoNameFromMapping,
+  getProfileNameFromMapping,
+  resolveProfileForRepo,
+} from '../../thoughtsConfig.js'
 
 function getGitStatus(repoPath: string): string {
   try {
@@ -144,11 +151,21 @@ export async function thoughtsStatusCommand(options: StatusOptions): Promise<voi
     // Check current repo mapping
     const currentRepo = getCurrentRepoPath()
     const currentMapping = config.repoMappings[currentRepo]
+    const mappedName = getRepoNameFromMapping(currentMapping)
+    const profileName = getProfileNameFromMapping(currentMapping)
+    const profileConfig = resolveProfileForRepo(config, currentRepo)
 
-    if (currentMapping) {
+    if (mappedName) {
       console.log(chalk.yellow('Current Repository:'))
       console.log(`  Path: ${chalk.cyan(currentRepo)}`)
-      console.log(`  Thoughts directory: ${chalk.cyan(`${config.reposDir}/${currentMapping}`)}`)
+      console.log(`  Thoughts directory: ${chalk.cyan(`${profileConfig.reposDir}/${mappedName}`)}`)
+
+      // Add profile info
+      if (profileName) {
+        console.log(`  Profile: ${chalk.cyan(profileName)}`)
+      } else {
+        console.log(`  Profile: ${chalk.gray('(default)')}`)
+      }
 
       const thoughtsDir = path.join(currentRepo, 'thoughts')
       if (fs.existsSync(thoughtsDir)) {
@@ -161,10 +178,13 @@ export async function thoughtsStatusCommand(options: StatusOptions): Promise<voi
     }
     console.log('')
 
-    // Show thoughts repository git status
-    const expandedRepo = expandPath(config.thoughtsRepo)
+    // Show thoughts repository git status using profile's thoughtsRepo
+    const expandedRepo = expandPath(profileConfig.thoughtsRepo)
 
     console.log(chalk.yellow('Thoughts Repository Git Status:'))
+    if (profileName) {
+      console.log(chalk.gray(`  (using profile: ${profileName})`))
+    }
     console.log(`  ${getGitStatus(expandedRepo)}`)
     console.log(`  Remote: ${getRemoteStatus(expandedRepo)}`)
     console.log(`  Last commit: ${getLastCommit(expandedRepo)}`)

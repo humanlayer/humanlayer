@@ -17,12 +17,15 @@ import {
   getRepoThoughtsPath,
   getGlobalThoughtsPath,
   updateSymlinksForNewUsers,
+  validateProfile,
+  resolveProfileForRepo,
 } from '../../thoughtsConfig.js'
 
 interface InitOptions {
   force?: boolean
   configFile?: string
   directory?: string
+  profile?: string
 }
 
 function sanitizeDirectoryName(name: string): string {
@@ -394,6 +397,43 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
       console.log('')
     }
 
+    // Validate profile if specified
+    if (options.profile) {
+      if (!validateProfile(config, options.profile)) {
+        console.error(chalk.red(`Error: Profile "${options.profile}" does not exist.`))
+        console.error('')
+        console.error(chalk.gray('Available profiles:'))
+        if (config.profiles) {
+          Object.keys(config.profiles).forEach(name => {
+            console.error(chalk.gray(`  - ${name}`))
+          })
+        } else {
+          console.error(chalk.gray('  (none)'))
+        }
+        console.error('')
+        console.error(chalk.yellow('Create a profile first:'))
+        console.error(chalk.gray(`  humanlayer thoughts profile create ${options.profile}`))
+        process.exit(1)
+      }
+    }
+
+    // Resolve profile config early so we use the right thoughtsRepo throughout
+    // Create a temporary mapping to resolve the profile (will be updated later with actual mapping)
+    const tempProfileConfig =
+      options.profile && config.profiles && config.profiles[options.profile]
+        ? {
+            thoughtsRepo: config.profiles[options.profile].thoughtsRepo,
+            reposDir: config.profiles[options.profile].reposDir,
+            globalDir: config.profiles[options.profile].globalDir,
+            profileName: options.profile,
+          }
+        : {
+            thoughtsRepo: config.thoughtsRepo,
+            reposDir: config.reposDir,
+            globalDir: config.globalDir,
+            profileName: undefined,
+          }
+
     // Now check for existing setup in current repo
     const setupStatus = checkExistingSetup(config)
 
@@ -425,20 +465,26 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     }
 
     // Ensure thoughts repo still exists (might have been deleted)
-    const expandedRepo = expandPath(config.thoughtsRepo)
+    const expandedRepo = expandPath(tempProfileConfig.thoughtsRepo)
     if (!fs.existsSync(expandedRepo)) {
-      console.log(chalk.red(`Error: Thoughts repository not found at ${config.thoughtsRepo}`))
+      console.log(
+        chalk.red(`Error: Thoughts repository not found at ${tempProfileConfig.thoughtsRepo}`),
+      )
       console.log(chalk.yellow('The thoughts repository may have been moved or deleted.'))
       const recreate = await prompt('Do you want to recreate it? (Y/n): ')
       if (recreate.toLowerCase() === 'n') {
         console.log('Please update your configuration or restore the thoughts repository.')
         process.exit(1)
       }
-      ensureThoughtsRepoExists(config.thoughtsRepo, config.reposDir, config.globalDir)
+      ensureThoughtsRepoExists(
+        tempProfileConfig.thoughtsRepo,
+        tempProfileConfig.reposDir,
+        tempProfileConfig.globalDir,
+      )
     }
 
     // Map current repository
-    const reposDir = path.join(expandedRepo, config.reposDir)
+    const reposDir = path.join(expandedRepo, tempProfileConfig.reposDir)
 
     // Ensure repos directory exists
     if (!fs.existsSync(reposDir)) {
@@ -475,7 +521,9 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
 
         mappedName = sanitizedDir
         console.log(
-          chalk.green(`✓ Using existing: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+          chalk.green(
+            `✓ Using existing: ${tempProfileConfig.thoughtsRepo}/${tempProfileConfig.reposDir}/${mappedName}`,
+          ),
         )
       } else {
         // Interactive mode
@@ -484,7 +532,9 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
         console.log(`Setting up thoughts for: ${chalk.cyan(currentRepo)}`)
         console.log('')
         console.log(
-          chalk.gray(`This will create a subdirectory in ${config.thoughtsRepo}/${config.reposDir}/`),
+          chalk.gray(
+            `This will create a subdirectory in ${tempProfileConfig.thoughtsRepo}/${tempProfileConfig.reposDir}/`,
+          ),
         )
         console.log(chalk.gray('to store thoughts specific to this repository.'))
         console.log('')
@@ -503,7 +553,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
             console.log('')
             console.log(
               chalk.gray(
-                `This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`,
+                `This name will be used for the directory: ${tempProfileConfig.thoughtsRepo}/${tempProfileConfig.reposDir}/[name]`,
               ),
             )
             const nameInput = await prompt(
@@ -514,13 +564,15 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
             // Sanitize the name
             mappedName = sanitizeDirectoryName(mappedName)
             console.log(
-              chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+              chalk.green(
+                `✓ Will create: ${tempProfileConfig.thoughtsRepo}/${tempProfileConfig.reposDir}/${mappedName}`,
+              ),
             )
           } else {
             mappedName = existingRepos[selection]
             console.log(
               chalk.green(
-                `✓ Will use existing: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`,
+                `✓ Will use existing: ${tempProfileConfig.thoughtsRepo}/${tempProfileConfig.reposDir}/${mappedName}`,
               ),
             )
           }
@@ -529,7 +581,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
           const defaultName = getRepoNameFromPath(currentRepo)
           console.log(
             chalk.gray(
-              `This name will be used for the directory: ${config.thoughtsRepo}/${config.reposDir}/[name]`,
+              `This name will be used for the directory: ${tempProfileConfig.thoughtsRepo}/${tempProfileConfig.reposDir}/[name]`,
             ),
           )
           const nameInput = await prompt(
@@ -540,26 +592,33 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
           // Sanitize the name
           mappedName = sanitizeDirectoryName(mappedName)
           console.log(
-            chalk.green(`✓ Will create: ${config.thoughtsRepo}/${config.reposDir}/${mappedName}`),
+            chalk.green(
+              `✓ Will create: ${tempProfileConfig.thoughtsRepo}/${tempProfileConfig.reposDir}/${mappedName}`,
+            ),
           )
         }
       }
 
       console.log('')
 
-      // Update config
-      config.repoMappings[currentRepo] = mappedName
+      // Update config with profile-aware mapping
+      if (options.profile) {
+        config.repoMappings[currentRepo] = {
+          repo: mappedName,
+          profile: options.profile,
+        }
+      } else {
+        // Keep string format for backward compatibility
+        config.repoMappings[currentRepo] = mappedName
+      }
       saveThoughtsConfig(config, options)
     }
 
-    // Create directory structure
-    createThoughtsDirectoryStructure(
-      config.thoughtsRepo,
-      config.reposDir,
-      config.globalDir,
-      mappedName,
-      config.user,
-    )
+    // Resolve profile config for directory creation
+    const profileConfig = resolveProfileForRepo(config, currentRepo)
+
+    // Create directory structure using profile config
+    createThoughtsDirectoryStructure(profileConfig, mappedName, config.user)
 
     // Create thoughts directory in current repo
     const thoughtsDir = path.join(currentRepo, 'thoughts')
@@ -583,8 +642,8 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     fs.mkdirSync(thoughtsDir)
 
     // Create symlinks - flipped structure for easier access
-    const repoTarget = getRepoThoughtsPath(config.thoughtsRepo, config.reposDir, mappedName)
-    const globalTarget = getGlobalThoughtsPath(config.thoughtsRepo, config.globalDir)
+    const repoTarget = getRepoThoughtsPath(profileConfig, mappedName)
+    const globalTarget = getGlobalThoughtsPath(profileConfig)
 
     // Direct symlinks to user and shared directories for repo-specific thoughts
     fs.symlinkSync(path.join(repoTarget, config.user), path.join(thoughtsDir, config.user), 'dir')
@@ -594,13 +653,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     fs.symlinkSync(globalTarget, path.join(thoughtsDir, 'global'), 'dir')
 
     // Check for other users and create symlinks
-    const otherUsers = updateSymlinksForNewUsers(
-      currentRepo,
-      config.thoughtsRepo,
-      config.reposDir,
-      mappedName,
-      config.user,
-    )
+    const otherUsers = updateSymlinksForNewUsers(currentRepo, profileConfig, mappedName, config.user)
 
     if (otherUsers.length > 0) {
       console.log(chalk.green(`✓ Added symlinks for other users: ${otherUsers.join(', ')}`))
@@ -624,7 +677,12 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     }
 
     // Generate CLAUDE.md
-    const claudeMd = generateClaudeMd(config.thoughtsRepo, config.reposDir, mappedName, config.user)
+    const claudeMd = generateClaudeMd(
+      profileConfig.thoughtsRepo,
+      profileConfig.reposDir,
+      mappedName,
+      config.user,
+    )
     fs.writeFileSync(path.join(thoughtsDir, 'CLAUDE.md'), claudeMd)
 
     // Setup git hooks
@@ -641,13 +699,13 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     console.log(`  ${chalk.cyan(currentRepo)}/`)
     console.log(`    └── thoughts/`)
     console.log(
-      `         ├── ${config.user}/     ${chalk.gray(`→ ${config.thoughtsRepo}/${config.reposDir}/${mappedName}/${config.user}/`)}`,
+      `         ├── ${config.user}/     ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.reposDir}/${mappedName}/${config.user}/`)}`,
     )
     console.log(
-      `         ├── shared/      ${chalk.gray(`→ ${config.thoughtsRepo}/${config.reposDir}/${mappedName}/shared/`)}`,
+      `         ├── shared/      ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.reposDir}/${mappedName}/shared/`)}`,
     )
     console.log(
-      `         └── global/      ${chalk.gray(`→ ${config.thoughtsRepo}/${config.globalDir}/`)}`,
+      `         └── global/      ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.globalDir}/`)}`,
     )
     console.log(`             ├── ${config.user}/     ${chalk.gray('(your cross-repo notes)')}`)
     console.log(`             └── shared/  ${chalk.gray('(team cross-repo notes)')}`)
