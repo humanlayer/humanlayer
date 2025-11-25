@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": []
+  },
+  "enableAllProjectMcpServers": false,
+  "env": {
+    "MAX_THINKING_TOKENS": "32000"
+  }
+}
