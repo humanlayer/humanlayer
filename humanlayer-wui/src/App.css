@@ -298,6 +298,42 @@
   --terminal-color-15: #000000; /* Bright White (pure black) */
 }
 
+/* Framer Light High Contrast - Framer Light with stronger text contrast */
+[data-theme='framer-light-hc'] {
+  --terminal-bg: #ffffff;
+  --terminal-bg-alt: #f8f9fa;
+  --terminal-fg: #000000;
+  --terminal-fg-dim: #0f0f0f;
+  --terminal-accent: #0066cc;
+  --terminal-accent-dim: rgba(0, 102, 204, 0.3);
+  --terminal-accent-alt: #006bb3;
+  --terminal-border: #e0e0e0;
+  --terminal-success: #22a06b;
+  --terminal-warning: #cc7722;
+  --terminal-error: #dc3545;
+  --terminal-selection: #0066cc26;
+
+  /* Standard colors - Clean professional palette with high contrast */
+  --terminal-color-0: #f8f9fa; /* Black (light bg) */
+  --terminal-color-1: #dc3545; /* Red */
+  --terminal-color-2: #22a06b; /* Green */
+  --terminal-color-3: #cc7722; /* Yellow/Orange */
+  --terminal-color-4: #0066cc; /* Blue */
+  --terminal-color-5: #7b61ff; /* Magenta/Purple */
+  --terminal-color-6: #006bb3; /* Cyan */
+  --terminal-color-7: #000000; /* White (dark text) */
+
+  /* Bright colors - High contrast variants */
+  --terminal-color-8: #e0e0e0; /* Bright Black */
+  --terminal-color-9: #e74856; /* Bright Red */
+  --terminal-color-10: #3db88b; /* Bright Green */
+  --terminal-color-11: #e6a045; /* Bright Yellow */
+  --terminal-color-12: #3399ff; /* Bright Blue */
+  --terminal-color-13: #9b81ff; /* Bright Magenta */
+  --terminal-color-14: #0099ff; /* Bright Cyan */
+  --terminal-color-15: #000000; /* Bright White (pure black) */
+}
+
 /* Gruvbox Dark - Material palette, medium contrast */
 [data-theme='gruvbox-dark'] {
   --terminal-bg: #282828;
