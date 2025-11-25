@@ -82,8 +82,6 @@ describe('Profile Resolution', () => {
     })
 
     it('should handle profile with different directory names', () => {
-      const result = resolveProfileForRepo(mockConfig, '/path/to/work-project')
-
       // Add work project mapping
       mockConfig.repoMappings['/path/to/work-project'] = { repo: 'work-proj', profile: 'work' }
       const workResult = resolveProfileForRepo(mockConfig, '/path/to/work-project')
@@ -132,7 +130,8 @@ describe('Profile Resolution', () => {
     })
 
     it('should return undefined for null mapping', () => {
-      expect(getRepoNameFromMapping(null as any)).toBeUndefined()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(getRepoNameFromMapping(null as unknown as any)).toBeUndefined()
     })
   })
 
@@ -156,7 +155,8 @@ describe('Profile Resolution', () => {
     })
 
     it('should return undefined for null mapping', () => {
-      expect(getProfileNameFromMapping(null as any)).toBeUndefined()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect(getProfileNameFromMapping(null as unknown as any)).toBeUndefined()
     })
   })
 

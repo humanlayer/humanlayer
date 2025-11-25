@@ -677,7 +677,12 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     }
 
     // Generate CLAUDE.md
-    const claudeMd = generateClaudeMd(profileConfig.thoughtsRepo, profileConfig.reposDir, mappedName, config.user)
+    const claudeMd = generateClaudeMd(
+      profileConfig.thoughtsRepo,
+      profileConfig.reposDir,
+      mappedName,
+      config.user,
+    )
     fs.writeFileSync(path.join(thoughtsDir, 'CLAUDE.md'), claudeMd)
 
     // Setup git hooks
