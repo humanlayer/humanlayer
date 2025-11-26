@@ -49,7 +49,8 @@ export function WebFetchToolCallContent({
     <div className="space-y-2">
       <ToolHeader
         name="Web Fetch"
-        nameColor={statusColor}
+        nameColor={formattedResult?.isError ? undefined : statusColor}
+        nameStyle={formattedResult?.isError ? { color: 'var(--terminal-error)' } : undefined}
         primaryParam={
           <div className="flex items-center gap-2">
             <span className="text-sm">

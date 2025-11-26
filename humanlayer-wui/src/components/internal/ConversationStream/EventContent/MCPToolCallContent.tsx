@@ -37,13 +37,13 @@ export function MCPToolCallContent({
       const mcpError = extractMcpError(toolResultContent)
       if (mcpError) {
         return {
-          text: `✗ ${service} failed: ${mcpError.message}`,
+          text: `${service} failed: ${mcpError.message}`,
           suggestion: mcpError.suggestion,
           isError: true,
         }
       }
       return {
-        text: `✗ ${service} ${formattedMethod} failed`,
+        text: `${service} ${formattedMethod} failed`,
         isError: true,
       }
     }
@@ -55,7 +55,7 @@ export function MCPToolCallContent({
       toolResultContent.includes('updated') ||
       toolResultContent.includes('completed')
     ) {
-      return { text: '✓ Success', isError: false }
+      return { text: 'Success', isError: false }
     }
 
     // Return first line of result for preview
@@ -72,7 +72,11 @@ export function MCPToolCallContent({
 
   return (
     <div>
-      <ToolHeader name={displayName} nameColor={approvalStatus ? statusColor : undefined} />
+      <ToolHeader
+        name={displayName}
+        nameColor={resultPreview?.isError ? undefined : (approvalStatus ? statusColor : undefined)}
+        nameStyle={resultPreview?.isError ? { color: 'var(--terminal-error)' } : undefined}
+      />
       {toolInput && Object.keys(toolInput).length > 0 && (
         <MCPToolCallParamPreview toolInput={toolInput} isDim={isCompleted && !isFocused} />
       )}
