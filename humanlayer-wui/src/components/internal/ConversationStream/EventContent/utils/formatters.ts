@@ -1,6 +1,21 @@
+import {
+  MCP_ERROR_COMBINED_PATTERN,
+  extractMcpErrorCode,
+  getMcpErrorInfo,
+} from '@/constants/mcpErrors'
+
 export interface FormatOptions {
   truncateLength?: number
   showLineCount?: boolean
+}
+
+/**
+ * Information about a detected MCP error
+ */
+export interface McpErrorInfo {
+  code: number | null
+  message: string
+  suggestion: string | null
 }
 
 /**
@@ -31,6 +46,45 @@ export function formatToolResultPreview(content: string, options: FormatOptions 
 }
 
 /**
+ * Check if content contains MCP-specific error patterns
+ * This should be checked BEFORE generic error detection to properly identify MCP errors
+ * @param content The result content to check
+ * @returns true if the content contains MCP error patterns
+ */
+export function hasMcpError(content: string): boolean {
+  return MCP_ERROR_COMBINED_PATTERN.test(content)
+}
+
+/**
+ * Extract detailed MCP error information from content
+ * @param content The result content to extract error info from
+ * @returns MCP error info object or null if no MCP error detected
+ */
+export function extractMcpError(content: string): McpErrorInfo | null {
+  if (!hasMcpError(content)) {
+    return null
+  }
+
+  const code = extractMcpErrorCode(content)
+  const knownInfo = code !== null ? getMcpErrorInfo(code) : null
+
+  if (knownInfo) {
+    return {
+      code,
+      message: knownInfo.message,
+      suggestion: knownInfo.suggestion,
+    }
+  }
+
+  // For unknown error codes or generic MCP errors
+  return {
+    code,
+    message: code !== null ? `MCP error ${code}` : 'MCP tool error',
+    suggestion: 'Check the tool configuration and try again.',
+  }
+}
+
+/**
  * Detect if tool result content contains an error
  * @param toolName The name of the tool
  * @param content The result content to check
@@ -38,6 +92,12 @@ export function formatToolResultPreview(content: string, options: FormatOptions 
  */
 export function detectToolError(toolName: string, content: string): boolean {
   const lowerContent = content.toLowerCase()
+
+  // Check for MCP-specific errors FIRST (highest priority)
+  // This catches errors like "MCP error -32603" and "tool_use_error"
+  if (hasMcpError(content)) {
+    return true
+  }
 
   // Tool-specific error detection
   if (toolName === 'Edit') {
