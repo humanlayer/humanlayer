@@ -2,6 +2,7 @@ import React from 'react'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate, parseMcpToolName } from '@/utils/formatting'
 import { hasAnsiCodes, AnsiText } from '@/utils/ansiParser'
+import { hasMcpError, extractMcpError } from '../ConversationStream/EventContent/utils/formatters'
 
 // TODO(2): Consider creating tool-specific formatters in separate files
 // TODO(2): Add unit tests for each tool formatter
@@ -27,15 +28,16 @@ export function formatToolResult(
   }
 
   // More specific error detection to avoid false positives
-  // TODO(2): Extract error detection logic into a separate utility
-  let isError = false
+  // Check for MCP-specific errors first (highest priority)
+  const isMcpError = hasMcpError(content)
+  let isError = isMcpError
 
-  if (toolName === 'Edit') {
+  if (!isError && toolName === 'Edit') {
     // For Edit tool, check for success pattern
     const successPattern =
       "has been updated. Here's the result of running `cat -n` on a snippet of the edited file:"
     isError = !content.includes(successPattern)
-  } else if (toolName === 'Write') {
+  } else if (!isError && toolName === 'Write') {
     // Write tool success detection based on DB analysis of 622 operations:
     // - Successful writes have empty content and isCompleted=true
     // - Failed writes have error messages in content
@@ -52,7 +54,7 @@ export function formatToolResult(
       // If content exists but no error indicators, assume success
       // (though DB shows successful writes always have empty content)
     }
-  } else if (toolName === 'Grep') {
+  } else if (!isError && toolName === 'Grep') {
     // For Grep tool, only mark as error if it's a real grep error
     // The grep tool is built-in and rarely fails
     const lowerContent = content.toLowerCase()
@@ -64,7 +66,7 @@ export function formatToolResult(
       lowerContent.includes('invalid regular expression')
 
     isError = hasGrepError
-  } else {
+  } else if (!isError) {
     // For other tools, use existing keyword detection
     const lowerContent = content.toLowerCase()
 
@@ -319,7 +321,15 @@ export function formatToolResult(
 
     case 'WebFetch': {
       if (content.includes('Failed to fetch') || isError) {
-        abbreviated = 'Fetch failed'
+        // Check for MCP-specific error info
+        if (isMcpError) {
+          const mcpError = extractMcpError(content)
+          abbreviated = mcpError
+            ? `Fetch failed: ${mcpError.message}`
+            : 'Fetch failed'
+        } else {
+          abbreviated = 'Fetch failed'
+        }
       } else {
         // Show character count
         const charCount = content.length
@@ -333,6 +343,15 @@ export function formatToolResult(
     }
 
     case 'WebSearch': {
+      // Check for MCP errors first
+      if (isMcpError) {
+        const mcpError = extractMcpError(content)
+        abbreviated = mcpError
+          ? `Search failed: ${mcpError.message}`
+          : 'Search failed'
+        break
+      }
+
       // Count "Links:" occurrences to estimate result batches
       const linkMatches = content.match(/Links: \[/g)
       const linkCount = linkMatches ? linkMatches.length : 0
@@ -365,7 +384,15 @@ export function formatToolResult(
 
         // Generic MCP result formatting
         if (isError) {
-          abbreviated = `${service} ${method} failed`
+          // Check for MCP-specific error info
+          if (isMcpError) {
+            const mcpError = extractMcpError(content)
+            abbreviated = mcpError
+              ? `${service} failed: ${mcpError.message}`
+              : `${service} ${method} failed`
+          } else {
+            abbreviated = `${service} ${method} failed`
+          }
         } else if (
           content.includes('successfully') ||
           content.includes('created') ||
