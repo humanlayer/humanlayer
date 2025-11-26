@@ -9,14 +9,14 @@ You are tasked with managing Linear tickets, including creating tickets from tho
 ## Initial Setup
 
 First, verify that Linear MCP tools are available by checking if any `mcp__linear__` tools exist. If not, respond:
-```
+```md
 I need access to Linear tools to help with ticket management. Please run the `/mcp` command to enable the Linear MCP server, then try again.
 ```
 
 If tools are available, respond based on the user's request:
 
 ### For general requests:
-```
+```md
 I can help you with Linear tickets. What would you like to do?
 1. Create a new ticket from a thoughts document
 2. Add a comment to a ticket (I'll use our conversation context)
@@ -25,7 +25,7 @@ I can help you with Linear tickets. What would you like to do?
 ```
 
 ### For specific create requests:
-```
+```md
 I'll help you create a Linear ticket from your thoughts document. Please provide:
 1. The path to the thoughts document (or topic to search for)
 2. Any specific focus or angle for the ticket (optional)
@@ -110,7 +110,7 @@ Note: meta is mutually exclusive with hld/wui. Tickets can have both hld and wui
 
 5. **Draft the ticket summary:**
    Present a draft to the user:
-   ```
+   ```md
    ## Draft Linear Ticket
 
    **Title**: [Clear, action-oriented title]
@@ -178,7 +178,7 @@ Note: meta is mutually exclusive with hld/wui. Tickets can have both hld and wui
 ## Example transformations:
 
 ### From verbose thoughts:
-```
+```md
 "I've been thinking about how our resumed sessions don't inherit permissions properly.
 This is causing issues where users have to re-specify everything. We should probably
 store all the config in the database and then pull it when resuming. Maybe we need
@@ -186,7 +186,7 @@ new columns for permission_prompt_tool and allowed_tools..."
 ```
 
 ### To concise ticket:
-```
+```md
 Title: Fix resumed sessions to inherit all configuration from parent
 
 Description:
@@ -222,7 +222,7 @@ When user wants to add a comment to a ticket:
    - Do this for both thoughts/ and code files mentioned
 
 4. **Comment structure example:**
-   ```markdown
+   ```md
    Implemented retry logic in webhook handler to address rate limit issues.
 
    Key insight: The 429 responses were clustered during batch operations,
@@ -239,7 +239,7 @@ When user wants to add a comment to a ticket:
    - Always add links to the issue itself using the `links` parameter
 
 6. **For comments with links:**
-   ```
+   ```md
    # First, update the issue with the link
    mcp__linear__update_issue with:
    - id: [ticket ID]
@@ -252,7 +252,7 @@ When user wants to add a comment to a ticket:
    ```
 
 7. **For links only:**
-   ```
+   ```md
    # Update the issue with the link
    mcp__linear__update_issue with:
    - id: [ticket ID]
@@ -275,7 +275,7 @@ When user wants to find tickets:
    - Date ranges (createdAt, updatedAt)
 
 2. **Execute search:**
-   ```
+   ```md
    mcp__linear__list_issues with:
    - query: [search text]
    - teamId: [if specified]
@@ -309,7 +309,7 @@ When moving tickets through the workflow:
    - Ready for Dev → In Dev (work started)
 
 3. **Update with context:**
-   ```
+   ```md
    mcp__linear__update_issue with:
    - id: [ticket ID]
    - stateId: [new status ID]

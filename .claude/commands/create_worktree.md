@@ -21,7 +21,7 @@ command to run
 
 3a. confirm with the user by sending a message to the Human
 
-```
+```md
 based on the input, I plan to create a worktree with the following details:
 
 worktree path: ~/wt/humanlayer/ENG-XXXX

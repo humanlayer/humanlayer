@@ -38,7 +38,7 @@ When invoked with a parameter like `gh_username:branchName`:
 
 ## Example Usage
 
-```
+```md
 /local_review samdickson22:sam/eng-1696-hotkey-for-yolo-mode
 ```
 

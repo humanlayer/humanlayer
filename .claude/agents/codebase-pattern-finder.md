@@ -59,9 +59,9 @@ What to look for based on request:
 
 Structure your findings like this:
 
-```
 ## Pattern Examples: [Pattern Type]
 
+````md
 ### Pattern 1: [Descriptive Name]
 **Found in**: `src/api/users.js:45-67`
 **Used for**: User listing with pagination
@@ -91,6 +91,7 @@ router.get('/users', async (req, res) => {
   });
 });
 ```
+````
 
 **Key aspects**:
 - Uses query parameters for page/limit
@@ -98,6 +99,7 @@ router.get('/users', async (req, res) => {
 - Returns pagination metadata
 - Handles defaults
 
+````md
 ### Pattern 2: [Alternative Approach]
 **Found in**: `src/api/products.js:89-120`
 **Used for**: Product listing with cursor-based pagination
@@ -129,6 +131,7 @@ router.get('/products', async (req, res) => {
   });
 });
 ```
+````
 
 **Key aspects**:
 - Uses cursor instead of page numbers
@@ -165,7 +168,6 @@ describe('Pagination', () => {
 ### Related Utilities
 - `src/utils/pagination.js:12` - Shared pagination helpers
 - `src/middleware/validate.js:34` - Query parameter validation
-```
 
 ## Pattern Categories to Search
 
