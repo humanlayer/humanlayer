@@ -16,7 +16,7 @@ export function ReadToolCallContent({
   isFocused,
   isGroupItem,
 }: ToolCallContentProps<ReadToolInput>) {
-  const lineCount = toolResultContent ? formatLineCount(toolResultContent, 1) : null // Subtract 1 for system reminder
+  const lineCount = toolResultContent ? formatLineCount(toolResultContent) : null
 
   const approvalStatusColor = getApprovalStatusColor(approvalStatus)
   let statusColor =

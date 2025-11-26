@@ -91,9 +91,19 @@ describe('formatToolResult - Regression Tests for Other Tools', () => {
       }
       const result = formatToolResult('Read', toolResult as ConversationEvent)
       const { container } = render(<>{result}</>)
-      // Should count lines properly (total lines - 5 for system reminder)
-      expect(container.textContent).toContain('Read 2 lines')
+      // Should count only actual content lines (system reminder stripped)
+      expect(container.textContent).toContain('Read 3 lines')
       expect(container.querySelector('.text-destructive')).toBeNull()
+    })
+
+    it('should count all lines when no system reminder is present', () => {
+      const toolResult: Partial<ConversationEvent> = {
+        toolResultContent: '     1→line one\n     2→line two\n     3→line three\n',
+        isCompleted: true,
+      }
+      const result = formatToolResult('Read', toolResult as ConversationEvent)
+      const { container } = render(<>{result}</>)
+      expect(container.textContent).toContain('Read 3 lines')
     })
 
     it('should handle empty Read content', () => {
