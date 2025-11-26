@@ -1,6 +1,7 @@
 import React from 'react'
 import { ConversationEvent } from '@/lib/daemon/types'
 import { truncate, parseMcpToolName } from '@/utils/formatting'
+import { stripSystemReminder } from '@/components/internal/ConversationStream/EventContent/utils/formatters'
 import { hasAnsiCodes, AnsiText } from '@/utils/ansiParser'
 
 // TODO(2): Consider creating tool-specific formatters in separate files
@@ -104,9 +105,13 @@ export function formatToolResult(
 
   switch (toolName) {
     case 'Read': {
-      // Count lines with the arrow format (e.g., "     1→content")
-      // Subtract 5 for the system reminder message appended at the end
-      const lineCount = Math.max(0, content.split('\n').length - 5)
+      const cleanedContent = stripSystemReminder(content)
+      const lineCount = cleanedContent
+        ? cleanedContent
+            .split('\n')
+            .map(line => line.trim())
+            .filter(Boolean).length
+        : 0
       abbreviated = `Read ${lineCount} lines`
       break
     }
