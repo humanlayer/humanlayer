@@ -24,7 +24,7 @@ command to run
 ```
 based on the input, I plan to create a worktree with the following details:
 
-worktree path: ~/wt/humanlayer/ENG-XXXX
+worktree path: ~/wt/$REPO_NAME/ENG-XXXX
 branch name: BRANCH_NAME
 path to plan file: $FILEPATH
 launch prompt:
@@ -33,9 +33,9 @@ launch prompt:
 
 command to run:
 
-    humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"
+    humanlayer launch --model opus -w ~/wt/$REPO_NAME/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"
 ```
 
 incorporate any user feedback then:
 
-4. launch implementation session: `humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"`
+4. launch implementation session: `humanlayer launch --model opus -w ~/wt/$REPO_NAME/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"`
