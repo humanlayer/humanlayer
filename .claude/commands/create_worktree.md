@@ -4,7 +4,8 @@ description: Create worktree and launch implementation session for a plan
 ---
 
 2. set up worktree for implementation:
-2a. read `hack/create_worktree.sh` and create a new worktree with the Linear branch name: `./hack/create_worktree.sh ENG-XXXX BRANCH_NAME`
+2a. read `hack/create_worktree.sh` OR create_worktree.sh if its available on your path and create a new worktree with the Linear branch name: `./hack/create_worktree.sh ENG-XXXX BRANCH_NAME`
+OR `create_worktree.sh ENG-XXXX BRANCH_NAME`. If create_worktree.sh is not available halt and tell the user you cannot find this executable and cannot go on.
 
 3. determine required data:
 
