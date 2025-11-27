@@ -14,7 +14,7 @@ REPO_BASE_NAME=$(basename "$(git rev-parse --show-toplevel)")
 if [ ! -z "$HUMANLAYER_WORKTREE_OVERRIDE_BASE" ]; then
     WORKTREE_BASE_DIR="${HUMANLAYER_WORKTREE_OVERRIDE_BASE}/${REPO_BASE_NAME}"
 else
-    WORKTREE_BASE_DIR="$HOME/workspace/wt/${REPO_BASE_NAME}"
+    WORKTREE_BASE_DIR="$HOME/wt/${REPO_BASE_NAME}"
 fi
 
 # Colors for output
