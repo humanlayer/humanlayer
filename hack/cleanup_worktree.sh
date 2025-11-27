@@ -9,7 +9,13 @@ set -euo pipefail
 
 # Get the base repository name
 REPO_BASE_NAME=$(basename "$(git rev-parse --show-toplevel)")
-WORKTREE_BASE_DIR="$HOME/.humanlayer/worktrees"
+
+# Support environment override like create_worktree.sh
+if [ ! -z "$HUMANLAYER_WORKTREE_OVERRIDE_BASE" ]; then
+    WORKTREE_BASE_DIR="${HUMANLAYER_WORKTREE_OVERRIDE_BASE}/${REPO_BASE_NAME}"
+else
+    WORKTREE_BASE_DIR="$HOME/workspace/wt/${REPO_BASE_NAME}"
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -29,7 +35,7 @@ list_worktrees() {
 # Function to clean up a specific worktree
 cleanup_worktree() {
     local worktree_name="$1"
-    local worktree_path="$WORKTREE_BASE_DIR/${REPO_BASE_NAME}_${worktree_name}"
+    local worktree_path="$WORKTREE_BASE_DIR/${worktree_name}"
 
     # Check if worktree exists
     if ! git worktree list | grep -q "$worktree_path"; then

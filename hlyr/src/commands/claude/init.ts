@@ -379,6 +379,17 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
     message += chalk.gray('\n   You can now use these commands in Claude Code.')
 
     p.outro(message)
+
+    // Show worktree setup message if commands were copied
+    if (selectedCategories.includes('commands')) {
+      p.log.message('')
+      p.log.message(chalk.blue('🌳 Worktree Setup (Optional):'))
+      p.log.message('To use /create_worktree globally, create a symlink (one-time setup):')
+      p.log.message(
+        chalk.gray('  ln -s /path/to/humanlayer/hack/create_worktree.sh ~/bin/create-worktree'),
+      )
+      p.log.message(chalk.gray('  # Or wherever your PATH includes'))
+    }
   } catch (error) {
     p.log.error(`Error during claude init: ${error}`)
     process.exit(1)

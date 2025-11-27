@@ -120,7 +120,7 @@ fi
 if [ "$INIT_THOUGHTS" = true ]; then
     echo "🧠 Initializing thoughts..."
     cd "$WORKTREE_PATH"
-    if humanlayer thoughts init --directory humanlayer > /dev/null 2>&1; then
+    if humanlayer thoughts init --directory "$REPO_BASE_NAME" > /dev/null 2>&1; then
         echo "✅ Thoughts initialized!"
         # Run sync to create searchable directory
         if humanlayer thoughts sync > /dev/null 2>&1; then
