@@ -10,7 +10,7 @@ description: Create worktree and launch implementation session for a plan
    - The create_worktree.sh script will use `$HUMANLAYER_WORKTREE_OVERRIDE_BASE/$REPO_NAME/` as the base
 
 2. set up worktree for implementation:
-2a. If $REPO_NAME is `humanlayer` you should read from `hack/create_worktree.sh` if not read create_worktree.sh (i.e. it should be availaible via the PATH) and create a new worktree with the Linear branch name using : `./hack/create_worktree.sh ENG-XXXX BRANCH_NAME` OR `create_worktree.sh ENG-XXXX BRANCH_NAME'. Accordingly pass the --no-setup option if the repo is not humanlayer. If create_worktree.sh is not available halt and tell the user you cannot find this executable and cannot go on.
+2a. If $REPO_NAME is `humanlayer` you should read from `hack/create_worktree.sh` if not read create_worktree.sh (i.e. it should be availaible via the PATH) and create a new worktree with the Linear branch name using : `./hack/create_worktree.sh ENG-XXXX BRANCH_NAME` OR `create_worktree.sh ENG-XXXX BRANCH_NAME`. Accordingly pass the --no-setup option if the repo is not humanlayer. If create_worktree.sh is not available halt and tell the user you cannot find this executable and cannot go on.
 
 3. determine required data:
 
