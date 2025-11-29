@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # create_worktree.sh - Create a new worktree for development work
-# Usage: ./create_worktree.sh [--no-thoughts] [worktree_name] [base_branch]
+# Usage: ./create_worktree.sh [--no-thoughts] [--no-setup] [worktree_name] [base_branch]
 # If no name provided, generates a unique human-readable one
 # If no base branch provided, uses current branch
 
@@ -22,10 +22,15 @@ generate_unique_name() {
 
 # Parse flags
 INIT_THOUGHTS=true
+RUN_SETUP=true
 while [[ $# -gt 0 ]]; do
     case $1 in
         --no-thoughts)
             INIT_THOUGHTS=false
+            shift
+            ;;
+        --no-setup)
+            RUN_SETUP=false
             shift
             ;;
         *)
@@ -40,7 +45,7 @@ WORKTREE_NAME=${1:-$(generate_unique_name)}
 # Get base branch from second parameter or use current branch
 BASE_BRANCH=${2:-$(git branch --show-current)}
 
-# Get base directory name (should be 'humanlayer')
+# Get base directory name.
 REPO_BASE_NAME=$(basename "$(pwd)")
 
 if [ ! -z "$HUMANLAYER_WORKTREE_OVERRIDE_BASE" ]; then
@@ -90,14 +95,18 @@ fi
 # Change to worktree directory
 cd "$WORKTREE_PATH"
 
-echo "🔧 Setting up worktree dependencies..."
-if ! make setup; then
-    echo "❌ Setup failed. Cleaning up worktree..."
-    cd - > /dev/null
-    git worktree remove --force "$WORKTREE_PATH"
-    git branch -D "$WORKTREE_NAME" 2>/dev/null || true
-    echo "❌ Not allowed to create worktree from a branch that isn't passing setup."
-    exit 1
+if [ "$RUN_SETUP" = true ]; then
+    echo "🔧 Setting up worktree dependencies..."
+    if ! make setup; then
+        echo "❌ Setup failed. Cleaning up worktree..."
+        cd - > /dev/null
+        git worktree remove --force "$WORKTREE_PATH"
+        git branch -D "$WORKTREE_NAME" 2>/dev/null || true
+        echo "❌ Not allowed to create worktree from a branch that isn't passing setup."
+        exit 1
+    fi
+else
+    echo "⏭️  Skipping setup (--no-setup flag provided)"
 fi
 
 # echo "🧪 Verifying worktree with checks and tests..."
@@ -120,7 +129,7 @@ fi
 if [ "$INIT_THOUGHTS" = true ]; then
     echo "🧠 Initializing thoughts..."
     cd "$WORKTREE_PATH"
-    if humanlayer thoughts init --directory humanlayer > /dev/null 2>&1; then
+    if humanlayer thoughts init --directory "$REPO_BASE_NAME" > /dev/null 2>&1; then
         echo "✅ Thoughts initialized!"
         # Run sync to create searchable directory
         if humanlayer thoughts sync > /dev/null 2>&1; then
