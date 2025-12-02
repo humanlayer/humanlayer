@@ -1,0 +1,164 @@
+---
+title: Workshop
+description: "Advanced Context Engineering for coding agents - learn how to use research, plan, and implement workflows with Claude Code."
+---
+
+This is a workshop to learn how to use some advanced context engineering techniques with CodeLayer.
+
+Watch the video: [https://hlyr.dev/ace](https://hlyr.dev/ace) ([or read the post](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md))
+
+More links and info: [https://github.com/ai-that-works/ai-that-works/tree/main/2025-08-05-advanced-context-engineering-for-coding-agents](https://github.com/ai-that-works/ai-that-works/tree/main/2025-08-05-advanced-context-engineering-for-coding-agents)
+
+Superthread of all related content: [https://x.com/dexhorthy/status/1978676162495688719](https://x.com/dexhorthy/status/1978676162495688719)
+All AI that works episodes: [https://github.com/ai-that-works/ai-that-works](https://github.com/ai-that-works/ai-that-works)
+
+Want to discuss these techniques? Join us in [https://humanlayer.dev/discord](https://humanlayer.dev/discord)
+
+## Pre-Requisites
+
+- Claude Code acount and logged in on your workstation (recommend at least Max 100 account)
+- A way to view/edit markdown files (Cursor, VSCode, vim, go-grip, etc)
+- A chosen issue to work on, ideally on an OSS repo that you have some familiarity with / understanding of
+
+We recommend using Opus for this workshop as its the best at reliably understanding and working in large codebases.
+
+## Objectives / Outcomes
+
+- familiarity with managing claude code subagents and commands
+
+## Step-by-step guide
+
+### 1. Choose an issue to work on
+
+You should pick an issue to work on. It should be somewhat small just to help you focus on learning the system.
+
+You can use these techniques in your own private repos, but if you want help/etc I recommend using an open source repo that you have some familiarity with / understanding of.
+
+A good bar to set, is to pick the OSS repo for a tool you use often enough that if you read a bug ticket, you can understand and reproduce the issue yourself.
+
+[**List of Issues**](#list-of-potential-issues-to-work-on)
+
+### 2. Clone the repository
+
+Whatever issue you choose to work on, you will need to clone the repository to your workstation. This will be your "working repository"
+
+### 3. Get the issue locally
+
+Take the issue you want to solve and get it into a .txt or .md file in your working repository. You can copy the text from github, you can use the `gh` cli, you can prompt claude to use an MCP, whatever you want.
+
+### 4. Install Codelayer
+
+Follow the instructions at [https://humanlayer.dev/docs](https://humanlayer.dev/docs) to install codelayer
+
+**INSTRUCTIONS FOR WINDOWS/Linux/Intel-Mac USERS**
+Codelayer provides packaged builds for MacOS ARM architecture. If you are on Windows or Linux, or an Intel-based Mac, we recommend using the [claude code CLI](https://code.claude.com/docs/en/setup), or clone [github.com/humanlayer/humanlayer](http://github.com/humanlayer/humanlayer) and run `make codelayer-dev`.
+
+You can grab the research, plan and implement prompts from [https://github.com/humanlayer/humanlayer/tree/main/.claude](https://github.com/humanlayer/humanlayer/tree/main/.claude) - copy the `agents` directory's contents into your `.claude/agents` directory, and copy the following commands from the `commands` directory into your own `.claude/commands` directory:
+
+* `research_codebase_nt.md`
+* `create_plan_nt.md`
+* `iterate_plan_nt.md`
+* `implement_plan.md`
+
+### 5. Bootstrap the prompts with a codebase research task
+
+Open CodeLayer
+
+```bash
+open /Applications/CodeLayer.app
+```
+
+open a new codelayer session, set the working directory to your repo, and type **(don't paste)** `/cl:research_codebase`
+
+```
+/cl:research_codebase
+```
+
+when you submit, you'll be prompted to bootstrap the core prompts and agents into your current repo
+
+Then type your research prompt
+
+```
+we are working on the issue in the issue.txt file, please read the issue and research the codebase to understand how the system works and what files+line numbers are relevant to the issue.
+
+Do not make an implementation plan or explain how to fix.
+```
+
+Note the "magic words" that we type at the end of every prompt.  `Do not make an implementation plan or explain how to fix.`
+
+This is baked into the base prompt, but it's helpful to repeat it.
+
+### 6. Create a plan
+
+type **(don't paste)**
+
+```
+/cl:create_plan
+```
+
+```
+we are working on the issue in the issue.txt file, we've done the following research: PATH_TO_RESEARCH_OUTPUT.md
+
+create a plan to fix the issue. YOUR ADDITIONAL INSTRUCTIONS HERE
+
+
+work back and forth with me, sharing your open questions and phases outline before writing the plan
+```
+
+Note the "magic words" that we type at the end of every planning prompt.  `work back and forth with me, sharing your open questions and phases outline before writing the plan`
+
+This is baked into the base prompt, but it's helpful to repeat it.
+
+### 7. Implement the plan
+
+```
+/cl:implement_plan - PATH_TO_PLAN.md
+
+please implement the plan. YOUR ADDITIONAL INSTRUCTIONS HERE
+```
+
+#### Optional - split phases across sessions
+
+For long complex plans, you might want to work phase by phase - you can add that guidance at the end
+
+```
+/cl:implement_plan - PATH_TO_PLAN.md
+
+please implement the plan. YOUR ADDITIONAL INSTRUCTIONS HERE
+
+just do phase 1, then update the plan with your progress and await further instructions and confirmation of the manual verification steps
+```
+
+Once phase 1 is done and you're happy with it, you can start a new session
+
+```
+/cl:implement_plan PATH_TO_PLAN.md phase 1 is done, just do phase 2, then update the plan with your progress and await further instructions and confirmation of the manual verification steps
+```
+
+### 8. Commit and PR
+
+From here its up to you - you can borrow the `/commit` command from github.com/humanlayer/humanlayer/tree/main/.claude/commands/ to generate a commit message, you can push to a fork, and you can use `/describe_pr` to generate a pr description. (You might need to tweak the describe pr or go get a template if not present yet - ignore any error about "thoughts setup incomplete")
+
+### 9. Optional Challenge - set up the thoughts tool
+
+Clone [github.com/humanlayer/humanlayer](http://github.com/humanlayer/humanlayer) and launch a new CodeLayer session in the repo
+
+```
+tell me about how the "thoughts tool" works and why it exists, and then walk me through setting it up for my project in PATH/TO/YOUR/PROJECT
+```
+
+The thoughts tools creates a separate git repo on your workstation to store all your research/plans/etc *outside* of the working repo, so you can share them across projects and teams without versioning them in your git repo.
+
+## List of potential Issues to work on
+
+A curated list of Open source issues that might be good candidates for testing the Research/Plan/Implement workflow on.
+
+1. [https://github.com/oven-sh/bun/issues/24752](https://github.com/oven-sh/bun/issues/24752)
+2. [https://github.com/electric-sql/electric/issues/3284](https://github.com/electric-sql/electric/issues/3284)
+3. [https://github.com/electric-sql/electric/issues/3260](https://github.com/electric-sql/electric/issues/3260)
+4. [https://github.com/TanStack/db/issues/593](https://github.com/TanStack/db/issues/593)
+5. [https://github.com/drizzle-team/drizzle-orm/issues/5001](https://github.com/drizzle-team/drizzle-orm/issues/5001)
+6. [https://github.com/unnoq/orpc/issues/1058](https://github.com/unnoq/orpc/issues/1058)
+7. [https://github.com/unnoq/orpc/issues/954](https://github.com/unnoq/orpc/issues/954)
+8. [https://github.com/unnoq/orpc/issues/889](https://github.com/unnoq/orpc/issues/889)
+9. [https://github.com/unnoq/orpc/issues/729](https://github.com/unnoq/orpc/issues/729)
