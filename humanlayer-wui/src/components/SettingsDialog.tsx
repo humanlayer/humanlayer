@@ -69,12 +69,14 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   async function loadLogPath() {
     try {
       const path = await invoke<string>('get_log_directory')
-      setLogPath(path + '/codelayer.log')
+      const fileName = await invoke<string>('get_log_file_name')
+      setLogPath(path + '/' + fileName)
     } catch {
       // In production, use appLogDir
       try {
         const appLog = await appLogDir()
-        setLogPath(appLog + '/codelayer.log')
+        const fileName = await invoke<string>('get_log_file_name')
+        setLogPath(appLog + '/' + fileName)
       } catch (e) {
         console.error('Failed to get log directory:', e)
         setLogPath('')
