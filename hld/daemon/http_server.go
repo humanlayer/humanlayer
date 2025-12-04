@@ -49,6 +49,7 @@ type HTTPServer struct {
 	configHandler    *handlers.ConfigHandler
 	settingsHandlers *handlers.SettingsHandlers
 	agentHandlers    *handlers.AgentHandlers
+	terminalHandler  *handlers.TerminalHandler
 	approvalManager  approval.Manager
 	eventBus         bus.EventBus
 
@@ -96,6 +97,7 @@ func NewHTTPServer(
 	configHandler := handlers.NewConfigHandler()
 	settingsHandlers := handlers.NewSettingsHandlers(conversationStore)
 	agentHandlers := handlers.NewAgentHandlers()
+	terminalHandler := handlers.NewTerminalHandler(sessionManager, conversationStore)
 
 	return &HTTPServer{
 		config:           cfg,
@@ -109,6 +111,7 @@ func NewHTTPServer(
 		configHandler:    configHandler,
 		settingsHandlers: settingsHandlers,
 		agentHandlers:    agentHandlers,
+		terminalHandler:  terminalHandler,
 		approvalManager:  approvalManager,
 		eventBus:         eventBus,
 	}
@@ -143,6 +146,9 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	v1.Any("/mcp", func(c *gin.Context) {
 		mcpServer.ServeHTTP(c.Writer, c.Request)
 	})
+
+	// Register terminal WebSocket endpoint
+	v1.GET("/terminal", s.terminalHandler.HandleWebSocket)
 
 	// Create listener first to handle port 0
 	addr := fmt.Sprintf("%s:%d", s.config.HTTPHost, s.config.HTTPPort)

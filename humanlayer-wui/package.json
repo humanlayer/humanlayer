@@ -47,6 +47,8 @@
     "@tiptap/react": "^3.0.9",
     "@tiptap/starter-kit": "^3.0.9",
     "@tiptap/suggestion": "^3.3.1",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-web-links": "^0.11.0",
     "ansi-regex": "^6.1.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -70,6 +72,7 @@
     "strip-ansi": "^7.1.0",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.10",
+    "xterm": "^5.3.0",
     "zustand": "^5.0.5"
   },
   "devDependencies": {

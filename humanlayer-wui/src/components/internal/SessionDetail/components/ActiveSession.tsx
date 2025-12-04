@@ -1,12 +1,13 @@
-import { useEffect, useCallback, useRef, useMemo, useState } from 'react'
+import { useEffect, useCallback, useRef, useMemo, useState, lazy, Suspense } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { toast } from 'sonner'
 import { useSearchParams } from 'react-router'
 
 import { ConversationEvent, Session, ApprovalStatus, SessionStatus } from '@/lib/daemon/types'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useConversation, useKeyboardNavigationProtection } from '@/hooks'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Terminal, MessageSquare } from 'lucide-react'
 import { daemonClient } from '@/lib/daemon/client'
 import { useStore } from '@/AppStore'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
@@ -24,6 +25,9 @@ import { ForkViewModal } from './ForkViewModal'
 import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
 import { AdditionalDirectoriesDropdown } from './AdditionalDirectoriesDropdown'
 import { OmniSpinner } from './OmniSpinner'
+
+// Lazy load TerminalPane to avoid loading xterm.js until needed
+const TerminalPane = lazy(() => import('@/components/TerminalPane'))
 
 // Import hooks
 import { useSessionActions } from '../hooks/useSessionActions'
@@ -61,6 +65,9 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [dangerousSkipPermissionsDialogOpen, setDangerousSkipPermissionsDialogOpen] = useState(false)
   const [directoriesDropdownOpen, setDirectoriesDropdownOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'conversation' | 'terminal'>('conversation')
+  // Track if terminal has been opened to lazy-load it (don't connect until first use)
+  const [terminalOpened, setTerminalOpened] = useState(false)
 
   const responseEditor = useStore(state => state.responseEditor)
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
@@ -767,6 +774,27 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
+  // Toggle between conversation and terminal tabs
+  useHotkeys(
+    'meta+`, ctrl+`',
+    () => {
+      setActiveTab(prev => {
+        const newTab = prev === 'conversation' ? 'terminal' : 'conversation'
+        if (newTab === 'terminal') {
+          setTerminalOpened(true)
+        }
+        return newTab
+      })
+    },
+    {
+      scopes: [detailScope],
+      preventDefault: true,
+      enableOnFormTags: true,
+      enableOnContentEditable: true,
+    },
+    [setActiveTab, setTerminalOpened],
+  )
+
   // Check if there are pending approvals out of view
   useEffect(() => {
     const checkPendingApprovalVisibility = () => {
@@ -861,78 +889,127 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         </div>
 
         <div className="flex flex-1 gap-4 flex-col lg:flex-row min-h-0">
-          {/* Conversation content */}
-          <Card
-            className={`Conversation-Card w-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
+          {/* Main content with tabs */}
+          <Tabs
+            value={activeTab}
+            onValueChange={value => {
+              const newTab = value as 'conversation' | 'terminal'
+              setActiveTab(newTab)
+              // Mark terminal as opened for lazy loading
+              if (newTab === 'terminal') {
+                setTerminalOpened(true)
+              }
+            }}
+            className="w-full flex flex-col min-h-0"
           >
-            <CardContent className="px-3 flex flex-col flex-1 min-h-0">
-              <ConversationStream
-                session={session}
-                focusedEventId={navigation.focusedEventId}
-                setFocusedEventId={navigation.setFocusedEventId}
-                onApprove={approvals.handleApprove}
-                onDeny={(approvalId: string, reason: string) =>
-                  approvals.handleDeny(approvalId, reason, session.id)
-                }
-                approvingApprovalId={approvals.approvingApprovalId}
-                denyingApprovalId={approvals.denyingApprovalId ?? undefined}
-                setDenyingApprovalId={id => {
-                  if (id === null) {
-                    approvals.handleCancelDeny()
-                  } else {
-                    // Clear fork state when entering denial mode
-                    if (forkPreviewData) {
-                      setForkPreviewData(null)
-                      responseEditor?.commands.setContent('')
-                    }
-                    approvals.handleStartDeny(id)
-                  }
-                }}
-                onCancelDeny={approvals.handleCancelDeny}
-                focusSource={navigation.focusSource}
-                setFocusSource={navigation.setFocusSource}
-                expandedToolResult={expandedToolResult}
-                setExpandedToolResult={setExpandedToolResult}
-                setExpandedToolCall={setExpandedToolCall}
-                maxEventIndex={forkPreviewData?.eventIndex ?? undefined}
-                shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
-                expandedTasks={expandedTasks}
-                toggleTaskGroup={toggleTaskGroup}
-              />
-            </CardContent>
-            {isActivelyProcessing && (
-              <div
-                className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-xs uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
-                  isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-                }`}
+            <TabsList className="w-fit">
+              <TabsTrigger value="conversation" className="gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5" />
+                Conversation
+              </TabsTrigger>
+              <TabsTrigger value="terminal" className="gap-1.5">
+                <Terminal className="w-3.5 h-3.5" />
+                Terminal
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Use forceMount to keep terminal alive when switching tabs */}
+            <TabsContent value="conversation" className="flex-1 min-h-0 mt-2">
+              <Card
+                className={`Conversation-Card w-full h-full relative ${cardVerticalPadding} flex flex-col min-h-0`}
               >
-                <OmniSpinner />
-              </div>
+                <CardContent className="px-3 flex flex-col flex-1 min-h-0">
+                  <ConversationStream
+                    session={session}
+                    focusedEventId={navigation.focusedEventId}
+                    setFocusedEventId={navigation.setFocusedEventId}
+                    onApprove={approvals.handleApprove}
+                    onDeny={(approvalId: string, reason: string) =>
+                      approvals.handleDeny(approvalId, reason, session.id)
+                    }
+                    approvingApprovalId={approvals.approvingApprovalId}
+                    denyingApprovalId={approvals.denyingApprovalId ?? undefined}
+                    setDenyingApprovalId={id => {
+                      if (id === null) {
+                        approvals.handleCancelDeny()
+                      } else {
+                        // Clear fork state when entering denial mode
+                        if (forkPreviewData) {
+                          setForkPreviewData(null)
+                          responseEditor?.commands.setContent('')
+                        }
+                        approvals.handleStartDeny(id)
+                      }
+                    }}
+                    onCancelDeny={approvals.handleCancelDeny}
+                    focusSource={navigation.focusSource}
+                    setFocusSource={navigation.setFocusSource}
+                    expandedToolResult={expandedToolResult}
+                    setExpandedToolResult={setExpandedToolResult}
+                    setExpandedToolCall={setExpandedToolCall}
+                    maxEventIndex={forkPreviewData?.eventIndex ?? undefined}
+                    shouldIgnoreMouseEvent={shouldIgnoreMouseEvent}
+                    expandedTasks={expandedTasks}
+                    toggleTaskGroup={toggleTaskGroup}
+                  />
+                </CardContent>
+                {isActivelyProcessing && (
+                  <div
+                    className={`absolute bottom-0 left-0 px-3 py-1.5 border-t border-border bg-secondary/30 w-full font-mono text-xs uppercase tracking-wider text-muted-foreground transition-all duration-300 ease-out ${
+                      isActivelyProcessing ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
+                    }`}
+                  >
+                    <OmniSpinner />
+                  </div>
+                )}
+                {/* Status bar for pending approvals */}
+                <div
+                  className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
+                    hasPendingApprovalsOutOfView
+                      ? 'opacity-100 translate-y-0'
+                      : 'opacity-0 translate-y-full pointer-events-none'
+                  }`}
+                  onClick={() => {
+                    const container = document.querySelector('[data-conversation-container]')
+                    if (container) {
+                      container.scrollTop = container.scrollHeight
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
+                    <span>
+                      {pendingApprovalsCount === 1
+                        ? 'Pending Approval'
+                        : `${pendingApprovalsCount} Pending Approvals`}
+                    </span>
+                    <ChevronDown className="w-3 h-3 animate-bounce" />
+                  </div>
+                </div>
+              </Card>
+            </TabsContent>
+
+            {/* forceMount keeps terminal alive when switching tabs, hidden class hides it */}
+            {/* Only mount terminal after first access for lazy loading */}
+            {terminalOpened && (
+              <TabsContent
+                value="terminal"
+                forceMount
+                className={`flex-1 min-h-0 mt-2 ${activeTab !== 'terminal' ? 'hidden' : ''}`}
+              >
+                <Card className="w-full h-full flex flex-col min-h-0 overflow-hidden">
+                  <Suspense
+                    fallback={
+                      <div className="flex items-center justify-center h-full text-muted-foreground font-mono text-sm">
+                        Loading terminal...
+                      </div>
+                    }
+                  >
+                    <TerminalPane sessionId={session.id} className="flex-1" />
+                  </Suspense>
+                </Card>
+              </TabsContent>
             )}
-            {/* Status bar for pending approvals */}
-            <div
-              className={`absolute bottom-0 left-0 right-0 p-2 cursor-pointer transition-all duration-300 ease-in-out ${
-                hasPendingApprovalsOutOfView
-                  ? 'opacity-100 translate-y-0'
-                  : 'opacity-0 translate-y-full pointer-events-none'
-              }`}
-              onClick={() => {
-                const container = document.querySelector('[data-conversation-container]')
-                if (container) {
-                  container.scrollTop = container.scrollHeight
-                }
-              }}
-            >
-              <div className="flex items-center justify-center gap-1 font-mono text-xs uppercase tracking-wider text-muted-foreground bg-background/60 backdrop-blur-sm border-t border-border/50 py-1 shadow-sm hover:bg-background/80 transition-colors">
-                <span>
-                  {pendingApprovalsCount === 1
-                    ? 'Pending Approval'
-                    : `${pendingApprovalsCount} Pending Approvals`}
-                </span>
-                <ChevronDown className="w-3 h-3 animate-bounce" />
-              </div>
-            </div>
-          </Card>
+          </Tabs>
 
           {lastTodo && (
             <Card className="hidden lg:flex lg:w-1/5 flex-col min-h-0">
