@@ -1,11 +1,12 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { Terminal } from 'xterm'
+import { Terminal, ITheme } from 'xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import 'xterm/css/xterm.css'
 
 import { getDaemonUrl } from '@/lib/daemon/http-config'
 import { logger } from '@/lib/logging'
+import { useTheme } from '@/contexts/ThemeContext'
 
 interface TerminalPaneProps {
   sessionId: string
@@ -13,6 +14,47 @@ interface TerminalPaneProps {
 }
 
 type ConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error'
+
+/**
+ * Get terminal theme from CSS custom properties
+ * Uses the --terminal-* CSS variables defined in App.css themes
+ */
+function getTerminalTheme(): ITheme {
+  const computedStyle = getComputedStyle(document.documentElement)
+  const getColor = (varName: string, fallback: string) => {
+    const value = computedStyle.getPropertyValue(varName).trim()
+    return value || fallback
+  }
+
+  return {
+    // Core colors from theme
+    background: getColor('--terminal-bg', '#0a0a0a'),
+    foreground: getColor('--terminal-fg', '#fafafa'),
+    cursor: getColor('--terminal-accent', '#22c55e'),
+    cursorAccent: getColor('--terminal-bg', '#0a0a0a'),
+    selectionBackground: getColor('--terminal-selection', 'rgba(255, 255, 255, 0.2)'),
+
+    // Standard ANSI colors (0-7) from theme
+    black: getColor('--terminal-color-0', '#000000'),
+    red: getColor('--terminal-color-1', '#ef4444'),
+    green: getColor('--terminal-color-2', '#22c55e'),
+    yellow: getColor('--terminal-color-3', '#eab308'),
+    blue: getColor('--terminal-color-4', '#3b82f6'),
+    magenta: getColor('--terminal-color-5', '#a855f7'),
+    cyan: getColor('--terminal-color-6', '#06b6d4'),
+    white: getColor('--terminal-color-7', '#f5f5f5'),
+
+    // Bright ANSI colors (8-15) from theme
+    brightBlack: getColor('--terminal-color-8', '#737373'),
+    brightRed: getColor('--terminal-color-9', '#f87171'),
+    brightGreen: getColor('--terminal-color-10', '#4ade80'),
+    brightYellow: getColor('--terminal-color-11', '#facc15'),
+    brightBlue: getColor('--terminal-color-12', '#60a5fa'),
+    brightMagenta: getColor('--terminal-color-13', '#c084fc'),
+    brightCyan: getColor('--terminal-color-14', '#22d3ee'),
+    brightWhite: getColor('--terminal-color-15', '#ffffff'),
+  }
+}
 
 /**
  * TerminalPane - Interactive terminal component using xterm.js
@@ -26,6 +68,9 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
   const wsRef = useRef<WebSocket | null>(null)
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // Get current theme from context
+  const { theme } = useTheme()
 
   // Send resize message to server
   const sendResize = useCallback(() => {
@@ -63,42 +108,13 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
       return
     }
 
-    // Get CSS custom properties for theming
-    const computedStyle = getComputedStyle(document.documentElement)
-    const getColor = (varName: string, fallback: string) => {
-      const value = computedStyle.getPropertyValue(varName).trim()
-      return value || fallback
-    }
-
     // Create terminal with theme from CSS variables
     const terminal = new Terminal({
       cursorBlink: true,
       cursorStyle: 'block',
       fontSize: 13,
       fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
-      theme: {
-        background: getColor('--background', '#0a0a0a'),
-        foreground: getColor('--foreground', '#fafafa'),
-        cursor: getColor('--terminal-accent', '#22c55e'),
-        cursorAccent: getColor('--background', '#0a0a0a'),
-        selectionBackground: getColor('--terminal-accent', '#22c55e') + '40', // 25% opacity
-        black: '#000000',
-        red: '#ef4444',
-        green: '#22c55e',
-        yellow: '#eab308',
-        blue: '#3b82f6',
-        magenta: '#a855f7',
-        cyan: '#06b6d4',
-        white: '#f5f5f5',
-        brightBlack: '#737373',
-        brightRed: '#f87171',
-        brightGreen: '#4ade80',
-        brightYellow: '#facc15',
-        brightBlue: '#60a5fa',
-        brightMagenta: '#c084fc',
-        brightCyan: '#22d3ee',
-        brightWhite: '#ffffff',
-      },
+      theme: getTerminalTheme(),
       allowProposedApi: true,
     })
 
@@ -216,6 +232,19 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
       fitAddonRef.current = null
     }
   }, [sessionId, handleResize, sendResize])
+
+  // Update terminal theme when app theme changes
+  useEffect(() => {
+    const terminal = terminalInstanceRef.current
+    if (!terminal) return
+
+    // Small delay to ensure CSS variables are updated
+    const timeoutId = setTimeout(() => {
+      terminal.options.theme = getTerminalTheme()
+    }, 20)
+
+    return () => clearTimeout(timeoutId)
+  }, [theme])
 
   // Reconnect handler
   const handleReconnect = useCallback(async () => {
