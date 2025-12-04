@@ -1,5 +1,6 @@
 // Storage keys
 export const ARCHIVE_ON_FORK_KEY = 'archive-source-on-fork'
+export const ABOUT_WELCOME_SEEN = 'about-welcome-seen'
 
 // Draft Launcher preference keys
 export const DRAFT_LAUNCHER_PREFS = {
