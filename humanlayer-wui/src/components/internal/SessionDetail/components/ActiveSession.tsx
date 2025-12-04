@@ -774,9 +774,9 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     [setIsEditingSessionTitle, approvals.confirmingApprovalId, expandedToolResult],
   )
 
-  // Toggle between conversation and terminal tabs
+  // Toggle between conversation and terminal tabs (Cmd/Ctrl + \)
   useHotkeys(
-    'meta+`, ctrl+`',
+    'meta+Backslash, ctrl+Backslash',
     () => {
       setActiveTab(prev => {
         const newTab = prev === 'conversation' ? 'terminal' : 'conversation'
@@ -905,7 +905,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
             <TabsList className="w-fit">
               <TabsTrigger value="conversation" className="gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5" />
-                Conversation
+                Session
               </TabsTrigger>
               <TabsTrigger value="terminal" className="gap-1.5">
                 <Terminal className="w-3.5 h-3.5" />
