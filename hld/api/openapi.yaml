@@ -379,6 +379,50 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /sessions/{id}/hard-delete:
+    delete:
+      operationId: hardDeleteSession
+      summary: Permanently delete a session
+      description: |
+        Permanently delete a session from the database regardless of its status.
+        This action cannot be undone.
+      tags:
+        - Sessions
+      parameters:
+        - $ref: '#/components/parameters/sessionId'
+      responses:
+        '204':
+          description: Session permanently deleted
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /sessions/hard-delete/bulk:
+    post:
+      operationId: bulkHardDeleteSessions
+      summary: Bulk hard delete sessions
+      description: Permanently delete multiple sessions in a single operation
+      tags:
+        - Sessions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkHardDeleteRequest'
+      responses:
+        '200':
+          description: Bulk delete completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkHardDeleteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /sessions/{id}/interrupt:
     post:
       operationId: interruptSession
@@ -1595,13 +1639,18 @@ components:
 
     ContinueSessionRequest:
       type: object
-      required:
-        - query
+      description: |
+        Request to continue a session. Either query (for text-only) or content (for mixed text/images) must be provided.
       properties:
         query:
           type: string
-          description: New query to continue with
+          description: New query to continue with (text-only, legacy format)
           example: "Now add error handling to the script"
+        content:
+          type: array
+          description: Content blocks supporting mixed text and images (new format)
+          items:
+            $ref: '#/components/schemas/ContentBlock'
         system_prompt:
           type: string
           description: Override system prompt
@@ -1630,6 +1679,43 @@ components:
           type: integer
           minimum: 1
           description: Max conversation turns
+
+    ContentBlock:
+      type: object
+      description: A content block that can be either text or image
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [text, image]
+          description: Type of content block
+        text:
+          type: string
+          description: Text content (required when type is 'text')
+        source:
+          $ref: '#/components/schemas/ImageSource'
+          description: Image source (required when type is 'image')
+
+    ImageSource:
+      type: object
+      description: Source information for an image
+      required:
+        - type
+        - media_type
+        - data
+      properties:
+        type:
+          type: string
+          enum: [base64]
+          description: Source type (currently only base64 is supported)
+        media_type:
+          type: string
+          description: MIME type of the image
+          example: "image/png"
+        data:
+          type: string
+          description: Base64-encoded image data
 
     ContinueSessionResponse:
       type: object
@@ -1844,6 +1930,34 @@ components:
           minItems: 1
           description: Draft sessions to restore from discarded status
           example: ["sess_123", "sess_456"]
+
+    BulkHardDeleteRequest:
+      type: object
+      required:
+        - session_ids
+      properties:
+        session_ids:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          description: Sessions to permanently delete
+          example: ["sess_123", "sess_456"]
+
+    BulkHardDeleteResponse:
+      type: object
+      required:
+        - deleted
+        - failed
+      properties:
+        deleted:
+          type: integer
+          description: Number of sessions successfully deleted
+          example: 3
+        failed:
+          type: integer
+          description: Number of sessions that failed to delete
+          example: 0
 
     BulkRestoreDraftsResponse:
       type: object
