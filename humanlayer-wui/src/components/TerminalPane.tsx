@@ -66,6 +66,7 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
   const terminalInstanceRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
+  const onDataDisposableRef = useRef<{ dispose: () => void } | null>(null)
   const [status, setStatus] = useState<ConnectionStatus>('connecting')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -188,8 +189,13 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
           terminal.write('\r\n\x1b[33m[Terminal disconnected]\x1b[0m\r\n')
         }
 
+        // Dispose of any existing onData listener before adding a new one
+        if (onDataDisposableRef.current) {
+          onDataDisposableRef.current.dispose()
+        }
+
         // Forward terminal input to WebSocket
-        terminal.onData((data) => {
+        onDataDisposableRef.current = terminal.onData((data) => {
           if (ws.readyState === WebSocket.OPEN) {
             // Send as binary
             const encoder = new TextEncoder()
@@ -218,6 +224,12 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
     return () => {
       window.removeEventListener('resize', handleResize)
       resizeObserver.disconnect()
+
+      // Dispose of onData listener
+      if (onDataDisposableRef.current) {
+        onDataDisposableRef.current.dispose()
+        onDataDisposableRef.current = null
+      }
 
       if (wsRef.current) {
         wsRef.current.close()
@@ -299,8 +311,13 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
         }
       }
 
+      // Dispose of any existing onData listener before adding a new one
+      if (onDataDisposableRef.current) {
+        onDataDisposableRef.current.dispose()
+      }
+
       if (terminalInstanceRef.current) {
-        terminalInstanceRef.current.onData((data) => {
+        onDataDisposableRef.current = terminalInstanceRef.current.onData((data) => {
           if (ws.readyState === WebSocket.OPEN) {
             const encoder = new TextEncoder()
             ws.send(encoder.encode(data))
