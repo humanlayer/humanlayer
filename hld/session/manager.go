@@ -1492,8 +1492,9 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 
 	// Build config for resumed session
 	// Start by inheriting ALL configuration from parent session
+	// Use GetQueryFromContentBlocks to extract text from content blocks (images not yet supported in CLI)
 	config := claudecode.SessionConfig{
-		Query:                req.Query,
+		Query:                req.GetQueryFromContentBlocks(),
 		SessionID:            parentSession.ClaudeSessionID, // This triggers --resume flag
 		ForkSession:          true,                          // Enable fork instead of resume
 		OutputFormat:         claudecode.OutputStreamJSON,   // Always use streaming JSON
@@ -1504,6 +1505,12 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		CustomInstructions:   parentSession.CustomInstructions,
 		PermissionPromptTool: parentSession.PermissionPromptTool,
 		// MaxTurns intentionally NOT inherited - let it default or be specified
+	}
+
+	// Log if content contains images (not yet supported in CLI)
+	if req.HasImageContent() {
+		slog.Warn("Content contains images which are not yet supported by Claude CLI - only text will be sent",
+			"parent_session_id", req.ParentSessionID)
 	}
 
 	// Deserialize JSON arrays for tools
