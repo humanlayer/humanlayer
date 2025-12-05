@@ -7,6 +7,7 @@ import type { Components } from 'react-markdown'
 import { Button } from '@/components/ui/button'
 import { copyToClipboard } from '@/utils/clipboard'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
+import { useStore } from '@/AppStore'
 
 // Import only needed languages for smaller bundle
 import json from 'react-syntax-highlighter/dist/cjs/languages/prism/json'
@@ -22,6 +23,7 @@ import lua from 'react-syntax-highlighter/dist/cjs/languages/prism/lua'
 import clojure from 'react-syntax-highlighter/dist/cjs/languages/prism/clojure'
 import zig from 'react-syntax-highlighter/dist/cjs/languages/prism/zig'
 import { CommandToken } from '../CommandToken'
+import { ResearchPlanToken } from './ResearchPlanToken'
 
 // Register languages
 SyntaxHighlighter.registerLanguage('json', json)
@@ -47,10 +49,16 @@ interface MarkdownRendererProps {
   content: string
   className?: string
   sanitize?: boolean
+  workingDir?: string
 }
 
-const MarkdownRendererInner = memo(({ content, className = '' }: MarkdownRendererProps) => {
+// Match both research paths and plan paths for the context menu
+const researchPlanPathRegex = /thoughts\/shared\/(research|plans)\//
+
+const MarkdownRendererInner = memo(({ content, className = '', workingDir }: MarkdownRendererProps) => {
   const [copiedBlocks, setCopiedBlocks] = React.useState<Set<string>>(new Set())
+  const sessionWorkingDir = useStore(state => state.activeSessionDetail?.session?.workingDir)
+  const effectiveWorkingDir = workingDir ?? sessionWorkingDir ?? ''
 
   const handleCopy = useCallback(async (code: string, id: string) => {
     const success = await copyToClipboard(code)
@@ -161,6 +169,8 @@ const MarkdownRendererInner = memo(({ content, className = '' }: MarkdownRendere
           >
             {codeString}
           </SyntaxHighlighter>
+        ) : researchPlanPathRegex.test(codeString) ? (
+          <ResearchPlanToken path={codeString.trim()} workingDir={effectiveWorkingDir} />
         ) : (
           <CommandToken>{children}</CommandToken>
         )
@@ -178,7 +188,7 @@ const MarkdownRendererInner = memo(({ content, className = '' }: MarkdownRendere
         )
       },
     }),
-    [handleCopy, copiedBlocks],
+    [handleCopy, copiedBlocks, effectiveWorkingDir],
   )
 
   return (

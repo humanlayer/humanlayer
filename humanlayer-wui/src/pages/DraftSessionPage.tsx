@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '@/AppStore'
 import { DraftLauncherForm } from '@/components/internal/SessionDetail/components/DraftLauncherForm'
 import { usePostHogTracking } from '@/hooks/usePostHogTracking'
@@ -7,10 +7,27 @@ import { daemonClient } from '@/lib/daemon'
 import { type Session, SessionStatus } from '@/lib/daemon/types'
 import { POSTHOG_EVENTS } from '@/lib/telemetry/events'
 
+// Type for location state passed via navigate()
+interface DraftLocationState {
+  prompt?: string
+  workingDir?: string
+  title?: string
+}
+
 export function DraftSessionPage() {
   const [searchParams] = useSearchParams()
+  const location = useLocation()
   const navigate = useNavigate()
+
+  // Read draft ID from URL params (for resuming existing drafts)
   const draftId = searchParams.get('id')
+
+  // Read initial values from location.state (passed via navigate())
+  const locationState = location.state as DraftLocationState | null
+  const initialPrompt = locationState?.prompt?.trim()
+  const initialWorkingDir = locationState?.workingDir?.trim()
+  const initialTitle = locationState?.title?.trim()
+
   const { trackEvent } = usePostHogTracking()
 
   const [draftSession, setDraftSession] = useState<Session | null>(null)
@@ -126,6 +143,9 @@ export function DraftSessionPage() {
       session={draftSession}
       key={draftSession?.id} // this avoids us needing a useEffect when the session changes
       onSessionUpdated={handleSessionUpdated}
+      initialPrompt={initialPrompt}
+      initialWorkingDir={initialWorkingDir}
+      initialTitle={initialTitle}
     />
   )
 }

@@ -38,6 +38,7 @@ interface DraftLauncherInputProps {
   autoAcceptEditsEnabled: boolean
   dangerouslyBypassPermissionsEnabled: boolean
   onContentChange?: () => void
+  initialPrompt?: string
 }
 
 export const DraftLauncherInput = forwardRef<
@@ -57,6 +58,7 @@ export const DraftLauncherInput = forwardRef<
       autoAcceptEditsEnabled,
       dangerouslyBypassPermissionsEnabled,
       onContentChange,
+      initialPrompt,
     },
     ref,
   ) => {
@@ -71,7 +73,23 @@ export const DraftLauncherInput = forwardRef<
     const tiptapRef = useRef<{ focus: () => void; blur?: () => void }>(null)
     const statusBarRef = useRef<StatusBarRef>(null)
 
-    // Load initial editor state from database for drafts
+    const promptToContent = (prompt: string): Content => {
+      const lines = prompt.split('\n')
+      const paragraphs =
+        lines.length > 0
+          ? lines.map(line => ({
+              type: 'paragraph',
+              content: line ? [{ type: 'text', text: line }] : [],
+            }))
+          : []
+
+      return {
+        type: 'doc',
+        content: paragraphs.length > 0 ? paragraphs : [{ type: 'paragraph' }],
+      } as Content
+    }
+
+    // Load initial editor state from database for drafts or prefill from prompt
     const hasValidSessionData = (session.status as any) !== 'unknown' && !(session as any).fromStore
     let initialValue = null
 
@@ -81,6 +99,10 @@ export const DraftLauncherInput = forwardRef<
       } catch (e) {
         logger.error('DraftLauncherInput - error parsing editorState from database', e)
       }
+    }
+
+    if (initialValue === null && initialPrompt) {
+      initialValue = promptToContent(initialPrompt)
     }
 
     // Handle editor changes - notify parent and save to database
@@ -224,6 +246,8 @@ export const DraftLauncherInput = forwardRef<
 
     // Track previous session ID for defensive saving
     const prevSessionIdRef = useRef(session.id)
+    // Track whether initialPrompt has been applied to prevent clearing it
+    const initialPromptAppliedRef = useRef(false)
 
     // Reset editor content when session changes
     useEffect(() => {
@@ -236,6 +260,7 @@ export const DraftLauncherInput = forwardRef<
         sessionId: session.id,
         previousSessionId: prevSessionIdRef.current,
         hasEditorState: !!session.editorState,
+        hasInitialPrompt: !!initialPrompt,
         editorIsEmpty: responseEditor.isEmpty,
       })
 
@@ -259,6 +284,8 @@ export const DraftLauncherInput = forwardRef<
 
         // Update the ref for next time
         prevSessionIdRef.current = session.id
+        // Reset initialPrompt applied flag when session changes
+        initialPromptAppliedRef.current = false
       }
 
       // Load content for the new session
@@ -293,6 +320,17 @@ export const DraftLauncherInput = forwardRef<
         })
       }
 
+      // If no database content, check for initialPrompt (from URL params)
+      if (!newContent && initialPrompt && !initialPromptAppliedRef.current) {
+        newContent = promptToContent(initialPrompt)
+        contentSource = 'initialPrompt'
+        initialPromptAppliedRef.current = true
+        logger.log('DraftLauncherInput - Using initialPrompt', {
+          sessionId: session.id,
+          prompt: initialPrompt,
+        })
+      }
+
       // Update editor content with error handling
       try {
         if (newContent) {
@@ -300,7 +338,8 @@ export const DraftLauncherInput = forwardRef<
           logger.log('DraftLauncherInput - Set editor content from', contentSource, {
             sessionId: session.id,
           })
-        } else {
+        } else if (!initialPromptAppliedRef.current) {
+          // Only clear if we don't have an initialPrompt that was already applied
           responseEditor.commands.clearContent()
           logger.log('DraftLauncherInput - Cleared editor content', {
             sessionId: session.id,
@@ -313,7 +352,7 @@ export const DraftLauncherInput = forwardRef<
           newContent,
         })
       }
-    }, [session.id, session.editorState, responseEditor])
+    }, [session.id, session.editorState, responseEditor, initialPrompt])
 
     // Shift+M to open model selector
     useHotkeys(
