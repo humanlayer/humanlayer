@@ -37,7 +37,7 @@
   "navigation": [
     {
       "group": "Docs",
-      "pages": ["introduction"]
+      "pages": ["introduction", "workshop"]
     }
   ],
   "footerSocials": {
