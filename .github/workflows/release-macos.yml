@@ -318,17 +318,10 @@ jobs:
             brew install --cask --no-quarantine humanlayer/humanlayer/codelayer${{ steps.version.outputs.is_nightly == 'true' && '-nightly' || '' }}
             ```
 
-            ### Manual Installation
-            1. Download the DMG file below
-            2. Open the DMG and drag CodeLayer${{ steps.version.outputs.is_nightly == 'true' && '-Nightly' || '' }} to Applications
-            3. Launch CodeLayer${{ steps.version.outputs.is_nightly == 'true' && '-Nightly' || '' }} from Applications
+            **Note:** The private beta of humanlayer does not support app signing, so the `--no-quarantine` flag is necessary to bypass macOS Gatekeeper.
 
-            ## Troubleshooting
 
-            If you encounter "damaged app" warnings:
-            ```bash
-            xattr -rc /Applications/CodeLayer${{ steps.version.outputs.is_nightly == 'true' && '-Nightly' || '' }}.app
-            ```
+            DMG installs are not supported, please use Homebrew.
 
             ## Logs
 
