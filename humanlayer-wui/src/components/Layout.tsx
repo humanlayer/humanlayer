@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useHotkeys } from 'react-hotkeys-hook'
+import { useConfigurableHotkey } from '@/hooks/useConfigurableHotkey'
 import { register } from '@tauri-apps/plugin-global-shortcut'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -121,19 +122,14 @@ export function Layout() {
     },
   )
 
-  // Settings dialog hotkey
+  // Settings dialog hotkey (configurable)
   // TODO: We should bump this to "cmd+," later on
   // There's some pain associated with doing this with MenuBuilder in Tauri, so saving for later
-  useHotkeys(
-    'meta+shift+s, ctrl+shift+s',
-    () => {
-      setSettingsDialogOpen(!isSettingsDialogOpen)
-    },
-    {
-      scopes: [HOTKEY_SCOPES.ROOT],
-      enableOnFormTags: true,
-    },
-  )
+  const toggleSettings = useCallback(() => {
+    setSettingsDialogOpen(!isSettingsDialogOpen)
+  }, [isSettingsDialogOpen, setSettingsDialogOpen])
+
+  useConfigurableHotkey('toggleSettings', toggleSettings, { enableOnFormTags: true }, [toggleSettings])
 
   // Refresh window hotkey (app-scoped, not global)
   useHotkeys(
@@ -677,98 +673,79 @@ export function Layout() {
     },
   })
 
-  // Root hotkey for toggling hotkey panel
-  useHotkeys(
-    '?',
-    () => {
-      const newState = !isHotkeyPanelOpen
-      if (newState) {
-        // Track hotkey helper viewed event when opening
-        trackEvent(POSTHOG_EVENTS.HOTKEY_HELPER_VIEWED, {})
-      }
-      setHotkeyPanelOpen(newState)
-    },
-    {
-      scopes: [HOTKEY_SCOPES.ROOT],
-      useKey: true,
-      preventDefault: true,
-    },
+  // Root hotkey for toggling hotkey panel (configurable)
+  const toggleHotkeyPanel = useCallback(() => {
+    const newState = !isHotkeyPanelOpen
+    if (newState) {
+      // Track hotkey helper viewed event when opening
+      trackEvent(POSTHOG_EVENTS.HOTKEY_HELPER_VIEWED, {})
+    }
+    setHotkeyPanelOpen(newState)
+  }, [isHotkeyPanelOpen, setHotkeyPanelOpen, trackEvent])
+
+  useConfigurableHotkey(
+    'toggleHotkeyPanel',
+    toggleHotkeyPanel,
+    { useKey: true, preventDefault: true },
+    [toggleHotkeyPanel],
   )
 
   // Navigation shortcuts - 'gs' for sessions (normal view), 'ge' for archived
   // Note: Root scope hotkeys are now automatically disabled when modals open
 
-  // G+S - Go to sessions (normal view)
-  useHotkeys(
-    'g>s',
-    e => {
-      e.stopPropagation()
-      // Navigate to sessions (normal view)
-      if (useStore.getState().getViewMode() !== ViewMode.Normal) {
-        useStore.getState().setViewMode(ViewMode.Normal)
-      }
-      navigate('/')
-    },
-    {
-      scopes: [HOTKEY_SCOPES.ROOT],
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
+  // G+S - Go to sessions (normal view) (configurable)
+  const goToSessions = useCallback(() => {
+    if (useStore.getState().getViewMode() !== ViewMode.Normal) {
+      useStore.getState().setViewMode(ViewMode.Normal)
+    }
+    navigate('/')
+  }, [navigate])
+
+  useConfigurableHotkey(
+    'goToSessions',
+    goToSessions,
+    { preventDefault: true, enableOnFormTags: false },
+    [goToSessions],
   )
 
-  // G+E - Go to archived sessions
-  useHotkeys(
-    'g>e',
-    e => {
-      e.stopPropagation()
-      // Navigate to archived sessions
-      if (useStore.getState().getViewMode() !== ViewMode.Archived) {
-        useStore.getState().setViewMode(ViewMode.Archived)
-      }
-      navigate('/')
-    },
-    {
-      scopes: [HOTKEY_SCOPES.ROOT],
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
+  // G+E - Go to archived sessions (configurable)
+  const goToArchived = useCallback(() => {
+    if (useStore.getState().getViewMode() !== ViewMode.Archived) {
+      useStore.getState().setViewMode(ViewMode.Archived)
+    }
+    navigate('/')
+  }, [navigate])
+
+  useConfigurableHotkey(
+    'goToArchived',
+    goToArchived,
+    { preventDefault: true, enableOnFormTags: false },
+    [goToArchived],
   )
 
-  // G+I - Go to inbox/sessions (alias for g>s)
-  useHotkeys(
-    'g>i',
-    e => {
-      e.stopPropagation()
-      // Navigate to sessions (normal view)
-      if (useStore.getState().getViewMode() !== ViewMode.Normal) {
-        useStore.getState().setViewMode(ViewMode.Normal)
-      }
-      navigate('/')
-    },
-    {
-      scopes: [HOTKEY_SCOPES.ROOT],
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
-  )
+  // G+I - Go to inbox/sessions (alias for g>s) (configurable)
+  const goToInbox = useCallback(() => {
+    if (useStore.getState().getViewMode() !== ViewMode.Normal) {
+      useStore.getState().setViewMode(ViewMode.Normal)
+    }
+    navigate('/')
+  }, [navigate])
 
-  // G+D - Go to drafts
-  useHotkeys(
-    'g>d',
-    e => {
-      e.stopPropagation()
-      // Navigate to drafts view
-      if (useStore.getState().getViewMode() !== ViewMode.Drafts) {
-        useStore.getState().setViewMode(ViewMode.Drafts)
-      }
-      navigate('/')
-    },
-    {
-      scopes: [HOTKEY_SCOPES.ROOT],
-      preventDefault: true,
-      enableOnFormTags: false,
-    },
-  )
+  useConfigurableHotkey('goToInbox', goToInbox, { preventDefault: true, enableOnFormTags: false }, [
+    goToInbox,
+  ])
+
+  // G+D - Go to drafts (configurable)
+  const goToDrafts = useCallback(() => {
+    if (useStore.getState().getViewMode() !== ViewMode.Drafts) {
+      useStore.getState().setViewMode(ViewMode.Drafts)
+    }
+    navigate('/')
+  }, [navigate])
+
+  useConfigurableHotkey('goToDrafts', goToDrafts, { preventDefault: true, enableOnFormTags: false }, [
+    goToDrafts,
+  ])
 
   // Global hotkey for feedback
   // Don't specify scopes to make it work globally (defaults to wildcard '*')
