@@ -9,6 +9,10 @@ import { AnsiText, hasAnsiCodes } from '@/utils/ansiParser'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import {
+  detectToolError,
+  extractMcpError,
+} from '@/components/internal/ConversationStream/EventContent/utils/formatters'
+import {
   Wrench,
   Globe,
   FilePenLine,
@@ -188,48 +192,64 @@ export function ToolResultModal({
         >
           <DialogHeader className="px-4 py-3 border-b bg-background flex-none">
             <DialogTitle className="text-sm font-mono">
-              <div className="flex items-center gap-2">
-                {/* Add tool icon */}
-                <span className="text-accent">
-                  {(() => {
-                    // Special icon for sub-agents
-                    if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
-                      try {
-                        const args = JSON.parse(toolCall.toolInputJson)
-                        if (args.subagent_type && args.subagent_type !== 'Task') {
-                          return <HatGlasses className="w-3.5 h-3.5" />
+              {(() => {
+                // Detect if result has an error
+                const resultContent = toolResult?.toolResultContent || ''
+                const hasError =
+                  toolResult && toolCall?.toolName
+                    ? detectToolError(toolCall.toolName, resultContent)
+                    : false
+
+                return (
+                  <div className="flex items-center gap-2">
+                    {/* Add tool icon */}
+                    <span style={hasError ? { color: 'var(--terminal-error)' } : { color: 'var(--accent)' }}>
+                      {(() => {
+                        // Special icon for sub-agents
+                        if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
+                          try {
+                            const args = JSON.parse(toolCall.toolInputJson)
+                            if (args.subagent_type && args.subagent_type !== 'Task') {
+                              return <HatGlasses className="w-3.5 h-3.5" />
+                            }
+                          } catch {
+                            // Ignore parse errors
+                          }
                         }
-                      } catch {
-                        // Ignore parse errors
-                      }
-                    }
-                    return getToolIcon(toolCall?.toolName)
-                  })()}
-                </span>
-                <span>
-                  {(() => {
-                    // Show sub-agent type for Task tools
-                    if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
-                      try {
-                        const args = JSON.parse(toolCall.toolInputJson)
-                        if (args.subagent_type && args.subagent_type !== 'Task') {
-                          return `Sub-agent: ${args.subagent_type}`
+                        return getToolIcon(toolCall?.toolName)
+                      })()}
+                    </span>
+                    <span style={hasError ? { color: 'var(--terminal-error)' } : undefined}>
+                      {(() => {
+                        // Show sub-agent type for Task tools
+                        if (toolCall?.toolName === 'Task' && toolCall.toolInputJson) {
+                          try {
+                            const args = JSON.parse(toolCall.toolInputJson)
+                            if (args.subagent_type && args.subagent_type !== 'Task') {
+                              return `Sub-agent: ${args.subagent_type}`
+                            }
+                          } catch {
+                            // Ignore parse errors
+                          }
                         }
-                      } catch {
-                        // Ignore parse errors
-                      }
-                    }
-                    return toolCall?.toolName || 'Tool Result'
-                  })()}
-                  {!toolResult && toolCall && !toolCall.isCompleted && (
-                    <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
-                  )}
-                </span>
-                {/* Show primary parameter */}
-                {toolCall?.toolInputJson && (
-                  <span className="text-xs text-muted-foreground">{getToolPrimaryParam(toolCall)}</span>
-                )}
-              </div>
+                        return toolCall?.toolName || 'Tool Result'
+                      })()}
+                      {!toolResult && toolCall && !toolCall.isCompleted && (
+                        <span className="text-xs text-muted-foreground ml-2">(in progress)</span>
+                      )}
+                    </span>
+                    {/* Show primary parameter */}
+                    {toolCall?.toolInputJson && (
+                      <span
+                        className="text-xs"
+                        style={hasError ? { color: 'var(--terminal-error)' } : { color: 'var(--muted-foreground)' }}
+                      >
+                        {getToolPrimaryParam(toolCall)}
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
             </DialogTitle>
           </DialogHeader>
 
@@ -242,17 +262,50 @@ export function ToolResultModal({
                 {/* Tool Result Section - only show if we have a result */}
                 {toolResult && (
                   <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">Result</h3>
-                    <pre className="font-mono text-sm whitespace-pre-wrap break-words">
-                      {/* Only apply ANSI parsing to Bash tool output */}
-                      {toolCall?.toolName === 'Bash' &&
-                      typeof toolResult.toolResultContent === 'string' &&
-                      hasAnsiCodes(toolResult.toolResultContent) ? (
-                        <AnsiText content={toolResult.toolResultContent} />
-                      ) : (
-                        toolResult.toolResultContent || 'No content'
-                      )}
-                    </pre>
+                    {(() => {
+                      const content = toolResult.toolResultContent || ''
+                      const isError = toolCall?.toolName
+                        ? detectToolError(toolCall.toolName, content)
+                        : false
+                      const mcpError = isError ? extractMcpError(content) : null
+
+                      return (
+                        <>
+                          <h3
+                            className="text-sm font-medium mb-2"
+                            style={isError ? { color: 'var(--terminal-error)' } : { color: 'var(--muted-foreground)' }}
+                          >
+                            {isError ? 'Error' : 'Result'}
+                          </h3>
+                          <pre
+                            className="font-mono text-sm whitespace-pre-wrap break-words p-3 rounded"
+                            style={
+                              isError
+                                ? {
+                                    color: 'var(--terminal-error)',
+                                    backgroundColor: 'color-mix(in srgb, var(--terminal-error) 10%, transparent)',
+                                    border: '1px solid color-mix(in srgb, var(--terminal-error) 30%, transparent)',
+                                  }
+                                : undefined
+                            }
+                          >
+                            {/* Only apply ANSI parsing to Bash tool output */}
+                            {toolCall?.toolName === 'Bash' &&
+                            typeof content === 'string' &&
+                            hasAnsiCodes(content) ? (
+                              <AnsiText content={content} />
+                            ) : (
+                              content || 'No content'
+                            )}
+                          </pre>
+                          {isError && mcpError?.suggestion && (
+                            <div className="text-sm text-muted-foreground mt-2 p-2 bg-muted/50 rounded">
+                              {mcpError.suggestion}
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
               </div>
