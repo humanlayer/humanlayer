@@ -1,9 +1,13 @@
 import { useStore } from '@/AppStore'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { logger } from '@/lib/logging'
+import { isTauri } from '@/lib/utils'
+import { tempDir, join } from '@tauri-apps/api/path'
+import { writeFile, mkdir, exists } from '@tauri-apps/plugin-fs'
 import { openPath } from '@tauri-apps/plugin-opener'
 import Mention from '@tiptap/extension-mention'
 import { Placeholder } from '@tiptap/extensions'
+import { Node } from '@tiptap/pm/model'
 import { Plugin } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import {
@@ -30,6 +34,7 @@ import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
 import { createLowlight } from 'lowlight'
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { FileMentionNode } from './FileMentionNode'
 import { FuzzyFileMentionList } from './FuzzyFileMentionList'
 import { SlashCommandList } from './SlashCommandList'
@@ -715,6 +720,11 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           addNodeView() {
             return ReactNodeViewRenderer(FileMentionNode as any)
           },
+          // Render the full file path (id) when getText() is called
+          // This ensures Claude receives the absolute path, not just the display label
+          renderText({ node }: { node: Node }) {
+            return (node.attrs.id as string) || (node.attrs.label as string) || ''
+          },
         }).configure({
           HTMLAttributes: {
             class: 'mention',
@@ -873,6 +883,86 @@ export const ResponseEditor = forwardRef<{ focus: () => void; blur?: () => void 
           autocorrect: 'off',
           autocomplete: 'off',
           autocapitalize: 'off',
+        },
+        handlePaste: (view, event) => {
+          const clipboardData = event.clipboardData
+          if (!clipboardData) return false
+
+          const items = Array.from(clipboardData.items)
+          const imageItem = items.find(item => item.type.startsWith('image/'))
+
+          if (!imageItem) return false
+
+          // Only handle image paste in Tauri environment (need filesystem access)
+          if (!isTauri()) {
+            toast.error('Image paste not supported', {
+              description: 'Image paste requires the desktop app',
+            })
+            return true
+          }
+
+          event.preventDefault()
+
+          const file = imageItem.getAsFile()
+          if (!file) return false
+
+          // Check file size (limit to 5MB)
+          if (file.size > 5 * 1024 * 1024) {
+            toast.error('Image too large', {
+              description: 'Maximum image size is 5MB',
+            })
+            return true
+          }
+
+          // Save image to temp file and insert as file mention
+          const saveAndInsertImage = async () => {
+            try {
+              // Get file extension from mime type
+              const mimeType = imageItem.type
+              const ext = mimeType.split('/')[1] || 'png'
+
+              // Generate unique filename
+              const timestamp = Date.now()
+              const randomId = Math.random().toString(36).substring(2, 8)
+              const fileName = `pasted-image-${timestamp}-${randomId}.${ext}`
+
+              // Get temp directory and create codelayer subdirectory
+              const temp = await tempDir()
+              const codelayerDir = await join(temp, 'codelayer-images')
+
+              // Create directory if it doesn't exist
+              if (!(await exists(codelayerDir))) {
+                await mkdir(codelayerDir, { recursive: true })
+              }
+
+              const filePath = await join(codelayerDir, fileName)
+
+              // Read file as ArrayBuffer and write to temp file
+              const arrayBuffer = await file.arrayBuffer()
+              const uint8Array = new Uint8Array(arrayBuffer)
+              await writeFile(filePath, uint8Array)
+
+              // Insert file mention into editor (same pattern as drag & drop)
+              const editor = view.state
+              const mentionNode = editor.schema.nodes.mention.create({
+                id: filePath, // Full path for functionality
+                label: fileName, // Display name for UI
+              })
+
+              const { state, dispatch } = view
+              // Insert mention followed by a space
+              const tr = state.tr.replaceSelectionWith(mentionNode).insertText(' ')
+              dispatch(tr)
+
+              logger.log('Pasted image saved to:', filePath)
+            } catch (error) {
+              logger.error('Failed to save pasted image:', error)
+              toast.error('Failed to paste image')
+            }
+          }
+
+          saveAndInsertImage()
+          return true
         },
         handleKeyDown: (view, event) => {
           // Only handle Shift+Enter in regular paragraphs, not in code blocks or other special nodes

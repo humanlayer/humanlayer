@@ -5,6 +5,10 @@
   "windows": ["main", "quick-launcher"],
   "permissions": [
     "core:default",
+    "core:app:allow-app-show",
+    "core:app:allow-app-hide",
+    "core:resources:default",
+    "core:path:default",
     "opener:default",
     {
       "identifier": "opener:allow-open-path",
@@ -17,11 +21,18 @@
     "notification:default",
     "core:webview:allow-set-webview-zoom",
     "fs:default",
+    "fs:allow-exists",
+    "fs:allow-mkdir",
+    "fs:allow-read-file",
+    "fs:allow-temp-write-recursive",
     {
       "identifier": "fs:scope",
       "allow": [
         {
           "path": "**/*"
+        },
+        {
+          "path": "$TEMP/**"
         }
       ]
     },
