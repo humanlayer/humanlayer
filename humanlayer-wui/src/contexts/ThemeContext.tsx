@@ -9,6 +9,7 @@ export type Theme =
   | 'high-contrast'
   | 'framer-dark'
   | 'framer-light'
+  | 'framer-light-hc'
   | 'gruvbox-dark'
   | 'gruvbox-light'
   | 'monokai'
