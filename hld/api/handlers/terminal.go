@@ -175,9 +175,9 @@ func (ts *terminalSession) run(ctx context.Context) {
 	defer cancel()
 
 	// Set up ping/pong for connection health
-	ts.conn.SetReadDeadline(time.Now().Add(pongWait))
+	_ = ts.conn.SetReadDeadline(time.Now().Add(pongWait))
 	ts.conn.SetPongHandler(func(string) error {
-		ts.conn.SetReadDeadline(time.Now().Add(pongWait))
+		_ = ts.conn.SetReadDeadline(time.Now().Add(pongWait))
 		return nil
 	})
 
@@ -231,7 +231,7 @@ func (ts *terminalSession) readFromPTY(ctx context.Context, cancel context.Cance
 			if n > 0 {
 				ts.mu.Lock()
 				if !ts.closed {
-					ts.conn.SetWriteDeadline(time.Now().Add(writeWait))
+					_ = ts.conn.SetWriteDeadline(time.Now().Add(writeWait))
 					err = ts.conn.WriteMessage(websocket.BinaryMessage, buf[:n])
 				}
 				ts.mu.Unlock()
@@ -317,7 +317,7 @@ func (ts *terminalSession) pingLoop(ctx context.Context) {
 		case <-ticker.C:
 			ts.mu.Lock()
 			if !ts.closed {
-				ts.conn.SetWriteDeadline(time.Now().Add(writeWait))
+				_ = ts.conn.SetWriteDeadline(time.Now().Add(writeWait))
 				if err := ts.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 					ts.mu.Unlock()
 					return
@@ -335,7 +335,7 @@ func (ts *terminalSession) sendError(msg string) {
 
 	if !ts.closed {
 		errMsg := fmt.Sprintf("\r\n\x1b[31mError: %s\x1b[0m\r\n", msg)
-		ts.conn.WriteMessage(websocket.BinaryMessage, []byte(errMsg))
+		_ = ts.conn.WriteMessage(websocket.BinaryMessage, []byte(errMsg))
 	}
 }
 
@@ -351,38 +351,38 @@ func (ts *terminalSession) cleanup() {
 
 	// Close PTY
 	if ts.ptmx != nil {
-		ts.ptmx.Close()
+		_ = ts.ptmx.Close()
 	}
 
 	// Kill the process if still running
 	if ts.cmd != nil && ts.cmd.Process != nil {
-		ts.cmd.Process.Kill()
-		ts.cmd.Wait()
+		_ = ts.cmd.Process.Kill()
+		_ = ts.cmd.Wait()
 	}
 
 	// Close WebSocket
-	ts.conn.Close()
+	_ = ts.conn.Close()
 }
 
 // getSafeEnv returns a filtered set of environment variables
 func (ts *terminalSession) getSafeEnv() []string {
 	// Allowlist of safe environment variables to pass through
 	allowedVars := map[string]bool{
-		"PATH":       true,
-		"HOME":       true,
-		"USER":       true,
-		"SHELL":      true,
-		"TERM":       true,
-		"LANG":       true,
-		"LC_ALL":     true,
-		"LC_CTYPE":   true,
-		"COLORTERM":  true,
-		"EDITOR":     true,
-		"VISUAL":     true,
-		"PAGER":      true,
-		"LESS":       true,
-		"TMPDIR":     true,
-		"TZ":         true,
+		"PATH":            true,
+		"HOME":            true,
+		"USER":            true,
+		"SHELL":           true,
+		"TERM":            true,
+		"LANG":            true,
+		"LC_ALL":          true,
+		"LC_CTYPE":        true,
+		"COLORTERM":       true,
+		"EDITOR":          true,
+		"VISUAL":          true,
+		"PAGER":           true,
+		"LESS":            true,
+		"TMPDIR":          true,
+		"TZ":              true,
 		"XDG_RUNTIME_DIR": true,
 	}
 
@@ -408,4 +408,3 @@ func (ts *terminalSession) getSafeEnv() []string {
 
 	return env
 }
-

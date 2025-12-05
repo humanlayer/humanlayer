@@ -163,7 +163,7 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
           sendResize()
         }
 
-        ws.onmessage = (event) => {
+        ws.onmessage = event => {
           if (event.data instanceof ArrayBuffer) {
             // Binary data from PTY
             const data = new Uint8Array(event.data)
@@ -174,13 +174,13 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
           }
         }
 
-        ws.onerror = (event) => {
+        ws.onerror = event => {
           logger.error('Terminal WebSocket error:', event)
           setStatus('error')
           setErrorMessage('Connection error')
         }
 
-        ws.onclose = (event) => {
+        ws.onclose = event => {
           logger.log('Terminal WebSocket closed:', event.code, event.reason)
           setStatus('disconnected')
           wsRef.current = null
@@ -195,7 +195,7 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
         }
 
         // Forward terminal input to WebSocket
-        onDataDisposableRef.current = terminal.onData((data) => {
+        onDataDisposableRef.current = terminal.onData(data => {
           if (ws.readyState === WebSocket.OPEN) {
             // Send as binary
             const encoder = new TextEncoder()
@@ -291,7 +291,7 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
         }
       }
 
-      ws.onmessage = (event) => {
+      ws.onmessage = event => {
         if (event.data instanceof ArrayBuffer && terminalInstanceRef.current) {
           const data = new Uint8Array(event.data)
           terminalInstanceRef.current.write(data)
@@ -317,7 +317,7 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
       }
 
       if (terminalInstanceRef.current) {
-        onDataDisposableRef.current = terminalInstanceRef.current.onData((data) => {
+        onDataDisposableRef.current = terminalInstanceRef.current.onData(data => {
           if (ws.readyState === WebSocket.OPEN) {
             const encoder = new TextEncoder()
             ws.send(encoder.encode(data))
@@ -373,4 +373,3 @@ export function TerminalPane({ sessionId, className = '' }: TerminalPaneProps) {
 }
 
 export default TerminalPane
-
