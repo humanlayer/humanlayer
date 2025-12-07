@@ -21,6 +21,8 @@ export type Theme =
   | 'bubblegum'
   | 'l33t'
   | 'vesper'
+  | 'starscape-dark'
+  | 'starscape-light'
 
 interface ThemeContextType {
   theme: Theme
