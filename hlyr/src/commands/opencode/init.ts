@@ -399,10 +399,10 @@ export async function opencodeInitCommand(options: InitOptions): Promise<void> {
       }
     }
 
-    // Update .gitignore to exclude opencode.local.json
-    if (selectedCategories.includes('config')) {
-      ensureGitignoreEntry(targetDir, '.opencode/opencode.local.json')
-      p.log.info('Updated .gitignore to exclude opencode.local.json')
+    // Update .gitignore to exclude .opencode directory
+    if (selectedCategories.length > 0) {
+      ensureGitignoreEntry(targetDir, '.opencode/')
+      p.log.info('Updated .gitignore to exclude .opencode/')
     }
 
     // Update .gitignore to exclude hack scripts

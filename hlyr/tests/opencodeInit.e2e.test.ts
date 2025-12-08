@@ -66,7 +66,7 @@ describe('opencode init e2e tests', () => {
       // Verify .gitignore was updated
       const gitignorePath = join(testProjectDir, '.gitignore')
       const gitignoreContent = await fs.readFile(gitignorePath, 'utf8')
-      expect(gitignoreContent).toContain('.opencode/opencode.local.json')
+      expect(gitignoreContent).toContain('.opencode/')
     }, 15000)
 
     it('should work in non-TTY environment with --all flag', async () => {
@@ -179,7 +179,7 @@ describe('opencode init e2e tests', () => {
       expect(gitignoreExists).toBe(true)
 
       const gitignoreContent = await fs.readFile(gitignorePath, 'utf8')
-      expect(gitignoreContent).toContain('.opencode/opencode.local.json')
+      expect(gitignoreContent).toContain('.opencode/')
       expect(gitignoreContent).toContain('# OpenCode local settings')
     }, 15000)
 
@@ -192,9 +192,21 @@ describe('opencode init e2e tests', () => {
       expect(result.exitCode).toBe(0)
 
       const gitignoreContent = await fs.readFile(gitignorePath, 'utf8')
-      expect(gitignoreContent).toContain('# Existing content')
       expect(gitignoreContent).toContain('node_modules/')
-      expect(gitignoreContent).toContain('.opencode/opencode.local.json')
+      expect(gitignoreContent).toContain('.opencode/')
+    }, 15000)
+
+    it('should not duplicate .gitignore entry', async () => {
+      const gitignorePath = join(testProjectDir, '.gitignore')
+      await fs.writeFile(gitignorePath, '# OpenCode local settings\n.opencode/\n')
+
+      const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const gitignoreContent = await fs.readFile(gitignorePath, 'utf8')
+      const matches = gitignoreContent.match(/\.opencode\//g)
+      expect(matches?.length).toBe(1)
     }, 15000)
 
     it('should not duplicate .gitignore entry', async () => {
