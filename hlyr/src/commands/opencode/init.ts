@@ -387,7 +387,7 @@ export async function opencodeInitCommand(options: InitOptions): Promise<void> {
           // Write transformed config
           fs.writeFileSync(targetConfigPath, JSON.stringify(opencodeConfig, null, 2) + '\n')
           filesCopied++
-          p.log.success(`Generated opencode.json with helpful comments`)
+          p.log.success(`Generated opencode.json`)
         } else {
           p.log.warn('settings.json not found in source, skipping')
         }

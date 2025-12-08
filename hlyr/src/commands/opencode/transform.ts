@@ -1,6 +1,10 @@
 import path from 'path'
+import os from 'os'
 
 export type ModelType = 'haiku' | 'sonnet' | 'opus'
+
+// Use platform-specific line ending
+const EOL = os.EOL
 
 /**
  * Transform short model names to full Anthropic model names
@@ -52,15 +56,16 @@ export function parseClaudeTools(toolsString: string): Record<string, boolean> {
  */
 export function transformCommandFile(content: string): string {
   // Parse frontmatter and body
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+  // Handle both \n and \r\n line endings
+  const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/)
 
   if (!frontmatterMatch) {
     // No frontmatter - treat entire content as template
-    return `---\ndescription: Custom command\n---\n\n${content}`
+    return `---${EOL}description: Custom command${EOL}---${EOL}${EOL}${content}`
   }
 
   const [, frontmatter, body] = frontmatterMatch
-  const lines = frontmatter.split('\n')
+  const lines = frontmatter.split(/\r?\n/)
   const fm: Record<string, any> = {}
 
   // Parse YAML frontmatter
@@ -99,18 +104,18 @@ export function transformCommandFile(content: string): string {
   })
 
   // Build new frontmatter
-  let newFrontmatter = '---\n'
-  newFrontmatter += `description: ${fm.description || 'Custom command'}\n`
+  let newFrontmatter = `---${EOL}`
+  newFrontmatter += `description: ${fm.description || 'Custom command'}${EOL}`
   if (fm.model) {
-    newFrontmatter += `model: ${transformModelName(fm.model)}\n`
+    newFrontmatter += `model: ${transformModelName(fm.model)}${EOL}`
   }
   if (fm.agent) {
-    newFrontmatter += `agent: ${fm.agent}\n`
+    newFrontmatter += `agent: ${fm.agent}${EOL}`
   }
   if (fm.subtask !== undefined) {
-    newFrontmatter += `subtask: ${fm.subtask}\n`
+    newFrontmatter += `subtask: ${fm.subtask}${EOL}`
   }
-  newFrontmatter += '---\n\n'
+  newFrontmatter += `---${EOL}${EOL}`
 
   return newFrontmatter + transformedContent
 }
@@ -119,14 +124,15 @@ export function transformCommandFile(content: string): string {
  * Transform agent file from Claude format to OpenCode format
  */
 export function transformAgentFile(content: string): string {
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/)
+  // Handle both \n and \r\n line endings
+  const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/)
 
   if (!frontmatterMatch) {
     return content // Return as-is if no frontmatter
   }
 
   const [, frontmatter, body] = frontmatterMatch
-  const lines = frontmatter.split('\n')
+  const lines = frontmatter.split(/\r?\n/)
   const fm: Record<string, any> = {}
 
   // Parse YAML frontmatter
@@ -138,37 +144,37 @@ export function transformAgentFile(content: string): string {
   }
 
   // Build OpenCode frontmatter
-  let newFrontmatter = '---\n'
+  let newFrontmatter = `---${EOL}`
 
   // description (required)
-  newFrontmatter += `description: ${fm.description || 'Specialized agent'}\n`
+  newFrontmatter += `description: ${fm.description || 'Specialized agent'}${EOL}`
 
   // mode (all agents in .claude are subagents)
-  newFrontmatter += `mode: subagent\n`
+  newFrontmatter += `mode: subagent${EOL}`
 
   // model (transform short names)
   if (fm.model) {
-    newFrontmatter += `model: ${transformModelName(fm.model)}\n`
+    newFrontmatter += `model: ${transformModelName(fm.model)}${EOL}`
   }
 
   // tools (transform from string to object)
   if (fm.tools) {
     const toolsObj = parseClaudeTools(fm.tools)
-    newFrontmatter += `tools:\n`
+    newFrontmatter += `tools:${EOL}`
     for (const [tool, enabled] of Object.entries(toolsObj)) {
-      newFrontmatter += `  ${tool}: ${enabled}\n`
+      newFrontmatter += `  ${tool}: ${enabled}${EOL}`
     }
   }
 
   // Note: We remove 'name' field - filename becomes the agent name in OpenCode
 
-  newFrontmatter += '---\n\n'
+  newFrontmatter += `---${EOL}${EOL}`
 
   return newFrontmatter + body.trim()
 }
 
 /**
- * Transform Claude settings.json to OpenCode opencode.json with helpful comments
+ * Transform Claude settings.json to OpenCode opencode.json
  */
 export function transformSettings(
   settings: any,
@@ -178,14 +184,11 @@ export function transformSettings(
     $schema: 'https://opencode.ai/config.json',
   }
 
-  // Transform model with comment
-  config['//model'] = 'Default model for OpenCode sessions. See: opencode models'
+  // Transform model
   config.model = transformModelName(options.model || settings.model || 'opus')
 
   // Transform permissions from Claude format to OpenCode format
   if (settings.permissions?.allow) {
-    config['//permission'] =
-      'Controls what actions require approval. Options: "ask", "allow", "deny"'
     config.permission = {}
 
     // Parse Claude permissions
@@ -208,11 +211,7 @@ export function transformSettings(
   }
 
   // Add instructions reference (for AGENTS.md if created)
-  config['//instructions'] = 'Additional instruction files to include in context'
   config.instructions = ['AGENTS.md']
-
-  // Add tools section with helpful comment
-  config['//tools'] = 'Control which tools are available. Set to false to disable specific tools.'
 
   // Drop Claude-specific settings that don't apply to OpenCode:
   // - enableAllProjectMcpServers (OpenCode handles MCP differently)

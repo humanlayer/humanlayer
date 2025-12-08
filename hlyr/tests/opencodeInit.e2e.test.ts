@@ -373,7 +373,7 @@ describe('opencode init e2e tests', () => {
       expect(content).not.toContain('tools: Grep, Glob')
     }, 15000)
 
-    it('should generate opencode.json with comments', async () => {
+    it('should generate opencode.json with valid structure', async () => {
       const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
 
       expect(result.exitCode).toBe(0)
@@ -385,10 +385,13 @@ describe('opencode init e2e tests', () => {
       // Verify structure
       expect(config.$schema).toBe('https://opencode.ai/config.json')
       expect(config.model).toMatch(/^anthropic\/claude-/)
+      expect(config.instructions).toEqual(['AGENTS.md'])
 
-      // Verify comments exist in raw content (they're stripped by JSON.parse)
-      expect(content).toContain('"//model"')
-      expect(content).toContain('"//instructions"')
+      // Verify it's valid JSON (no comment keys that would be rejected)
+      expect(config['//model']).toBeUndefined()
+      expect(config['//permission']).toBeUndefined()
+      expect(config['//instructions']).toBeUndefined()
+      expect(config['//tools']).toBeUndefined()
     }, 15000)
 
     it('should transform SlashCommand() syntax', async () => {
