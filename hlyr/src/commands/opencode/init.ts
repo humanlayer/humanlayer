@@ -99,8 +99,7 @@ export async function opencodeInitCommand(options: InitOptions): Promise<void> {
 		let selectedCategories: string[]
 
 		if (options.all) {
-			// Don't include agentsmd by default in --all mode
-			selectedCategories = ['commands', 'agents', 'config', 'scripts']
+			selectedCategories = ['commands', 'agents', 'config', 'scripts', 'agentsmd']
 		} else {
 			// Interactive selection
 			const selection = await p.multiselect({
@@ -129,10 +128,10 @@ export async function opencodeInitCommand(options: InitOptions): Promise<void> {
 					{
 						value: 'agentsmd',
 						label: 'AGENTS.md',
-						hint: 'Generate AGENTS.md with project context (optional, can be slow)',
+						hint: 'Generate AGENTS.md with project context',
 					},
 				],
-				initialValues: ['commands', 'agents', 'config', 'scripts'],
+				initialValues: ['commands', 'agents', 'config', 'scripts', 'agentsmd'],
 				required: false,
 			})
 
