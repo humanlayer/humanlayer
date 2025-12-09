@@ -205,6 +205,7 @@ Then wait for the user's research query.
     - `thoughts/searchable/global/shared/templates.md` → `thoughts/global/shared/templates.md`
   - NEVER change allison/ to shared/ or vice versa - preserve the exact directory structure
   - This ensures paths are correct for editing and navigation
+  - Ensure research documents are created inside the `thoughts/shared/research/` folder
 - **Frontmatter consistency**:
   - Always include frontmatter at the beginning of research documents
   - Keep frontmatter fields consistent across all research documents

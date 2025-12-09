@@ -6,6 +6,7 @@ import { configShowCommand } from './commands/configShow.js'
 import { launchCommand } from './commands/launch.js'
 import { thoughtsCommand } from './commands/thoughts.js'
 import { claudeCommand } from './commands/claude.js'
+import { opencodeCommand } from './commands/opencode.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
 import { startClaudeApprovalsMCPServer } from './mcp.js'
 import { getDefaultConfigPath } from './config.js'
@@ -87,6 +88,9 @@ thoughtsCommand(program)
 
 // Add claude command
 claudeCommand(program)
+
+// Add opencode command
+opencodeCommand(program)
 
 // Add join-waitlist command
 program
