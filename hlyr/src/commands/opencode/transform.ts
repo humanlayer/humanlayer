@@ -52,6 +52,44 @@ export function parseClaudeTools(toolsString: string): Record<string, boolean> {
 }
 
 /**
+ * Check if content needs cross-platform guidance
+ * Returns true if the content uses filesystem tools or references paths/directories
+ */
+export function needsPlatformGuidance(
+  tools: Record<string, boolean> | undefined,
+  body: string,
+): boolean {
+  // Check if uses file-system tools
+  if (tools) {
+    const fsTools = ['grep', 'glob', 'list']
+    if (fsTools.some(tool => tools[tool])) {
+      return true
+    }
+  }
+
+  // Check if body references paths/directories
+  const pathPatterns = [
+    /thoughts\//i,
+    /codebase/i,
+    /directory|directories/i,
+    /file path/i,
+    /@codebase-locator/i,
+    /@thoughts-locator/i,
+    /@codebase-analyzer/i,
+    /@codebase-pattern-finder/i,
+  ]
+
+  return pathPatterns.some(pattern => pattern.test(body))
+}
+
+/**
+ * Generate concise cross-platform compatibility guidance
+ */
+export function generatePlatformGuidance(): string {
+  return `## Platform Compatibility${EOL}${EOL}**IMPORTANT**: The \`grep\`, \`glob\`, and \`list\` tools automatically handle path separators for your platform (Windows, macOS, Linux).${EOL}${EOL}- Always use forward slashes (\`/\`) in search patterns and file paths - they work cross-platform${EOL}- Tools normalize paths to your platform's native format automatically${EOL}- Never manually construct platform-specific paths${EOL}- Let the tools handle cross-platform operation${EOL}${EOL}`
+}
+
+/**
  * Transform command file from Claude format to OpenCode format
  */
 export function transformCommandFile(content: string): string {
@@ -81,10 +119,7 @@ export function transformCommandFile(content: string): string {
 
   // Transform: SlashCommand() calls -> just the command
   // Example: "use SlashCommand() to call /ralph_research" -> "use /ralph_research"
-  transformedContent = transformedContent.replace(
-    /use SlashCommand\(\) to call (\/[\w_-]+)/g,
-    'use $1',
-  )
+  transformedContent = transformedContent.replace(/use SlashCommand\(\) to call (\/[\w_-]+)/g, 'use $1')
 
   // Transform: npx humanlayer launch commands -> OpenCode equivalent
   // These commands don't make sense in OpenCode (commands run in same session)
@@ -116,6 +151,11 @@ export function transformCommandFile(content: string): string {
     newFrontmatter += `subtask: ${fm.subtask}${EOL}`
   }
   newFrontmatter += `---${EOL}${EOL}`
+
+  // Inject platform guidance if needed
+  if (needsPlatformGuidance(undefined, transformedContent)) {
+    return newFrontmatter + generatePlatformGuidance() + transformedContent
+  }
 
   return newFrontmatter + transformedContent
 }
@@ -170,16 +210,22 @@ export function transformAgentFile(content: string): string {
 
   newFrontmatter += `---${EOL}${EOL}`
 
-  return newFrontmatter + body.trim()
+  // Parse tools for guidance detection
+  const toolsObj = fm.tools ? parseClaudeTools(fm.tools) : undefined
+  const bodyContent = body.trim()
+
+  // Inject platform guidance if needed
+  if (needsPlatformGuidance(toolsObj, bodyContent)) {
+    return newFrontmatter + generatePlatformGuidance() + bodyContent
+  }
+
+  return newFrontmatter + bodyContent
 }
 
 /**
  * Transform Claude settings.json to OpenCode opencode.json
  */
-export function transformSettings(
-  settings: any,
-  options: { model?: ModelType },
-): Record<string, any> {
+export function transformSettings(settings: any, options: { model?: ModelType }): Record<string, any> {
   const config: Record<string, any> = {
     $schema: 'https://opencode.ai/config.json',
   }

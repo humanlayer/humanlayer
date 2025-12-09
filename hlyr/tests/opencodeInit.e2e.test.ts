@@ -211,10 +211,7 @@ describe('opencode init e2e tests', () => {
 
     it('should not duplicate .gitignore entry', async () => {
       const gitignorePath = join(testProjectDir, '.gitignore')
-      await fs.writeFile(
-        gitignorePath,
-        '# OpenCode local settings\n.opencode/opencode.local.json\n',
-      )
+      await fs.writeFile(gitignorePath, '# OpenCode local settings\n.opencode/opencode.local.json\n')
 
       const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
 
@@ -503,6 +500,179 @@ describe('opencode init e2e tests', () => {
           .then(() => true)
           .catch(() => false),
       ).toBe(false)
+    }, 15000)
+  })
+
+  describe('platform compatibility guidance injection', () => {
+    it('should inject platform guidance into agents with filesystem tools', async () => {
+      const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      // Check codebase-locator agent (has Grep, Glob, LS tools)
+      const codebaseLocatorPath = join(testProjectDir, '.opencode', 'agent', 'codebase-locator.md')
+      if (
+        await fs
+          .stat(codebaseLocatorPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        const content = await fs.readFile(codebaseLocatorPath, 'utf8')
+
+        // Should contain platform compatibility section
+        expect(content).toContain('## Platform Compatibility')
+        expect(content).toContain('grep')
+        expect(content).toContain('glob')
+        expect(content).toContain('list')
+        expect(content).toContain('forward slashes')
+        expect(content).toContain('cross-platform')
+
+        // Should come after frontmatter and before main content
+        const lines = content.split('\n')
+        const platformHeaderIdx = lines.findIndex(l => l.includes('## Platform Compatibility'))
+        const frontmatterEnd = lines.findIndex((l, idx) => idx > 0 && l === '---')
+        expect(platformHeaderIdx).toBeGreaterThan(frontmatterEnd)
+      }
+    }, 15000)
+
+    it('should inject platform guidance into thoughts-locator agent', async () => {
+      const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const thoughtsLocatorPath = join(testProjectDir, '.opencode', 'agent', 'thoughts-locator.md')
+      if (
+        await fs
+          .stat(thoughtsLocatorPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        const content = await fs.readFile(thoughtsLocatorPath, 'utf8')
+
+        // Should contain platform compatibility section
+        expect(content).toContain('## Platform Compatibility')
+        expect(content).toContain('grep')
+        expect(content).toContain('glob')
+        expect(content).toContain('list')
+        expect(content).toContain('cross-platform')
+      }
+    }, 15000)
+
+    it('should inject platform guidance into commands that reference paths', async () => {
+      const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      // Check research_codebase command (references thoughts/, codebase, directories)
+      const researchPath = join(testProjectDir, '.opencode', 'command', 'research_codebase.md')
+      if (
+        await fs
+          .stat(researchPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        const content = await fs.readFile(researchPath, 'utf8')
+
+        // Should contain platform compatibility section
+        expect(content).toContain('## Platform Compatibility')
+        expect(content).toContain('forward slashes')
+        expect(content).toContain('cross-platform')
+      }
+    }, 15000)
+
+    it('should inject platform guidance into create_plan command', async () => {
+      const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const createPlanPath = join(testProjectDir, '.opencode', 'command', 'create_plan.md')
+      if (
+        await fs
+          .stat(createPlanPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        const content = await fs.readFile(createPlanPath, 'utf8')
+
+        // Should contain platform compatibility section (references thoughts/, @codebase-locator)
+        expect(content).toContain('## Platform Compatibility')
+      }
+    }, 15000)
+
+    it('should not inject platform guidance into agents without filesystem tools', async () => {
+      const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      // Check if there are any agents without grep/glob/list tools
+      // If thoughts-analyzer exists and doesn't use those tools, check it
+      const thoughtsAnalyzerPath = join(testProjectDir, '.opencode', 'agent', 'thoughts-analyzer.md')
+      if (
+        await fs
+          .stat(thoughtsAnalyzerPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        const content = await fs.readFile(thoughtsAnalyzerPath, 'utf8')
+
+        // Check the frontmatter to see if it has filesystem tools
+        const toolsMatch = content.match(/tools:\s*\n((?:\s+\w+:\s*\w+\s*\n)+)/)
+        if (toolsMatch) {
+          const toolsSection = toolsMatch[1]
+          const hasFilesystemTools =
+            toolsSection.includes('grep:') ||
+            toolsSection.includes('glob:') ||
+            toolsSection.includes('list:')
+
+          // Only verify absence if no filesystem tools
+          if (!hasFilesystemTools) {
+            expect(content).not.toContain('## Platform Compatibility')
+          }
+        }
+      }
+    }, 15000)
+
+    it('should place platform guidance immediately after frontmatter', async () => {
+      const result = await runCommand(['opencode', 'init', '--all'], testProjectDir)
+
+      expect(result.exitCode).toBe(0)
+
+      const codebaseLocatorPath = join(testProjectDir, '.opencode', 'agent', 'codebase-locator.md')
+      if (
+        await fs
+          .stat(codebaseLocatorPath)
+          .then(() => true)
+          .catch(() => false)
+      ) {
+        const content = await fs.readFile(codebaseLocatorPath, 'utf8')
+
+        // Platform Compatibility should appear right after frontmatter (after the second ---)
+        const lines = content.split('\n')
+        let foundFrontmatterEnd = false
+        let frontmatterEndIdx = -1
+
+        for (let i = 1; i < lines.length; i++) {
+          if (lines[i].trim() === '---') {
+            foundFrontmatterEnd = true
+            frontmatterEndIdx = i
+            break
+          }
+        }
+
+        expect(foundFrontmatterEnd).toBe(true)
+
+        // Find first ## heading after frontmatter
+        let firstHeadingIdx = -1
+        for (let i = frontmatterEndIdx + 1; i < lines.length; i++) {
+          if (lines[i].trim().startsWith('## ')) {
+            firstHeadingIdx = i
+            break
+          }
+        }
+
+        expect(firstHeadingIdx).toBeGreaterThan(-1)
+        expect(lines[firstHeadingIdx].trim()).toBe('## Platform Compatibility')
+      }
     }, 15000)
   })
 })
