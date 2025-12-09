@@ -65,48 +65,36 @@ describe('transform.ts', () => {
 	})
 
 	describe('needsPlatformGuidance', () => {
-		it('should return true for agents with grep tool', () => {
-			expect(needsPlatformGuidance({ grep: true }, 'some content')).toBe(true)
-		})
-
-		it('should return true for agents with glob tool', () => {
-			expect(needsPlatformGuidance({ glob: true }, 'some content')).toBe(true)
-		})
-
-		it('should return true for agents with list tool', () => {
-			expect(needsPlatformGuidance({ list: true }, 'some content')).toBe(true)
-		})
-
 		it('should return true when body contains thoughts/ reference', () => {
-			expect(needsPlatformGuidance(undefined, 'Check thoughts/shared/research')).toBe(true)
+			expect(needsPlatformGuidance('Check thoughts/shared/research')).toBe(true)
 		})
 
 		it('should return true when body contains codebase reference', () => {
-			expect(needsPlatformGuidance(undefined, 'Search the codebase for examples')).toBe(true)
+			expect(needsPlatformGuidance('Search the codebase for examples')).toBe(true)
 		})
 
 		it('should return true when body mentions directories', () => {
-			expect(needsPlatformGuidance(undefined, 'Check all directories in the project')).toBe(true)
-			expect(needsPlatformGuidance(undefined, 'List the directory contents')).toBe(true)
+			expect(needsPlatformGuidance('Check all directories in the project')).toBe(true)
+			expect(needsPlatformGuidance('List the directory contents')).toBe(true)
 		})
 
 		it('should return true when body mentions file paths', () => {
-			expect(needsPlatformGuidance(undefined, 'Provide the file path to the document')).toBe(true)
+			expect(needsPlatformGuidance('Provide the file path to the document')).toBe(true)
 		})
 
 		it('should return true when body references codebase agents', () => {
-			expect(needsPlatformGuidance(undefined, 'Use @codebase-locator to find files')).toBe(true)
-			expect(needsPlatformGuidance(undefined, 'Use @thoughts-locator agent')).toBe(true)
-			expect(needsPlatformGuidance(undefined, 'Invoke @codebase-analyzer')).toBe(true)
-			expect(needsPlatformGuidance(undefined, 'Use @codebase-pattern-finder')).toBe(true)
+			expect(needsPlatformGuidance('Use @codebase-locator to find files')).toBe(true)
+			expect(needsPlatformGuidance('Use @thoughts-locator agent')).toBe(true)
+			expect(needsPlatformGuidance('Invoke @codebase-analyzer')).toBe(true)
+			expect(needsPlatformGuidance('Use @codebase-pattern-finder')).toBe(true)
 		})
 
 		it('should return false when no platform guidance is needed', () => {
-			expect(needsPlatformGuidance({ read: true, write: true }, 'Simple content without paths')).toBe(false)
+			expect(needsPlatformGuidance('Simple content without paths')).toBe(false)
 		})
 
-		it('should return false for undefined tools and simple content', () => {
-			expect(needsPlatformGuidance(undefined, 'Simple task description')).toBe(false)
+		it('should return false for simple content', () => {
+			expect(needsPlatformGuidance('Simple task description')).toBe(false)
 		})
 	})
 

@@ -13,8 +13,6 @@ const __dirname = dirname(__filename)
 interface InitOptions {
 	force?: boolean
 	all?: boolean
-	alwaysThinking?: boolean
-	maxThinkingTokens?: number
 }
 
 function ensureGitignoreEntry(targetDir: string, entry: string): void {

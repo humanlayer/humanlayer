@@ -5,6 +5,53 @@ import os from 'os'
 const EOL = os.EOL
 
 /**
+ * Frontmatter parsed from YAML
+ */
+interface Frontmatter {
+	description?: string
+	agent?: string
+	subtask?: string
+	tools?: string
+	mode?: string
+	[key: string]: any // Allow additional properties
+}
+
+/**
+ * Result of parsing frontmatter from markdown content
+ */
+interface ParsedContent {
+	frontmatter: Frontmatter
+	body: string
+}
+
+/**
+ * Parse YAML frontmatter from markdown content
+ * Returns parsed frontmatter and body content
+ */
+function parseFrontmatter(content: string): ParsedContent | null {
+	// Handle both \n and \r\n line endings
+	const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/)
+
+	if (!frontmatterMatch) {
+		return null
+	}
+
+	const [, frontmatterText, body] = frontmatterMatch
+	const lines = frontmatterText.split(/\r?\n/)
+	const frontmatter: Frontmatter = {}
+
+	// Parse YAML frontmatter (simple key: value pairs)
+	for (const line of lines) {
+		const match = line.match(/^(\w+):\s*(.*)$/)
+		if (match) {
+			frontmatter[match[1]] = match[2]
+		}
+	}
+
+	return { frontmatter, body }
+}
+
+/**
  * Parse Claude tools string (comma-separated) to OpenCode tools object
  */
 export function parseClaudeTools(toolsString: string): Record<string, boolean> {
@@ -35,17 +82,9 @@ export function parseClaudeTools(toolsString: string): Record<string, boolean> {
 
 /**
  * Check if content needs cross-platform guidance
- * Returns true if the content uses filesystem tools or references paths/directories
+ * Returns true if the content references paths/directories or uses filesystem operations
  */
-export function needsPlatformGuidance(tools: Record<string, boolean> | undefined, body: string): boolean {
-	// Check if uses file-system tools
-	if (tools) {
-		const fsTools = ['grep', 'glob', 'list']
-		if (fsTools.some((tool) => tools[tool])) {
-			return true
-		}
-	}
-
+export function needsPlatformGuidance(body: string): boolean {
 	// Check if body references paths/directories
 	const pathPatterns = [
 		/thoughts\//i,
@@ -73,25 +112,14 @@ export function generatePlatformGuidance(): string {
  */
 export function transformCommandFile(content: string): string {
 	// Parse frontmatter and body
-	// Handle both \n and \r\n line endings
-	const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/)
+	const parsed = parseFrontmatter(content)
 
-	if (!frontmatterMatch) {
+	if (!parsed) {
 		// No frontmatter - treat entire content as template
 		return `---${EOL}description: Custom command${EOL}---${EOL}${EOL}${content}`
 	}
 
-	const [, frontmatter, body] = frontmatterMatch
-	const lines = frontmatter.split(/\r?\n/)
-	const fm: Record<string, any> = {}
-
-	// Parse YAML frontmatter
-	for (const line of lines) {
-		const match = line.match(/^(\w+):\s*(.*)$/)
-		if (match) {
-			fm[match[1]] = match[2]
-		}
-	}
+	const { frontmatter: fm, body } = parsed
 
 	// Transform body content
 	let transformedContent = body.trim()
@@ -129,7 +157,7 @@ export function transformCommandFile(content: string): string {
 	newFrontmatter += `---${EOL}${EOL}`
 
 	// Inject platform guidance if needed
-	if (needsPlatformGuidance(undefined, transformedContent)) {
+	if (needsPlatformGuidance(transformedContent)) {
 		return newFrontmatter + generatePlatformGuidance() + transformedContent
 	}
 
@@ -140,24 +168,14 @@ export function transformCommandFile(content: string): string {
  * Transform agent file from Claude format to OpenCode format
  */
 export function transformAgentFile(content: string): string {
-	// Handle both \n and \r\n line endings
-	const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/)
+	// Parse frontmatter and body
+	const parsed = parseFrontmatter(content)
 
-	if (!frontmatterMatch) {
+	if (!parsed) {
 		return content // Return as-is if no frontmatter
 	}
 
-	const [, frontmatter, body] = frontmatterMatch
-	const lines = frontmatter.split(/\r?\n/)
-	const fm: Record<string, any> = {}
-
-	// Parse YAML frontmatter
-	for (const line of lines) {
-		const match = line.match(/^(\w+):\s*(.*)$/)
-		if (match) {
-			fm[match[1]] = match[2]
-		}
-	}
+	const { frontmatter: fm, body } = parsed
 
 	// Build OpenCode frontmatter
 	let newFrontmatter = `---${EOL}`
@@ -181,12 +199,14 @@ export function transformAgentFile(content: string): string {
 
 	newFrontmatter += `---${EOL}${EOL}`
 
-	// Parse tools for guidance detection
-	const toolsObj = fm.tools ? parseClaudeTools(fm.tools) : undefined
 	const bodyContent = body.trim()
 
 	// Inject platform guidance if needed
-	if (needsPlatformGuidance(toolsObj, bodyContent)) {
+	// Agents with filesystem tools (grep, glob, list) get guidance
+	const hasFilesystemTools =
+		fm.tools && ['grep', 'glob', 'list'].some((tool) => fm.tools?.toLowerCase().includes(tool.toLowerCase()))
+
+	if (hasFilesystemTools || needsPlatformGuidance(bodyContent)) {
 		return newFrontmatter + generatePlatformGuidance() + bodyContent
 	}
 
