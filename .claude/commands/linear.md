@@ -8,20 +8,76 @@ You are tasked with managing Linear tickets, including creating tickets from tho
 
 ## Initial Setup
 
-First, verify that Linear MCP tools are available by checking if any `mcp__linear__` tools exist. If not, respond:
+1. First, verify that Linear CLI tool called `linearis` exists. The CLI tool is borrowed from https://github.com/czottmann/linearis# 
 ```
-I need access to Linear tools to help with ticket management. Please run the `/mcp` command to enable the Linear MCP server, then try again.
+I need access to `linearis` tools to help with ticket management. 
+```
+2. `linearis` needs an API key to be configured, Check using `linearis teams list` weather you can list teams, if you cannot ask the user to provide an API key.
+
+3. If you have access to `linearis`, confirm the `team` using `linearis teams list |jq -r '[.[] | .["name"] ]|to_entries | .[] | "\(.key + 1): \(.value)"`
+which should produce a list like:
+```
+1: Humanlayer
+2: numiai
+```
+Now Ask the user:
+```
+I need to know which team you want access to to get you the ticket. Please Select a number.
+```
+The user MUST provide a team number or name matching the above list.
+If an error happens with the command or no team name is provided by user, state that you must know the team name to proceed and DO NOT proceeed further. ONLY one team can be selected at a time.
+
+4. Once they give you the team name, determine the project name  e.g. if the team number selected is #2 i.e. `numiai`, use  `linearis projects  list |jq -r '[.[]| select(any(.teams[]; .name == "numiai"))] | [.[] |.["name"]] |to_entries | .[] | "\(.key + 1): \(.value)"'` to determin the projects available in linear. It should produce a list like:
+```
+1: Tooling
+2: Scheduling API & Models v1
 ```
 
-If tools are available, respond based on the user's request:
+Now ask the user:
+
+```
+I need to know which project you want access to to get you the ticket. Please select a number.
+```
+The user MUST provide a project number or name matching the above list.
+If an error happens with the command or no project name is provided by user, state that you must know the project name to proceed and DO NOT proceeed further. ONLY one project can be selected.
+
+5. Given the team name and project name determine the total number of issues in the project:  `linearis issues list | jq '[.[] | select(.team.name== "numiai" and .project.name == "Scheduling API & Models v1" )] | length'`. 
+It should return a number > 0.
+
+6. Use the general template ` linearis issues list | jq '[.[] | select(.team.name== "numiai" and .project.name == "Scheduling API & Models v1" )]'` with jq filters for `team` and `project`.  
+
+```
+I can see 
+The tools are available via `linearis` tools are available, respond based on the user's request:
 
 ### For general requests:
 ```
 I can help you with Linear tickets. What would you like to do?
 1. Create a new ticket from a thoughts document
 2. Add a comment to a ticket (I'll use our conversation context)
-3. Search for tickets
-4. Update ticket status or details
+3. A user can search for tickets using one or more of the following possible fields:
+```
+[
+  "assignee",
+  "comments",
+  "createdAt",
+  "description",
+  "embeds",
+  "id",
+  "identifier",
+  "labels",
+  "parentIssue",
+  "priority",
+  "project",
+  "state",
+  "subIssues",
+  "team",
+  "title",
+  "updatedAt"
+]
+```
+4. Update ticket per the fields provided by `linearis issues update --help` command.
+5. List the parent ticket of all the issues using `linearis issues list --parent-ticket <parentId>`
 ```
 
 ### For specific create requests:
@@ -56,9 +112,9 @@ The team follows a specific workflow to ensure alignment before code implementat
 
 ### URL Mapping for Thoughts Documents
 When referencing thoughts documents, always provide GitHub links using the `links` parameter:
-- `thoughts/shared/...` → `https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/shared/...`
-- `thoughts/allison/...` → `https://github.com/humanlayer/thoughts/blob/main/repos/humanlayer/allison/...`
-- `thoughts/global/...` → `https://github.com/humanlayer/thoughts/blob/main/global/...`
+- `thoughts/shared/...` → `https://github.com/itissid/thoughts/blob/main/repos/therapro-demo/shared/...`
+- `thoughts/itissid/...` → `https://github.com/itissid/thoughts/blob/main/repos/therapro-demo/itissid/...`
+- `thoughts/global/...` → `https://github.com/itissid/thoughts/blob/main/global/...`
 
 ### Default Values
 - **Status**: Always create new tickets in "Triage" status
@@ -104,9 +160,9 @@ Note: meta is mutually exclusive with hld/wui. Tickets can have both hld and wui
    - Look for any existing Linear tickets mentioned
 
 4. **Get Linear workspace context:**
-   - List teams: `mcp__linear__list_teams`
+   - List teams: `linearis teams list`
    - If multiple teams, ask user to select one
-   - List projects for selected team: `mcp__linear__list_projects`
+   - List projects for selected team: `linearis projects list`
 
 5. **Draft the ticket summary:**
    Present a draft to the user:
@@ -148,16 +204,18 @@ Note: meta is mutually exclusive with hld/wui. Tickets can have both hld and wui
 
 7. **Create the Linear ticket:**
    ```
-   mcp__linear__create_issue with:
-   - title: [refined title]
-   - description: [final description in markdown]
-   - teamId: [selected team]
-   - projectId: [use default project from above unless user specifies]
-   - priority: [selected priority number, default 3]
-   - stateId: [Triage status ID]
-   - assigneeId: [if requested]
-   - labelIds: [apply automatic label assignment from above]
-   - links: [{url: "GitHub URL", title: "Document Title"}]
+   `linearis issues create [options] <title>` with:
+
+    -d, --description <desc>         issue description
+    -a, --assignee <assigneeId>      assign to user ID
+    -p, --priority <priority>        priority level (1-4)
+    --project <project>              add to project (name or ID)
+    --team <team>                    team key, name, or ID (required if not specified)
+    --labels <labels>                labels (comma-separated names or IDs)
+    --project-milestone <milestone>  project milestone name or ID (requires --project)
+    --cycle <cycle>                  cycle name or ID (requires --team)
+    --status <status>                status name or ID
+    --parent-ticket <parentId>       parent issue ID or identifier
    ```
 
 8. **Post-creation actions:**
@@ -207,7 +265,7 @@ When user wants to add a comment to a ticket:
 
 1. **Determine which ticket:**
    - Use context from the current conversation to identify the relevant ticket
-   - If uncertain, use `mcp__linear__get_issue` to show ticket details and confirm with user
+   - If uncertain, use `linearis issues read <issueId>` to show ticket details and confirm with user
    - Look for ticket references in recent work discussed
 
 2. **Format comments for clarity:**
@@ -234,34 +292,30 @@ When user wants to add a comment to a ticket:
    ```
 
 5. **Handle links properly:**
-   - If adding a link with a comment: Update the issue with the link AND mention it in the comment
-   - If only adding a link: Still create a comment noting what link was added for posterity
-   - Always add links to the issue itself using the `links` parameter
+   - Include links as markdown in the comment body
+   - For important links, also consider updating the issue description to include them
+   - Format links as: `[Title](url)` in markdown
 
-6. **For comments with links:**
-   ```
-   # First, update the issue with the link
-   mcp__linear__update_issue with:
-   - id: [ticket ID]
-   - links: [existing links + new link with proper title]
-
-   # Then, create the comment mentioning the link
-   mcp__linear__create_comment with:
-   - issueId: [ticket ID]
-   - body: [formatted comment with key insights and file references]
+6. **Create the comment:**
+   ```bash
+   linearis comments create <issueId> --body "[formatted comment with key insights, file references, and links]"
    ```
 
-7. **For links only:**
-   ```
-   # Update the issue with the link
-   mcp__linear__update_issue with:
-   - id: [ticket ID]
-   - links: [existing links + new link with proper title]
+   Example:
+   ```bash
+   linearis comments create ENG-123 --body "Implemented retry logic in webhook handler.
 
-   # Add a brief comment for posterity
-   mcp__linear__create_comment with:
-   - issueId: [ticket ID]
-   - body: "Added link: `path/to/document.md` ([View](url))"
+   Key insight: The 429 responses were clustered during batch operations.
+
+   References:
+   - [GitHub PR](https://github.com/org/repo/pull/456)
+   - \`thoughts/shared/rate_limit_analysis.md\`"
+   ```
+
+7. **For adding links to the description:**
+   If you need to add important links to the issue itself, update the description:
+   ```bash
+   linearis issues update <issueId> --description "[updated description with new links]"
    ```
 
 ### 3. Searching for Tickets
@@ -272,19 +326,39 @@ When user wants to find tickets:
    - Query text
    - Team/Project filters
    - Status filters
-   - Date ranges (createdAt, updatedAt)
 
 2. **Execute search:**
-   ```
-   mcp__linear__list_issues with:
-   - query: [search text]
-   - teamId: [if specified]
-   - projectId: [if specified]
-   - stateId: [if filtering by status]
-   - limit: 20
+   ```bash
+   # Search with query text and optional filters
+   linearis issues search "<query>" [options]
+
+   # Available options:
+   #   --team <team>            filter by team key, name, or ID
+   #   --assignee <assigneeId>  filter by assignee ID
+   #   --project <project>      filter by project name or ID
+   #   --states <states>        filter by states (comma-separated)
+   #   -l, --limit <number>     limit results (default: 10)
    ```
 
-3. **Present results:**
+   Examples:
+   ```bash
+   # Search for all issues mentioning "auth"
+   linearis issues search "auth" --limit 20
+
+   # Search within a specific team and project
+   linearis issues search "bug" --team "Engineering" --project "Backend"
+
+   # Search for issues in specific states
+   linearis issues search "feature" --states "In Dev,Code Review"
+   ```
+
+3. **For listing issues (without search query):**
+   ```bash
+   # List recent issues and filter with jq
+   linearis issues list --limit 50 | jq '[.[] | select(.team.name == "TeamName")]'
+   ```
+
+4. **Present results:**
    - Show ticket ID, title, status, assignee
    - Group by project if multiple projects
    - Include direct links to Linear
@@ -294,7 +368,9 @@ When user wants to find tickets:
 When moving tickets through the workflow:
 
 1. **Get current status:**
-   - Fetch ticket details
+   ```bash
+   linearis issues read <issueId>
+   ```
    - Show current status in workflow
 
 2. **Suggest next status:**
@@ -309,13 +385,21 @@ When moving tickets through the workflow:
    - Ready for Dev → In Dev (work started)
 
 3. **Update with context:**
-   ```
-   mcp__linear__update_issue with:
-   - id: [ticket ID]
-   - stateId: [new status ID]
+   ```bash
+   # Update status using state name or ID
+   linearis issues update <issueId> --state "<status name or ID>"
    ```
 
-   Consider adding a comment explaining the status change.
+   Examples:
+   ```bash
+   linearis issues update ENG-123 --state "In Dev"
+   linearis issues update ENG-123 --state "Code Review"
+   ```
+
+   Consider adding a comment explaining the status change:
+   ```bash
+   linearis comments create ENG-123 --body "Moving to In Dev - starting implementation"
+   ```
 
 ## Important Notes
 
@@ -323,13 +407,13 @@ When moving tickets through the workflow:
 - Keep tickets concise but complete - aim for scannable content
 - All tickets should include a clear "problem to solve" - if the user asks for a ticket and only gives implementation details, you MUST ask "To write a good ticket, please explain the problem you're trying to solve from a user perspective"
 - Focus on the "what" and "why", include "how" only if well-defined
-- Always preserve links to source material using the `links` parameter
+- Always preserve links to source material as markdown links in descriptions and comments
 - Don't create tickets from early-stage brainstorming unless requested
 - Use proper Linear markdown formatting
 - Include code references as: `path/to/file.ext:linenum`
 - Ask for clarification rather than guessing project/status
 - Remember that Linear descriptions support full markdown including code blocks
-- Always use the `links` parameter for external URLs (not just markdown links)
+- Include external URLs as markdown links in descriptions: `[Title](url)`
 - remember - you must get a "Problem to solve"!
 
 ## Comment Quality Guidelines
