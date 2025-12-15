@@ -5,26 +5,27 @@ description: "Advanced Context Engineering for coding agents - learn how to use 
 
 This is a workshop to learn how to use some advanced context engineering techniques with CodeLayer.
 
-Watch the video: [https://hlyr.dev/ace](https://hlyr.dev/ace) ([or read the post](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md))
+Watch the november video: [https://hlyr.dev/nva](https://hlyr.dev/nva) ([or read the september post](https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/ace-fca.md))
 
 More links and info: [https://github.com/ai-that-works/ai-that-works/tree/main/2025-08-05-advanced-context-engineering-for-coding-agents](https://github.com/ai-that-works/ai-that-works/tree/main/2025-08-05-advanced-context-engineering-for-coding-agents)
 
-Superthread of all related content: [https://x.com/dexhorthy/status/1978676162495688719](https://x.com/dexhorthy/status/1978676162495688719)
+Superthread of all related content: [https://x.com/dexhorthy/status/1978676162495688719](https://x.com/dexhorthy/status/1998064354223177979)
+
 All AI that works episodes: [https://github.com/ai-that-works/ai-that-works](https://github.com/ai-that-works/ai-that-works)
 
 Want to discuss these techniques? Join us in [https://humanlayer.dev/discord](https://humanlayer.dev/discord)
 
 ## Pre-Requisites
 
-- Claude Code acount and logged in on your workstation (recommend at least Max 100 account)
+- This is a guide for MacOS with M-series architecture. Ask in [https://humanlayer.dev/discord](https://humanlayer.dev/discord) for Linux/Windows/Intel Mac.
+- Claude Code account and logged in on your workstation (recommend at least Max 100 account)
 - A way to view/edit markdown files (Cursor, VSCode, vim, go-grip, etc)
 - A chosen issue to work on, ideally on an OSS repo that you have some familiarity with / understanding of
-
-We recommend using Opus for this workshop as its the best at reliably understanding and working in large codebases.
 
 ## Objectives / Outcomes
 
 - familiarity with managing claude code subagents and commands
+- familiarity with research / plan / implement workflow and how to get the most out of it.
 
 ## Step-by-step guide
 
@@ -50,16 +51,6 @@ Take the issue you want to solve and get it into a .txt or .md file in your work
 
 Follow the instructions at [https://humanlayer.dev/docs](https://humanlayer.dev/docs) to install codelayer
 
-**INSTRUCTIONS FOR WINDOWS/Linux/Intel-Mac USERS**
-Codelayer provides packaged builds for MacOS ARM architecture. If you are on Windows or Linux, or an Intel-based Mac, we recommend using the [claude code CLI](https://code.claude.com/docs/en/setup), or clone [github.com/humanlayer/humanlayer](http://github.com/humanlayer/humanlayer) and run `make codelayer-dev`.
-
-You can grab the research, plan and implement prompts from [https://github.com/humanlayer/humanlayer/tree/main/.claude](https://github.com/humanlayer/humanlayer/tree/main/.claude) - copy the `agents` directory's contents into your `.claude/agents` directory, and copy the following commands from the `commands` directory into your own `.claude/commands` directory:
-
-* `research_codebase_nt.md`
-* `create_plan_nt.md`
-* `iterate_plan_nt.md`
-* `implement_plan.md`
-
 ### 5. Bootstrap the prompts with a codebase research task
 
 Open CodeLayer
@@ -84,7 +75,7 @@ we are working on the issue in the issue.txt file, please read the issue and res
 Do not make an implementation plan or explain how to fix.
 ```
 
-Note the "magic words" that we type at the end of every prompt.  `Do not make an implementation plan or explain how to fix.`
+Note the "magic words" that we type at the end of the research prompt.  `Do not make an implementation plan or explain how to fix.`
 
 This is baked into the base prompt, but it's helpful to repeat it.
 
@@ -107,7 +98,7 @@ work back and forth with me, sharing your open questions and phases outline befo
 
 Note the "magic words" that we type at the end of every planning prompt.  `work back and forth with me, sharing your open questions and phases outline before writing the plan`
 
-This is baked into the base prompt, but it's helpful to repeat it.
+This is baked into the base prompt, but it's helpful to repeat it. If claude just writes a plan file without asking you clarifying questions, try again with the magic words.
 
 ### 7. Implement the plan
 
@@ -151,7 +142,7 @@ The thoughts tools creates a separate git repo on your workstation to store all 
 
 ## List of potential Issues to work on
 
-A curated list of Open source issues that might be good candidates for testing the Research/Plan/Implement workflow on.
+A curated list of Open source issues that might be good candidates for testing the Research/Plan/Implement workflow on. This list is from november 2025 so some might be solved by now.
 
 1. [https://github.com/oven-sh/bun/issues/24752](https://github.com/oven-sh/bun/issues/24752)
 2. [https://github.com/electric-sql/electric/issues/3284](https://github.com/electric-sql/electric/issues/3284)
