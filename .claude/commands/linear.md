@@ -401,6 +401,129 @@ When moving tickets through the workflow:
    linearis comments create ENG-123 --body "Moving to In Dev - starting implementation"
    ```
 
+### 5. Working with Initiatives
+
+Initiatives are organization-level strategic planning entities that contain projects and can have hierarchical relationships (parent/child initiatives).
+
+#### Listing Initiatives
+
+```bash
+# List all initiatives
+linearis initiatives list
+# List with formatted output for selection
+linearis initiatives list | jq -r '[.[] | .name] | to_entries | .[] | "\(.key + 1): \(.value)"'
+# List with key fields (name, status, id)
+linearis initiatives list | jq '[.[] | {name, status, id}]'
+# Filter by status (Planned/Active/Completed)
+linearis initiatives list --status Active | jq '[.[] | {name, status}]'
+# Get initiative summary with target dates
+linearis initiatives list | jq -r '.[] | "\(.name)\t\(.status)\t\(.targetDate // "no target")"'
+# Find initiative by name
+linearis initiatives list | jq '.[] | select(.name == "Core Scheduling Platform") | {id, name, status, targetDate}'
+```
+#### Reading Initiative Details
+```bash
+# Read initiative by name or ID (includes projects)
+linearis initiatives read "Core Scheduling Platform"
+# Read with limited projects
+linearis initiatives read "Core Scheduling Platform" --projects-first 10
+# Get initiative with project summary
+linearis initiatives read "Core Scheduling Platform" | jq '{name, status, projects: [.projects[] | {name, state, progress}]}'
+# Get just the projects for an initiative
+linearis initiatives read "Core Scheduling Platform" | jq '.projects'
+# Get initiative owner
+linearis initiatives read "Core Scheduling Platform" | jq '{name, owner: .owner.name}'
+```
+#### Initiative Fields Reference
+Available fields in initiative objects:
+```json
+[
+  "id",
+  "name",
+  "description",
+  "content",
+  "status",
+  "targetDate",
+  "owner",
+  "createdAt",
+  "updatedAt",
+  "projects"
+]
+```
+Project fields within initiatives:
+```json
+[
+  "id",
+  "name",
+  "state",
+  "progress"
+]
+```
+#### CLI Options Reference
+```bash
+# linearis initiatives list [options]
+#   --status <status>     filter by status (Planned/Active/Completed)
+#   --owner <ownerId>     filter by owner ID
+#   -l, --limit <number>  limit results (default: 50)
+# linearis initiatives read [options] <initiativeIdOrName>
+#   --projects-first <n>  how many projects to fetch (default: 50)
+```
+
+#### Updating Initiatives
+
+```bash
+# Update short description
+linearis initiatives update "Initiative Name" --description "New short description"
+
+# Update body content (full markdown)
+linearis initiatives update "Initiative Name" --content "# New Body Content
+
+This is the full body in markdown format."
+
+# Update status
+linearis initiatives update "Initiative Name" --status Active
+
+# Update multiple fields at once
+linearis initiatives update "Initiative Name" --description "Updated summary" --status Completed
+
+# Update by UUID
+linearis initiatives update <uuid> --name "Renamed Initiative"
+```
+
+**Available update options:**
+- `-n, --name <name>` - New initiative name
+- `-d, --description <desc>` - New short description
+- `--content <content>` - New body content (markdown)
+- `--status <status>` - New status (Planned/Active/Completed)
+- `--owner <ownerId>` - New owner user ID
+- `--target-date <date>` - New target date (YYYY-MM-DD)
+
+**Note:** At least one update option is required.
+
+#### Example: Getting initiative context for a ticket
+
+When working on a ticket, you may want to understand the broader initiative context:
+
+```bash
+# 1. Find which initiative a project belongs to
+linearis initiatives list | jq '.[] | select(.projects[]?.name == "ProjectName") | {name, status, content}'
+
+# 2. Get full initiative details including all projects
+linearis initiatives read "Initiative Name" | jq '{name, content, projects: .projects[].name}'
+
+# 3. List all projects under an Active initiative
+linearis initiatives list --status Active | jq '.[] | {initiative: .name, projects: .projects}'
+```
+
+#### Key Fields
+
+| Field | Description |
+|-------|-------------|
+| `description` | Short description (shown in lists) |
+| `content` | Full body content in markdown (the "body" of the initiative) |
+| `projects` | Array of projects associated with the initiative |
+| `subInitiatives` | Child initiatives for hierarchical planning |
+
 ## Important Notes
 
 - Tag users in descriptions and comments using `@[name](ID)` format, e.g., `@[dex](16765c85-2286-4c0f-ab49-0d4d79222ef5)`
