@@ -345,12 +345,15 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 	// Publish event for real-time updates
 	m.publishNewApprovalEvent(approval)
 
-	if err := m.store.LinkConversationEventToApprovalUsingToolID(ctx, sessionID, toolUseID, approval.ID); err != nil {
-		// Log but don't fail
-		// TODO(1): Don't ship if above LinkConversationEventToApprovalUsingToolID does not retry
-		// it's possible, albeit unlikely, that the raw_event has not made it to
-		// conversation_events yet
-		return nil, fmt.Errorf("failed to correlate approval: %w", err)
+	// Retry correlation with backoff to handle race condition where the
+	// conversation event may not have been persisted yet
+	if err := m.retryLinkConversationEvent(ctx, sessionID, toolUseID, approval.ID); err != nil {
+		// Log but don't fail - correlation is best effort
+		slog.Warn("failed to correlate approval with tool call after retries",
+			"error", err,
+			"approval_id", approval.ID,
+			"session_id", sessionID,
+			"tool_use_id", toolUseID)
 	}
 
 	// Handle status-specific post-creation tasks
@@ -392,4 +395,43 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 // isEditTool checks if a tool name is one of the edit tools
 func isEditTool(toolName string) bool {
 	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
+}
+
+// retryLinkConversationEvent retries linking a conversation event to an approval
+// with exponential backoff. This handles the race condition where the raw_event
+// may not have been persisted to conversation_events yet.
+func (m *manager) retryLinkConversationEvent(ctx context.Context, sessionID, toolUseID, approvalID string) error {
+	const maxRetries = 3
+	backoff := 50 * time.Millisecond
+
+	var lastErr error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+				backoff *= 2 // exponential backoff
+			}
+		}
+
+		err := m.store.LinkConversationEventToApprovalUsingToolID(ctx, sessionID, toolUseID, approvalID)
+		if err == nil {
+			if attempt > 0 {
+				slog.Debug("correlation succeeded after retry",
+					"attempt", attempt+1,
+					"session_id", sessionID,
+					"tool_use_id", toolUseID)
+			}
+			return nil
+		}
+		lastErr = err
+		slog.Debug("correlation attempt failed, retrying",
+			"attempt", attempt+1,
+			"error", err,
+			"session_id", sessionID,
+			"tool_use_id", toolUseID)
+	}
+
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
