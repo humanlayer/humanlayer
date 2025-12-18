@@ -128,6 +128,10 @@ impl DaemonManager {
             if !dev_db.exists() {
                 let source_db = humanlayer_dir.join("daemon-dev.db");
                 if source_db.exists() {
+                    if let Some(parent) = dev_db.parent() {
+                        fs::create_dir_all(parent)
+                            .map_err(|e| format!("Failed to create database directory: {e}"))?;
+                    }
                     fs::copy(&source_db, &dev_db)
                         .map_err(|e| format!("Failed to copy dev database: {e}"))?;
                 }

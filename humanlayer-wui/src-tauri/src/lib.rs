@@ -174,7 +174,8 @@ pub fn get_branch_id(is_dev: bool, branch_override: Option<String>) -> String {
         let branch = branch_override
             .or_else(get_git_branch)
             .unwrap_or_else(|| "dev".to_string());
-        extract_ticket_id(&branch).unwrap_or(branch)
+        let id = extract_ticket_id(&branch).unwrap_or(branch);
+        id.replace('/', "-")
     } else {
         "production".to_string()
     }
