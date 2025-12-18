@@ -109,6 +109,21 @@ export function formatLineCount(content: string, subtractSystemLines: number = 0
 }
 
 /**
+ * Strip system reminder from content
+ * @param content The content to strip system reminder from
+ * @returns The content without the system reminder
+ */
+
+export function stripSystemReminder(content: string): string {
+  const reminderStart = content.indexOf('<system-reminder>')
+  if (reminderStart === -1) {
+    return content
+  }
+
+  return content.slice(0, reminderStart).trimEnd()
+}
+
+/**
  * Format file count for display
  * @param count Number of files
  * @returns Formatted file count string
