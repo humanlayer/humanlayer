@@ -18,11 +18,12 @@ const AVAILABLE_THEMES: Theme[] = [
   'solarized-light',
   'catppuccin',
   'framer-dark',
+  'framer-light-hc',
   'gruvbox-dark',
   'high-contrast',
 ]
 
-const LIGHT_THEMES: Theme[] = ['solarized-light', 'framer-light', 'gruvbox-light']
+const LIGHT_THEMES: Theme[] = ['solarized-light', 'framer-light', 'framer-light-hc', 'gruvbox-light']
 
 export const createThemeSlice: StateCreator<ThemeSlice, [], [], ThemeSlice> = (set, get) => ({
   theme: 'solarized-dark',
