@@ -17,6 +17,21 @@ make codelayer-dev
 
 When the Web UI launches in dev mode, you'll need to launch a managed daemon with it - click the 🐞 icon in the bottom right and launch a managed daemon.
 
+### Linux Development
+
+On Linux, you'll need Tauri dependencies installed. The setup script handles this automatically for most distributions:
+
+```bash
+# Debian/Ubuntu
+sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+# Arch Linux
+sudo pacman -S webkit2gtk-4.1 base-devel curl wget openssl gtk3 libappindicator-gtk3 librsvg
+
+# Fedora
+sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file gcc gcc-c++ make gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+```
+
 ## Commands cheat sheet
 
 1. `/research_codebase`
