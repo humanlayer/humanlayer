@@ -254,6 +254,10 @@ jobs:
           fi
         env:
           NODE_ENV: "production"
+          # Prevent strip from failing on binaries with .relr.dyn sections (common on newer distros)
+          NO_STRIP: "1"
+          # Allow AppImage tools to run without FUSE (for containerized builds)
+          APPIMAGE_EXTRACT_AND_RUN: "1"
 
       - name: List built artifacts
         run: |
@@ -355,4 +359,12 @@ jobs:
 
             # Fedora
             sudo dnf install fuse
+            ```
+
+            **WebKitGTK rendering issues (Wayland/Nvidia):**
+
+            If you see a blank window or graphics glitches:
+            ```bash
+            WEBKIT_DISABLE_DMABUF_RENDERER=1 ./CodeLayer-linux-x64.AppImage
+            # Or force X11: GDK_BACKEND=x11 ./CodeLayer-linux-x64.AppImage
             ```

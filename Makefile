@@ -276,8 +276,10 @@ codelayer-nightly-bundle-linux:
 	cd humanlayer-wui/src-tauri && cp -r icons icons-original && rm -rf icons && cp -r icons-nightly icons
 	@echo "Building Tauri app for Linux with nightly config..."
 	@# Use trap to ensure icons are restored even if build fails
+	@# NO_STRIP=1 prevents strip from failing on binaries with .relr.dyn sections
+	@# APPIMAGE_EXTRACT_AND_RUN=1 allows AppImage tools to run without FUSE
 	cd humanlayer-wui && ( \
-		bun run tauri build --config src-tauri/tauri.nightly.conf.json --bundles appimage,deb; \
+		NO_STRIP=1 APPIMAGE_EXTRACT_AND_RUN=1 bun run tauri build --config src-tauri/tauri.nightly.conf.json --bundles appimage,deb; \
 		EXIT_CODE=$$?; \
 		echo "Restoring original icons..."; \
 		cd src-tauri && rm -rf icons && cp -r icons-original icons && rm -rf icons-original; \
