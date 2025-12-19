@@ -25,11 +25,26 @@ On Linux, you'll need Tauri dependencies installed. The setup script handles thi
 # Debian/Ubuntu
 sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
 
-# Arch Linux
+# Arch Linux (and derivatives like EndeavourOS, Manjaro, Garuda)
 sudo pacman -S webkit2gtk-4.1 base-devel curl wget openssl gtk3 libappindicator-gtk3 librsvg
 
 # Fedora
 sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file gcc gcc-c++ make gtk3-devel libappindicator-gtk3-devel librsvg2-devel
+```
+
+#### Wayland/WebKitGTK Issues
+
+If you're developing on Wayland (especially with Nvidia GPUs), you may encounter rendering issues. Try these environment variables:
+
+```bash
+# Disable DMABUF renderer (recommended first try)
+WEBKIT_DISABLE_DMABUF_RENDERER=1 make codelayer-dev
+
+# Or force X11 backend
+GDK_BACKEND=x11 make codelayer-dev
+
+# Or disable compositing
+WEBKIT_DISABLE_COMPOSITING_MODE=1 make codelayer-dev
 ```
 
 ## Commands cheat sheet
