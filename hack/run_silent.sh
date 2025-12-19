@@ -158,10 +158,26 @@ command_exists() {
 ensure_golangci_lint() {
     if ! command_exists golangci-lint; then
         echo "  Installing golangci-lint..."
-        brew install golangci-lint >/dev/null 2>&1 || {
+        if command_exists brew; then
+            brew install golangci-lint >/dev/null 2>&1 || {
+                echo "  ${RED}Failed to install golangci-lint${NC}"
+                return 1
+            }
+        elif command_exists go; then
+            local gobin_path
+            gobin_path="$(go env GOBIN)"
+            if [ -z "$gobin_path" ]; then
+                gobin_path="$(go env GOPATH)/bin"
+            fi
+            export PATH="$gobin_path:$PATH"
+            go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest >/dev/null 2>&1 || {
+                echo "  ${RED}Failed to install golangci-lint${NC}"
+                return 1
+            }
+        else
             echo "  ${RED}Failed to install golangci-lint${NC}"
             return 1
-        }
+        fi
     fi
 }
 

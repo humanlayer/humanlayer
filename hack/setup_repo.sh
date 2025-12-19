@@ -8,6 +8,14 @@ set -e  # Exit on any error
 # Source the run_silent utility
 source hack/run_silent.sh
 
+if command -v go &> /dev/null; then
+    GOBIN_PATH="$(go env GOBIN)"
+    if [ -z "$GOBIN_PATH" ]; then
+        GOBIN_PATH="$(go env GOPATH)/bin"
+    fi
+    export PATH="$GOBIN_PATH:$PATH"
+fi
+
 # Detect if running in CI
 if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
     IS_CI=true
