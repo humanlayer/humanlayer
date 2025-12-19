@@ -667,6 +667,88 @@
   --terminal-color-15: #e5e5e5; /* Bright White */
 }
 
+/* Starscape Dark - Brand-aligned cosmic dark */
+[data-theme='starscape-dark'] {
+  /* Core background/foreground colors */
+  --terminal-bg: hsl(222, 84%, 5%); /* Deep space */
+  --terminal-bg-alt: hsl(222, 84%, 8%); /* Elevated surface */
+  --terminal-fg: hsl(210, 40%, 98%); /* Primary text */
+  --terminal-fg-dim: hsl(215, 20%, 65%); /* Muted text */
+
+  /* Accent and UI colors */
+  --terminal-accent: #a855f7; /* Cosmic purple */
+  --terminal-accent-dim: rgba(168, 85, 247, 0.25); /* Soft glow */
+  --terminal-accent-alt: #06b6d4; /* Cosmic cyan */
+  --terminal-border: rgba(255, 255, 255, 0.12); /* Glass border */
+
+  /* Status colors */
+  --terminal-success: #22c55e; /* Emerald */
+  --terminal-warning: #eab308; /* Yellow highlight */
+  --terminal-error: #ec4899; /* Cosmic pink */
+  --terminal-selection: rgba(168, 85, 247, 0.2);
+
+  /* Terminal ANSI colors - Starscape palette */
+  --terminal-color-0: #0b1221; /* Black */
+  --terminal-color-1: #ec4899; /* Red/Pink */
+  --terminal-color-2: #22c55e; /* Green */
+  --terminal-color-3: #eab308; /* Yellow */
+  --terminal-color-4: #8b5cf6; /* Blue/Violet */
+  --terminal-color-5: #f472b6; /* Magenta/Pink */
+  --terminal-color-6: #06b6d4; /* Cyan */
+  --terminal-color-7: #e2e8f0; /* White */
+
+  /* Bright colors */
+  --terminal-color-8: #1f2937; /* Bright Black */
+  --terminal-color-9: #f472b6; /* Bright Red/Pink */
+  --terminal-color-10: #4ade80; /* Bright Green */
+  --terminal-color-11: #facc15; /* Bright Yellow */
+  --terminal-color-12: #60a5fa; /* Bright Blue */
+  --terminal-color-13: #c084fc; /* Bright Magenta */
+  --terminal-color-14: #22d3ee; /* Bright Cyan */
+  --terminal-color-15: #ffffff; /* Bright White */
+}
+
+/* Starscape Light - Brand-aligned light */
+[data-theme='starscape-light'] {
+  /* Core background/foreground colors */
+  --terminal-bg: #f8fafc; /* Soft light */
+  --terminal-bg-alt: #eef2ff; /* Lavender wash */
+  --terminal-fg: #0f172a; /* Primary text */
+  --terminal-fg-dim: #475569; /* Muted text */
+
+  /* Accent and UI colors */
+  --terminal-accent: #8b5cf6; /* Cosmic violet */
+  --terminal-accent-dim: rgba(139, 92, 246, 0.25);
+  --terminal-accent-alt: #06b6d4; /* Cosmic cyan */
+  --terminal-border: #cbd5e1; /* Subtle border */
+
+  /* Status colors */
+  --terminal-success: #22c55e; /* Emerald */
+  --terminal-warning: #eab308; /* Yellow highlight */
+  --terminal-error: #ec4899; /* Cosmic pink */
+  --terminal-selection: #eae7ff;
+
+  /* Terminal ANSI colors - Starscape palette (light) */
+  --terminal-color-0: #e2e8f0; /* Black */
+  --terminal-color-1: #ec4899; /* Red/Pink */
+  --terminal-color-2: #22c55e; /* Green */
+  --terminal-color-3: #eab308; /* Yellow */
+  --terminal-color-4: #6366f1; /* Blue/Violet */
+  --terminal-color-5: #a855f7; /* Magenta/Purple */
+  --terminal-color-6: #06b6d4; /* Cyan */
+  --terminal-color-7: #0f172a; /* White (dark text) */
+
+  /* Bright colors */
+  --terminal-color-8: #cbd5e1; /* Bright Black */
+  --terminal-color-9: #f472b6; /* Bright Red/Pink */
+  --terminal-color-10: #4ade80; /* Bright Green */
+  --terminal-color-11: #facc15; /* Bright Yellow */
+  --terminal-color-12: #60a5fa; /* Bright Blue */
+  --terminal-color-13: #c084fc; /* Bright Magenta */
+  --terminal-color-14: #22d3ee; /* Bright Cyan */
+  --terminal-color-15: #111827; /* Bright White (deep text) */
+}
+
 /* L33t - Classic hacker terminal theme */
 [data-theme='l33t'] {
   /* Core background/foreground colors */

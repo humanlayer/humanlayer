@@ -16,13 +16,15 @@ export interface ThemeSlice {
 const AVAILABLE_THEMES: Theme[] = [
   'solarized-dark',
   'solarized-light',
+  'starscape-dark',
+  'starscape-light',
   'catppuccin',
   'framer-dark',
   'gruvbox-dark',
   'high-contrast',
 ]
 
-const LIGHT_THEMES: Theme[] = ['solarized-light', 'framer-light', 'gruvbox-light']
+const LIGHT_THEMES: Theme[] = ['solarized-light', 'starscape-light', 'framer-light', 'gruvbox-light']
 
 export const createThemeSlice: StateCreator<ThemeSlice, [], [], ThemeSlice> = (set, get) => ({
   theme: 'solarized-dark',

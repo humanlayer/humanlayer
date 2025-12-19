@@ -16,6 +16,7 @@ import {
   CloudLightning,
   Heart,
   Terminal,
+  Sparkles,
 } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -27,6 +28,8 @@ import { useHotkeyUnicodeChars } from '../hooks/useHotkeyUnicodeChars'
 const themes: { value: Theme; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { value: 'solarized-dark', label: 'Solarized Dark', icon: Moon },
   { value: 'solarized-light', label: 'Solarized Light', icon: Sun },
+  { value: 'starscape-dark', label: 'Starscape Dark', icon: Sparkles },
+  { value: 'starscape-light', label: 'Starscape Light', icon: Sun },
   { value: 'cappuccino', label: 'Cappuccino', icon: Coffee },
   { value: 'catppuccin', label: 'Catppuccin', icon: Cat },
   { value: 'high-contrast', label: 'High Contrast', icon: ScanEye },
