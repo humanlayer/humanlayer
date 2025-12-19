@@ -367,9 +367,9 @@ func TestGetSlashCommandsWithGlobalCommands(t *testing.T) {
 	tempDir := t.TempDir()
 	localCommandsDir := filepath.Join(tempDir, ".claude", "commands")
 
-	// Create a temp home directory for global commands
+	// Create a temp home directory for global commands (default is ~/.claude/commands)
 	tempHomeDir := t.TempDir()
-	globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands")
+	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
 
 	// Set HOME env var temporarily for this test
 	originalHome := os.Getenv("HOME")
@@ -528,9 +528,9 @@ func TestGetSlashCommandsGlobalOverridesLocal(t *testing.T) {
 	tempDir := t.TempDir()
 	localCommandsDir := filepath.Join(tempDir, ".claude", "commands")
 
-	// Create a temp home directory for global commands
+	// Create a temp home directory for global commands (default is ~/.claude/commands)
 	tempHomeDir := t.TempDir()
-	globalCommandsDir := filepath.Join(tempHomeDir, ".config", "claude-code", "commands")
+	globalCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
 
 	// Set HOME env var temporarily for this test
 	originalHome := os.Getenv("HOME")
@@ -740,9 +740,8 @@ func TestGetSlashCommandsFallsBackToDefaultWhenCLAUDE_CONFIG_DIRNotSet(t *testin
 	tempDir := t.TempDir()
 	tempHomeDir := t.TempDir()
 
-	// Set up directory structure in default location (~/.config/claude-code/commands)
-	defaultConfigDir := filepath.Join(tempHomeDir, ".config", "claude-code")
-	defaultCommandsDir := filepath.Join(defaultConfigDir, "commands")
+	// Set up directory structure in default location (~/.claude/commands)
+	defaultCommandsDir := filepath.Join(tempHomeDir, ".claude", "commands")
 	assert.NoError(t, os.MkdirAll(defaultCommandsDir, 0755))
 
 	// Create test commands in default location
