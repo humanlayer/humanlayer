@@ -186,6 +186,22 @@ impl DaemonManager {
             env_vars.push(("GIN_MODE".to_string(), "debug".to_string()));
         }
 
+        // Add the directory containing the daemon to the PATH so it can find the bundled hlyr/humanlayer binary
+        if let Some(daemon_dir) = daemon_path.parent() {
+            if let Some(daemon_dir_str) = daemon_dir.to_str() {
+                let current_path = env::var("PATH").unwrap_or_default();
+                let new_path = if current_path.is_empty() {
+                    daemon_dir_str.to_string()
+                } else {
+                    format!("{}:{}", daemon_dir_str, current_path)
+                };
+                
+                // Remove existing PATH if present in env_vars
+                env_vars.retain(|(k, _)| k != "PATH");
+                env_vars.push(("PATH".to_string(), new_path));
+            }
+        }
+
         // Start daemon with stdout capture and stderr logging
         let mut cmd = Command::new(&daemon_path);
 

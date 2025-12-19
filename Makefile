@@ -180,19 +180,31 @@ humanlayer-binary-linux-x64: humanlayer-build
 .PHONY: codelayer-bundle
 codelayer-bundle:
 	@echo "Building daemon for bundling..."
-	cd hld && GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+	cd hld && GOOS=darwin GOARCH=arm64 go build -ldflags "-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer" -o hld-darwin-arm64 ./cmd/hld
 	@echo "Building humanlayer for bundling..."
 	cd hlyr && bun install && bun run build
 	cd hlyr && bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
+	@echo "Copying binaries to Tauri resources..."
+	mkdir -p humanlayer-wui/src-tauri/bin
+	cp hld/hld-darwin-arm64 humanlayer-wui/src-tauri/bin/hld
+	cp hlyr/humanlayer-darwin-arm64 humanlayer-wui/src-tauri/bin/humanlayer
+	chmod +x humanlayer-wui/src-tauri/bin/hld
+	chmod +x humanlayer-wui/src-tauri/bin/humanlayer
 
 # Build CodeLayer for Linux with bundled daemon and humanlayer
 .PHONY: codelayer-bundle-linux
 codelayer-bundle-linux:
 	@echo "Building daemon for Linux bundling..."
-	cd hld && GOOS=linux GOARCH=amd64 go build -o hld-linux-x64 ./cmd/hld
+	cd hld && GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer" -o hld-linux-x64 ./cmd/hld
 	@echo "Building humanlayer for Linux bundling..."
 	cd hlyr && bun install && bun run build
 	cd hlyr && bun build ./dist/index.js --compile --target=bun-linux-x64 --outfile=humanlayer-linux-x64
+	@echo "Copying binaries to Tauri resources..."
+	mkdir -p humanlayer-wui/src-tauri/bin
+	cp hld/hld-linux-x64 humanlayer-wui/src-tauri/bin/hld
+	cp hlyr/humanlayer-linux-x64 humanlayer-wui/src-tauri/bin/humanlayer
+	chmod +x humanlayer-wui/src-tauri/bin/hld
+	chmod +x humanlayer-wui/src-tauri/bin/humanlayer
 
 codelayer-nightly-bundle:
 	@echo "Setting build version..."
