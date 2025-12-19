@@ -44,7 +44,8 @@ export function EditToolCallContent({
         name="Edit"
         description={toolInput.replace_all ? 'Replace all occurrences' : undefined}
         primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
-        nameColor={statusColor}
+        nameColor={hasError ? undefined : statusColor}
+        nameStyle={hasError ? { color: 'var(--terminal-error)' } : undefined}
         status={
           <div className="flex items-center gap-2">
             <StatusBadge status={approvalStatus} />
