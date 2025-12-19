@@ -882,6 +882,99 @@ func isDraftEmpty(sess *store.Session) bool {
 	return !hasTitle && !hasQuery && !hasEditorState && !hasNonDefaultModel
 }
 
+// HardDeleteSession permanently deletes a session regardless of status
+func (h *SessionHandlers) HardDeleteSession(ctx context.Context, req api.HardDeleteSessionRequestObject) (api.HardDeleteSessionResponseObject, error) {
+	// Verify session exists
+	_, err := h.store.GetSession(ctx, string(req.Id))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.HardDeleteSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-1002",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		slog.Error("Failed to get session for hard delete",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "HardDeleteSession",
+		)
+		return api.HardDeleteSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	// Permanently delete
+	if err := h.store.HardDeleteSession(ctx, string(req.Id)); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return api.HardDeleteSession404JSONResponse{
+				NotFoundJSONResponse: api.NotFoundJSONResponse{
+					Error: api.ErrorDetail{
+						Code:    "HLD-1002",
+						Message: "Session not found",
+					},
+				},
+			}, nil
+		}
+		slog.Error("Failed to hard delete session",
+			"error", fmt.Sprintf("%v", err),
+			"session_id", req.Id,
+			"operation", "HardDeleteSession",
+		)
+		return api.HardDeleteSession500JSONResponse{
+			InternalErrorJSONResponse: api.InternalErrorJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-4009",
+					Message: err.Error(),
+				},
+			},
+		}, nil
+	}
+
+	return api.HardDeleteSession204Response{}, nil
+}
+
+// BulkHardDeleteSessions permanently deletes multiple sessions
+func (h *SessionHandlers) BulkHardDeleteSessions(ctx context.Context, req api.BulkHardDeleteSessionsRequestObject) (api.BulkHardDeleteSessionsResponseObject, error) {
+	if req.Body == nil || len(req.Body.SessionIds) == 0 {
+		return api.BulkHardDeleteSessions400JSONResponse{
+			BadRequestJSONResponse: api.BadRequestJSONResponse{
+				Error: api.ErrorDetail{
+					Code:    "HLD-3001",
+					Message: "session_ids must not be empty",
+				},
+			},
+		}, nil
+	}
+
+	var deleted, failed int
+	for _, id := range req.Body.SessionIds {
+		if err := h.store.HardDeleteSession(ctx, id); err != nil {
+			failed++
+			slog.Warn("Failed to hard delete session in bulk operation",
+				"error", err,
+				"session_id", id,
+				"operation", "BulkHardDeleteSessions",
+			)
+		} else {
+			deleted++
+		}
+	}
+
+	return api.BulkHardDeleteSessions200JSONResponse{
+		Deleted: deleted,
+		Failed:  failed,
+	}, nil
+}
+
 // LaunchDraftSession launches a draft session
 func (h *SessionHandlers) LaunchDraftSession(ctx context.Context, req api.LaunchDraftSessionRequestObject) (api.LaunchDraftSessionResponseObject, error) {
 	// Get the session and verify it's a draft
@@ -1051,7 +1144,31 @@ func (h *SessionHandlers) ContinueSession(ctx context.Context, req api.ContinueS
 	// Build continue config
 	continueConfig := session.ContinueSessionConfig{
 		ParentSessionID: string(req.Id),
-		Query:           req.Body.Query,
+	}
+
+	// Handle content blocks or legacy query
+	if req.Body.Content != nil && len(*req.Body.Content) > 0 {
+		// Convert API content blocks to session content blocks
+		contentBlocks := make([]session.ContentBlock, len(*req.Body.Content))
+		for i, block := range *req.Body.Content {
+			contentBlocks[i] = session.ContentBlock{
+				Type: string(block.Type),
+			}
+			if block.Text != nil {
+				contentBlocks[i].Text = *block.Text
+			}
+			if block.Source != nil {
+				contentBlocks[i].Source = &session.ImageSource{
+					Type:      string(block.Source.Type),
+					MediaType: block.Source.MediaType,
+					Data:      block.Source.Data,
+				}
+			}
+		}
+		continueConfig.Content = contentBlocks
+	} else if req.Body.Query != nil {
+		// Legacy query format
+		continueConfig.Query = *req.Body.Query
 	}
 
 	// Handle optional fields

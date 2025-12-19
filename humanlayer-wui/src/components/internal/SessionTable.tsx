@@ -2,8 +2,17 @@ import { Session, SessionStatus } from '@/lib/daemon/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip'
 import { useHotkeys } from 'react-hotkeys-hook'
-import { useEffect, useRef, useState } from 'react'
-import { CircleOff, CheckSquare, Square, Pencil, ShieldOff } from 'lucide-react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  CircleOff,
+  CheckSquare,
+  Square,
+  Pencil,
+  ShieldOff,
+  MoreHorizontal,
+  Trash2,
+  Archive,
+} from 'lucide-react'
 import { SentryErrorBoundary } from '@/components/ErrorBoundary'
 import { getStatusTextClass } from '@/utils/component-utils'
 import { usePostHogTracking } from '@/hooks/usePostHogTracking'
@@ -30,6 +39,14 @@ import { SessionsEmptyState } from './SessionsEmptyState'
 import { ArchivedSessionsEmptyState } from './ArchivedSessionsEmptyState'
 import { showUndoToast } from '@/utils/undoToast'
 import { TOAST_IDS } from '@/constants/toastIds'
+import { DeleteSessionDialog } from './SessionDetail/components/DeleteSessionDialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 interface SessionTableProps {
   sessions: Session[]
@@ -72,6 +89,7 @@ function SessionTableInner({
     bulkArchiveSessions,
     bulkSelect,
     bulkDiscardDrafts,
+    selectRange,
   } = useStore()
 
   // Determine scope based on archived state
@@ -80,6 +98,17 @@ function SessionTableInner({
   // State for inline editing
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
+
+  // State for delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [sessionsToDelete, setSessionsToDelete] = useState<string[]>([])
+  const { clearSelection, refreshSessions } = useStore()
+
+  // Drag selection state
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartRef = useRef<string | null>(null)
+  const lastHoveredRef = useRef<string | null>(null)
+  const dragJustEndedRef = useRef(false)
 
   // Helper functions for inline editing
   const startEdit = (sessionId: string, currentTitle: string, currentSummary: string) => {
@@ -235,6 +264,115 @@ function SessionTableInner({
     }
   }
 
+  // Delete handler - opens dialog
+  const handleDeleteSessions = (sessionIds: string[]) => {
+    setSessionsToDelete(sessionIds)
+    setDeleteDialogOpen(true)
+  }
+
+  // Confirm delete handler
+  const handleConfirmDelete = async () => {
+    try {
+      if (sessionsToDelete.length === 1) {
+        await daemonClient.hardDeleteSession(sessionsToDelete[0])
+        toast.success('Session deleted')
+      } else {
+        const result = await daemonClient.bulkHardDeleteSessions(sessionsToDelete)
+        if (result.failed > 0) {
+          toast.warning(`Deleted ${result.deleted} of ${sessionsToDelete.length} sessions`, {
+            description: `${result.failed} sessions could not be deleted`,
+          })
+        } else {
+          toast.success(`Deleted ${result.deleted} sessions`)
+        }
+      }
+      // Clear selection and refresh
+      clearSelection()
+      await refreshSessions()
+    } catch (error) {
+      toast.error('Failed to delete sessions', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      })
+    } finally {
+      setDeleteDialogOpen(false)
+      setSessionsToDelete([])
+    }
+  }
+
+  // Get session ID from a mouse event target
+  const getSessionIdFromEvent = (e: React.MouseEvent | MouseEvent): string | null => {
+    const target = e.target as HTMLElement
+    const row = target.closest('[data-session-id]')
+    return row?.getAttribute('data-session-id') ?? null
+  }
+
+  // Track if we're in a potential drag state (mouse down but not yet moved)
+  const isPotentialDragRef = useRef(false)
+
+  // Handle mouse down on a row - prepare for potential drag
+  const handleRowMouseDown = (e: React.MouseEvent, session: Session) => {
+    // Don't start drag if clicking on interactive elements
+    const target = e.target as HTMLElement
+    if (
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('[role="menuitem"]') ||
+      target.closest('[data-radix-collection-item]')
+    ) {
+      return
+    }
+
+    // Only left mouse button
+    if (e.button !== 0) return
+
+    // Store the potential drag start, but don't actually start dragging yet
+    dragStartRef.current = session.id
+    lastHoveredRef.current = session.id
+    isPotentialDragRef.current = true
+    // Don't setIsDragging(true) or selectRange yet - wait for mouse move
+  }
+
+  // Handle mouse move over table - start drag only after mouse moves to different row
+  const handleTableMouseMove = (e: React.MouseEvent) => {
+    if (!dragStartRef.current) return
+
+    const currentId = getSessionIdFromEvent(e)
+    if (!currentId || currentId === lastHoveredRef.current) return
+
+    // User moved to a different row - now we start the actual drag selection
+    if (isPotentialDragRef.current && !isDragging) {
+      setIsDragging(true)
+      // Select from start to current
+      selectRange(dragStartRef.current, currentId)
+    } else if (isDragging) {
+      selectRange(dragStartRef.current, currentId)
+    }
+
+    lastHoveredRef.current = currentId
+  }
+
+  // Handle mouse up - end drag
+  const handleMouseUp = useCallback(() => {
+    // Only set dragJustEnded if we actually dragged (selected multiple rows)
+    if (isDragging) {
+      dragJustEndedRef.current = true
+      // Reset after a tick to prevent click handler from firing
+      setTimeout(() => {
+        dragJustEndedRef.current = false
+      }, 0)
+    }
+    setIsDragging(false)
+    dragStartRef.current = null
+    lastHoveredRef.current = null
+    isPotentialDragRef.current = false
+  }, [isDragging])
+
+  // Document-level mouseup listener for ending drag
+  useEffect(() => {
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => document.removeEventListener('mouseup', handleMouseUp)
+  }, [handleMouseUp])
+
   // Helper to render highlighted text
   const renderHighlightedText = (text: string, sessionId: string) => {
     if (!searchText || !matchedSessions) return text
@@ -259,9 +397,14 @@ function SessionTableInner({
   }
 
   const handleRowClick = (session: Session) => {
+    // Don't activate if drag just ended
+    if (dragJustEndedRef.current) {
+      return
+    }
+
     if (selectedSessions.size > 0) {
       toggleSessionSelection(session.id)
-      return null
+      return
     }
     handleActivateSession?.(session)
   }
@@ -654,6 +797,34 @@ function SessionTableInner({
     [focusedSession, selectedSessions, onBypassPermissions, isInlineRenameOpen],
   )
 
+  // Delete session hotkey
+  useHotkeys(
+    'backspace',
+    () => {
+      if (!focusedSession && selectedSessions.size === 0) {
+        return
+      }
+
+      // Get sessions to delete
+      const sessionsToDeleteIds =
+        selectedSessions.size > 0
+          ? Array.from(selectedSessions)
+          : focusedSession
+            ? [focusedSession.id]
+            : []
+
+      if (sessionsToDeleteIds.length > 0) {
+        handleDeleteSessions(sessionsToDeleteIds)
+      }
+    },
+    {
+      scopes: [tableScope],
+      enabled: !isSessionLauncherOpen && !isInlineRenameOpen,
+      preventDefault: true,
+    },
+    [focusedSession, selectedSessions, handleDeleteSessions, isInlineRenameOpen],
+  )
+
   return (
     <HotkeyScopeBoundary
       scope={tableScope}
@@ -662,7 +833,11 @@ function SessionTableInner({
       {sessions.length > 0 ? (
         <>
           {/* TODO(2): Fix ref warning - Table component needs forwardRef */}
-          <Table ref={tableRef}>
+          <Table
+            ref={tableRef}
+            onMouseMove={handleTableMouseMove}
+            className={cn(isDragging && 'select-none')}
+          >
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[40px]"></TableHead>
@@ -672,6 +847,7 @@ function SessionTableInner({
                 <TableHead>Model</TableHead>
                 <TableHead>Started</TableHead>
                 <TableHead>Last Activity</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -686,12 +862,14 @@ function SessionTableInner({
                     handleBlurSession?.()
                   }}
                   onClick={() => handleRowClick(session)}
+                  onMouseDown={e => handleRowMouseDown(e, session)}
                   className={cn(
                     'cursor-pointer transition-colors duration-200 border-l-2',
                     focusedSession?.id === session.id
                       ? ['border-l-[var(--terminal-accent)]', 'bg-accent/10']
                       : 'border-l-transparent',
                     session.archived && 'opacity-60',
+                    isDragging && 'cursor-default',
                   )}
                 >
                   <TableCell
@@ -849,6 +1027,42 @@ function SessionTableInner({
                       <TooltipContent>{formatAbsoluteTimestamp(session.lastActivityAt)}</TooltipContent>
                     </Tooltip>
                   </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={e => {
+                            e.stopPropagation()
+                            archiveSession(session.id, !session.archived)
+                          }}
+                        >
+                          <Archive className="mr-2 h-4 w-4" />
+                          {session.archived ? 'Unarchive' : 'Archive'}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={e => {
+                            e.stopPropagation()
+                            handleDeleteSessions([session.id])
+                          }}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -859,6 +1073,15 @@ function SessionTableInner({
       ) : (
         <SessionsEmptyState />
       )}
+      <DeleteSessionDialog
+        open={deleteDialogOpen}
+        sessionCount={sessionsToDelete.length}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteDialogOpen(false)
+          setSessionsToDelete([])
+        }}
+      />
     </HotkeyScopeBoundary>
   )
 }
