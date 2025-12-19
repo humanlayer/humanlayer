@@ -313,6 +313,21 @@ async fn get_log_directory() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn get_log_file_name(app: tauri::AppHandle) -> String {
+    let is_dev = cfg!(debug_assertions);
+
+    if is_dev {
+        // Dev mode always uses "codelayer.log"
+        "codelayer.log".to_string()
+    } else {
+        // Production: use product name from package info
+        // Tauri uses <ProductName>.log as the log file name when file_name is None
+        let config = app.config();
+        format!("{}.log", config.product_name.as_ref().unwrap_or(&"CodeLayer".to_string()))
+    }
+}
+
+#[tauri::command]
 async fn read_last_log_lines(n: usize, log_path: Option<String>) -> Result<String, String> {
     use std::fs::File;
     use std::io::{BufReader, BufRead};
@@ -602,6 +617,7 @@ pub fn run() {
             get_daemon_info,
             is_daemon_running,
             get_log_directory,
+            get_log_file_name,
             read_last_log_lines,
             show_quick_launcher,
             set_window_background_color,

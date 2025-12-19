@@ -5,8 +5,11 @@ The WUI connects to the HumanLayer daemon (hld) to provide a graphical interface
 When the WUI is running, logs are written to:
 
 - Development: `~/.humanlayer/logs/wui-{branch-id}/codelayer.log` (e.g., `wui-eng-1784/codelayer.log`)
-- Production: Platform-specific directories:
-  - macOS: `~/Library/Logs/dev.humanlayer.wui/`
+- Production: Platform-specific directories with product-specific log file names:
+  - macOS:
+    - Standard: `~/Library/Logs/dev.humanlayer.wui/CodeLayer.log`
+    - Nightly: `~/Library/Logs/dev.humanlayer.wui.nightly/CodeLayer-Nightly.log`
+    - PRO: `~/Library/Logs/dev.humanlayer.wui.pro/CodeLayer-Pro.log`
   - Windows: `%APPDATA%\dev.humanlayer.wui\logs\`
   - Linux: `~/.config/dev.humanlayer.wui/logs/`
 
