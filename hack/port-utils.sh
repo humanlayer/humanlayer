@@ -34,7 +34,7 @@ find_available_port() {
 
     # Try ports in 20000-29999 range to avoid Vite's 10000-19999 range
     for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
-        local port=$((20000 + (ticket_num % 10000) + offset))
+        local port=$((20000 + ((ticket_num + offset) % 10000)))
 
         # Skip if port would exceed our range
         if [ "$port" -gt 29999 ]; then
@@ -49,7 +49,7 @@ find_available_port() {
 
     # Fallback to 40000-49999 range if needed
     for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
-        local port=$((40000 + (ticket_num % 10000) + offset))
+        local port=$((40000 + ((ticket_num + offset) % 10000)))
 
         # Skip if port would exceed our range or maximum valid port
         if [ "$port" -gt 49999 ] || [ "$port" -gt 65535 ]; then
@@ -87,7 +87,7 @@ find_available_vite_port() {
 
     # Try ports in the 30000-39999 range
     for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
-        local port=$((30000 + (ticket_num % 10000) + offset))
+        local port=$((30000 + ((ticket_num + offset) % 10000)))
 
         # Skip if port would exceed our range
         if [ "$port" -gt 39999 ]; then
@@ -102,7 +102,7 @@ find_available_vite_port() {
 
     # Fallback to 50000-59999 range if needed
     for offset in 0 1000 2000 3000 4000 5000 6000 7000 8000 9000; do
-        local port=$((50000 + (ticket_num % 10000) + offset))
+        local port=$((50000 + ((ticket_num + offset) % 10000)))
 
         # Skip if port would exceed our range or maximum valid port
         if [ "$port" -gt 59999 ] || [ "$port" -gt 65535 ]; then
