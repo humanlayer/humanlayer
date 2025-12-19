@@ -1,3 +1,17 @@
 {
-    "extends": "@codelayer/typescript-config/base.json"
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "compilerOptions": {
+        "strict": true,
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "target": "ES2022",
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "composite": false,
+        "declaration": true,
+        "declarationMap": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true
+    }
 }

@@ -41,18 +41,26 @@ make codelayer-dev
 
 To build CodeLayer with bundled daemon:
 
+**macOS:**
+
 ```bash
 make codelayer-bundle
 ```
 
+**Linux:**
+
+```bash
+make codelayer-bundle-linux
+```
+
 This will:
 
-1. Build the daemon for macOS ARM64
-2. Build the humanlayer CLI for macOS ARM64
+1. Build the daemon for the target platform (macOS ARM64 or Linux x64)
+2. Build the humanlayer CLI for the target platform
 3. Copy both to the Tauri resources
 4. Build CodeLayer with the bundled binaries
 
-The resulting DMG will include both binaries and automatically manage their lifecycle.
+The resulting package (DMG for macOS, AppImage/deb for Linux) will include both binaries and automatically manage their lifecycle.
 
 ### Daemon Management
 

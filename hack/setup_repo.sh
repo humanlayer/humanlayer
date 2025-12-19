@@ -8,6 +8,13 @@ set -e  # Exit on any error
 # Source the run_silent utility
 source hack/run_silent.sh
 
+# Ensure Go-installed binaries are in PATH
+# This is needed because `go install` puts binaries in $(go env GOPATH)/bin
+# which may not be in PATH on fresh shells (especially on Linux)
+if command -v go &> /dev/null; then
+    export PATH="$(go env GOPATH)/bin:$PATH"
+fi
+
 # Detect if running in CI
 if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ]; then
     IS_CI=true

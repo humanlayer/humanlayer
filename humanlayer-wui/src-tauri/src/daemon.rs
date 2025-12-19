@@ -128,6 +128,10 @@ impl DaemonManager {
             if !dev_db.exists() {
                 let source_db = humanlayer_dir.join("daemon-dev.db");
                 if source_db.exists() {
+                    if let Some(parent) = dev_db.parent() {
+                        fs::create_dir_all(parent)
+                            .map_err(|e| format!("Failed to create database directory: {e}"))?;
+                    }
                     fs::copy(&source_db, &dev_db)
                         .map_err(|e| format!("Failed to copy dev database: {e}"))?;
                 }
@@ -180,6 +184,22 @@ impl DaemonManager {
             // Enable debug logging for daemon in dev mode
             env_vars.push(("HUMANLAYER_DEBUG".to_string(), "true".to_string()));
             env_vars.push(("GIN_MODE".to_string(), "debug".to_string()));
+        }
+
+        // Add the directory containing the daemon to the PATH so it can find the bundled hlyr/humanlayer binary
+        if let Some(daemon_dir) = daemon_path.parent() {
+            if let Some(daemon_dir_str) = daemon_dir.to_str() {
+                let current_path = env::var("PATH").unwrap_or_default();
+                let new_path = if current_path.is_empty() {
+                    daemon_dir_str.to_string()
+                } else {
+                    format!("{}:{}", daemon_dir_str, current_path)
+                };
+                
+                // Remove existing PATH if present in env_vars
+                env_vars.retain(|(k, _)| k != "PATH");
+                env_vars.push(("PATH".to_string(), new_path));
+            }
         }
 
         // Start daemon with stdout capture and stderr logging

@@ -27,8 +27,8 @@ case "$(uname -s)" in
             }
 
             case "$DISTRO" in
-                arch|manjaro)
-                    echo "Detected Arch Linux/Manjaro"
+                arch|manjaro|endeavouros|garuda|artix|arcolinux|cachyos)
+                    echo "Detected Arch-based distribution ($DISTRO)"
                     if command_exists pacman; then
                         # Check if webkit2gtk-4.1 is installed (key dependency)
                         if pacman -Qs webkit2gtk-4.1 >/dev/null 2>&1; then

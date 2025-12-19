@@ -168,14 +168,43 @@ humanlayer-binary-darwin-arm64: humanlayer-build
 	chmod +x hlyr/humanlayer-darwin-arm64
 	@echo "Standalone binary created at hlyr/humanlayer-darwin-arm64"
 
+# Build humanlayer standalone binary for Linux x86_64 (requires bun)
+.PHONY: humanlayer-binary-linux-x64
+humanlayer-binary-linux-x64: humanlayer-build
+	@echo "Creating standalone humanlayer binary for Linux x86_64..."
+	cd hlyr && bun build ./dist/index.js --compile --target=bun-linux-x64 --outfile=humanlayer-linux-x64
+	chmod +x hlyr/humanlayer-linux-x64
+	@echo "Standalone binary created at hlyr/humanlayer-linux-x64"
+
 # Build CodeLayer with bundled daemon and humanlayer
 .PHONY: codelayer-bundle
 codelayer-bundle:
 	@echo "Building daemon for bundling..."
-	cd hld && GOOS=darwin GOARCH=arm64 go build -o hld-darwin-arm64 ./cmd/hld
+	cd hld && GOOS=darwin GOARCH=arm64 go build -ldflags "-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer" -o hld-darwin-arm64 ./cmd/hld
 	@echo "Building humanlayer for bundling..."
 	cd hlyr && bun install && bun run build
 	cd hlyr && bun build ./dist/index.js --compile --target=bun-darwin-arm64 --outfile=humanlayer-darwin-arm64
+	@echo "Copying binaries to Tauri resources..."
+	mkdir -p humanlayer-wui/src-tauri/bin
+	cp hld/hld-darwin-arm64 humanlayer-wui/src-tauri/bin/hld
+	cp hlyr/humanlayer-darwin-arm64 humanlayer-wui/src-tauri/bin/humanlayer
+	chmod +x humanlayer-wui/src-tauri/bin/hld
+	chmod +x humanlayer-wui/src-tauri/bin/humanlayer
+
+# Build CodeLayer for Linux with bundled daemon and humanlayer
+.PHONY: codelayer-bundle-linux
+codelayer-bundle-linux:
+	@echo "Building daemon for Linux bundling..."
+	cd hld && GOOS=linux GOARCH=amd64 go build -ldflags "-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer" -o hld-linux-x64 ./cmd/hld
+	@echo "Building humanlayer for Linux bundling..."
+	cd hlyr && bun install && bun run build
+	cd hlyr && bun build ./dist/index.js --compile --target=bun-linux-x64 --outfile=humanlayer-linux-x64
+	@echo "Copying binaries to Tauri resources..."
+	mkdir -p humanlayer-wui/src-tauri/bin
+	cp hld/hld-linux-x64 humanlayer-wui/src-tauri/bin/hld
+	cp hlyr/humanlayer-linux-x64 humanlayer-wui/src-tauri/bin/humanlayer
+	chmod +x humanlayer-wui/src-tauri/bin/hld
+	chmod +x humanlayer-wui/src-tauri/bin/humanlayer
 
 codelayer-nightly-bundle:
 	@echo "Setting build version..."
@@ -215,6 +244,51 @@ codelayer-nightly-bundle:
 	)
 	@echo "Nightly build complete! DMG available at:"
 	@ls -la humanlayer-wui/src-tauri/target/release/bundle/dmg/*.dmg
+
+# Build CodeLayer nightly for Linux
+.PHONY: codelayer-nightly-bundle-linux
+codelayer-nightly-bundle-linux:
+	@echo "Setting build version..."
+	$(eval BUILD_VERSION := $(shell date +%Y%m%d)-nightly-local)
+	@echo "Building nightly daemon for Linux bundling (version: $(BUILD_VERSION))..."
+	cd hld && GOOS=linux GOARCH=amd64 go build -ldflags "\
+		-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=$(BUILD_VERSION) \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon-nightly.db \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon-nightly.sock \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7778 \
+		-X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer-nightly" \
+		-o hld-linux-x64 ./cmd/hld
+	@echo "Building humanlayer CLI for Linux bundling..."
+	cd hlyr && bun install && bun run build
+	cd hlyr && bun build ./dist/index.js --compile --target=bun-linux-x64 --outfile=humanlayer-linux-x64
+	chmod +x hlyr/humanlayer-linux-x64
+	@echo "Copying binaries to Tauri resources..."
+	mkdir -p humanlayer-wui/src-tauri/bin
+	cp hld/hld-linux-x64 humanlayer-wui/src-tauri/bin/hld
+	cp hlyr/humanlayer-linux-x64 humanlayer-wui/src-tauri/bin/humanlayer
+	chmod +x humanlayer-wui/src-tauri/bin/hld
+	chmod +x humanlayer-wui/src-tauri/bin/humanlayer
+	@echo "Installing WUI dependencies..."
+	cd humanlayer-wui && bun install
+	@echo "Backing up original icons and using nightly icons..."
+	@# Clean up any leftover backup directories first
+	cd humanlayer-wui/src-tauri && rm -rf icons-original icons-backup
+	cd humanlayer-wui/src-tauri && cp -r icons icons-original && rm -rf icons && cp -r icons-nightly icons
+	@echo "Building Tauri app for Linux with nightly config..."
+	@# Use trap to ensure icons are restored even if build fails
+	@# NO_STRIP=1 prevents strip from failing on binaries with .relr.dyn sections
+	@# APPIMAGE_EXTRACT_AND_RUN=1 allows AppImage tools to run without FUSE
+	cd humanlayer-wui && ( \
+		NO_STRIP=1 APPIMAGE_EXTRACT_AND_RUN=1 bun run tauri build --config src-tauri/tauri.nightly.conf.json --bundles appimage,deb; \
+		EXIT_CODE=$$?; \
+		echo "Restoring original icons..."; \
+		cd src-tauri && rm -rf icons && cp -r icons-original icons && rm -rf icons-original; \
+		exit $$EXIT_CODE \
+	)
+	@echo "Linux nightly build complete! Packages available at:"
+	@ls -la humanlayer-wui/src-tauri/target/release/bundle/appimage/ 2>/dev/null || true
+	@ls -la humanlayer-wui/src-tauri/target/release/bundle/deb/ 2>/dev/null || true
+
 
 # Open nightly WUI
 .PHONY: wui-nightly

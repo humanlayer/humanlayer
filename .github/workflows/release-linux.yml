@@ -1,0 +1,370 @@
+name: Build Linux Release Artifacts
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+" # Matches v0.2.0, v1.0.0, etc.
+
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "Release version (e.g., 0.2.0). Leave empty to use latest tag version."
+        required: false
+        type: string
+        default: ""
+      release_nightly:
+        description: "Build and release a nightly build"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # Needed to create releases
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    env:
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+      # PostHog host is always the same
+      VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+
+    steps:
+      - name: Generate version
+        id: version
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let buildVersion, isNightly, isStable;
+
+            // Determine build type
+            if (context.eventName === 'schedule' || context.payload.inputs?.release_nightly === 'true') {
+              // Nightly build
+              const timestamp = new Date().toISOString()
+                .replace(/[T:]/g, '-')
+                .replace(/\..+/, '')
+                .replace(/-/g, '')
+                .slice(0, -2); // Format: YYYYMMDDHHMMSS
+              buildVersion = `0.1.0-${timestamp}-nightly`;
+              isNightly = true;
+              isStable = false;
+
+            } else if (context.eventName === 'push' && context.ref.startsWith('refs/tags/v')) {
+              // Tag push - extract version from tag
+              const tagVersion = context.ref.replace('refs/tags/v', '');
+
+              // Validate it's a proper semver (no pre-release identifiers)
+              const semverRegex = /^[0-9]+\.[0-9]+\.[0-9]+$/;
+              if (!semverRegex.test(tagVersion)) {
+                throw new Error(`Tag ${tagVersion} contains pre-release identifier. Only stable semver tags supported.`);
+              }
+
+              buildVersion = tagVersion;
+              isNightly = false;
+              isStable = true;
+
+            } else if (context.eventName === 'workflow_dispatch') {
+              const inputVersion = context.payload.inputs?.release_version;
+
+              if (inputVersion) {
+                // Manual dispatch with explicit version
+                // Strip leading 'v' if present for normalization
+                buildVersion = inputVersion.replace(/^v/, '');
+              } else {
+                // Manual dispatch without version - get latest tag
+                const tags = await github.rest.repos.listTags({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  per_page: 100
+                });
+
+                // Filter for stable semver tags (v1.2.3 format, no pre-release)
+                const semverRegex = /^v([0-9]+)\.([0-9]+)\.([0-9]+)$/;
+                const stableTags = tags.data
+                  .map(tag => tag.name)
+                  .filter(name => semverRegex.test(name))
+                  .map(name => {
+                    const match = name.match(semverRegex);
+                    return {
+                      tag: name,
+                      major: parseInt(match[1]),
+                      minor: parseInt(match[2]),
+                      patch: parseInt(match[3])
+                    };
+                  })
+                  .sort((a, b) => {
+                    if (a.major !== b.major) return b.major - a.major;
+                    if (a.minor !== b.minor) return b.minor - a.minor;
+                    return b.patch - a.patch;
+                  });
+
+                if (stableTags.length === 0) {
+                  buildVersion = '0.2.0';
+                } else {
+                  const latest = stableTags[0];
+                  buildVersion = `${latest.major}.${latest.minor}.${latest.patch}`;
+                }
+              }
+
+              isNightly = false;
+              isStable = true;
+
+            } else {
+              // Fallback (shouldn't happen)
+              const timestamp = new Date().toISOString()
+                .replace(/[T:]/g, '-')
+                .replace(/\..+/, '')
+                .replace(/-/g, '')
+                .slice(0, -2);
+              buildVersion = `0.1.0-${timestamp}`;
+              isNightly = false;
+              isStable = false;
+            }
+
+            // Set outputs
+            core.setOutput('release_version', buildVersion);
+            core.setOutput('is_nightly', isNightly.toString());
+            core.setOutput('is_stable', isStable.toString());
+
+            console.log(`Build Version: ${buildVersion}`);
+            console.log(`Is Nightly: ${isNightly}`);
+            console.log(`Is Stable: ${isStable}`);
+
+      - name: Set PostHog API Key
+        run: |
+          if [[ "${{ steps.version.outputs.is_nightly }}" == "true" ]]; then
+            echo "VITE_PUBLIC_POSTHOG_KEY=phc_de6RVF0G7CkTzv2UvxHddSk7nfFnE5QWD7KmZV5KfSo" >> $GITHUB_ENV
+          else
+            echo "VITE_PUBLIC_POSTHOG_KEY=phc_6RQ0mVrcMDwSgbKeGToTXC4ja11Hzhkm7tKyO5gjBrK" >> $GITHUB_ENV
+          fi
+          echo "PostHog key set for ${{ steps.version.outputs.is_nightly == 'true' && 'nightly' || 'stable' }} build"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: humanlayer-wui/src-tauri
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        id: setup-go
+        with:
+          go-version-file: "hld/go.mod"
+          cache: false
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            go-mod-v2-${{ runner.os }}-go${{ steps.setup-go.outputs.go-version }}-
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache and install Tauri system dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+          version: 1.0
+
+      - name: Cache Go tools
+        uses: actions/cache@v4
+        id: go-tools-cache-release
+        with:
+          path: ~/go/bin
+          key: go-tools-${{ runner.os }}-mockgen-0.5
+
+      - name: Run repository setup
+        run: make setup
+
+      - name: Install WUI dependencies
+        working-directory: humanlayer-wui
+        run: bun install
+
+      - name: Build daemon for Linux x86_64
+        run: |
+          cd hld
+
+          # Set explicit LDFLAGS for each build type
+          if [[ "${{ steps.version.outputs.is_nightly }}" == "true" ]]; then
+            # Nightly build - use isolated paths and ports
+            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${{ steps.version.outputs.release_version }}"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon-nightly.db"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon-nightly.sock"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7778"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer-nightly"
+          else
+            # Stable build - explicitly set standard paths and ports
+            LDFLAGS="-X github.com/humanlayer/humanlayer/hld/internal/version.BuildVersion=${{ steps.version.outputs.release_version }}"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultDatabasePath=~/.humanlayer/daemon.db"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultSocketPath=~/.humanlayer/daemon.sock"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultHTTPPort=7777"
+            LDFLAGS="${LDFLAGS} -X github.com/humanlayer/humanlayer/hld/config.DefaultCLICommand=humanlayer"
+          fi
+
+          echo "Using LDFLAGS: ${LDFLAGS}"
+          GOOS=linux GOARCH=amd64 go build -ldflags "${LDFLAGS}" -o hld-linux-x64 ./cmd/hld
+
+      - name: Build humanlayer CLI for Linux x86_64
+        working-directory: hlyr
+        run: |
+          bun install
+          bun run build
+          bun build ./dist/index.js --compile --target=bun-linux-x64 --outfile=humanlayer-linux-x64
+          chmod +x humanlayer-linux-x64
+
+      - name: Copy binaries to Tauri resources
+        run: |
+          mkdir -p humanlayer-wui/src-tauri/bin
+          cp hld/hld-linux-x64 humanlayer-wui/src-tauri/bin/hld
+          cp hlyr/humanlayer-linux-x64 humanlayer-wui/src-tauri/bin/humanlayer
+          chmod +x humanlayer-wui/src-tauri/bin/hld
+          chmod +x humanlayer-wui/src-tauri/bin/humanlayer
+
+      - name: Swap icons for nightly build
+        if: steps.version.outputs.is_nightly == 'true'
+        working-directory: humanlayer-wui/src-tauri
+        run: |
+          # Only swap icons for nightly builds
+          mv icons icons-original
+          cp -r icons-nightly icons
+
+      - name: Build Tauri app for Linux
+        working-directory: humanlayer-wui
+        run: |
+          export VITE_APP_VERSION="${{ steps.version.outputs.release_version }}"
+          bun install
+
+          if [[ "${{ steps.version.outputs.is_nightly }}" == "true" ]]; then
+            bun run tauri build --config src-tauri/tauri.nightly.conf.json --bundles appimage,deb
+          else
+            bun run tauri build --bundles appimage,deb
+          fi
+        env:
+          NODE_ENV: "production"
+          # Prevent strip from failing on binaries with .relr.dyn sections (common on newer distros)
+          NO_STRIP: "1"
+          # Allow AppImage tools to run without FUSE (for containerized builds)
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+
+      - name: List built artifacts
+        run: |
+          echo "=== AppImage ==="
+          ls -la humanlayer-wui/src-tauri/target/release/bundle/appimage/ || echo "No AppImage found"
+          echo "=== Deb ==="
+          ls -la humanlayer-wui/src-tauri/target/release/bundle/deb/ || echo "No deb found"
+
+      - name: Rename artifacts for consistent naming
+        working-directory: humanlayer-wui
+        id: artifact_rename
+        run: |
+          # Find and rename AppImage
+          APPIMAGE_PATH=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" | head -1)
+          if [[ -n "$APPIMAGE_PATH" ]]; then
+            if [[ "${{ steps.version.outputs.is_stable }}" == "true" ]]; then
+              NEW_APPIMAGE_NAME="CodeLayer-linux-x64.AppImage"
+            else
+              NEW_APPIMAGE_NAME=$(basename "$APPIMAGE_PATH")
+            fi
+            mv "$APPIMAGE_PATH" "src-tauri/target/release/bundle/appimage/$NEW_APPIMAGE_NAME"
+            echo "appimage_filename=$NEW_APPIMAGE_NAME" >> $GITHUB_OUTPUT
+          fi
+
+          # Find and rename deb
+          DEB_PATH=$(find src-tauri/target/release/bundle/deb -name "*.deb" | head -1)
+          if [[ -n "$DEB_PATH" ]]; then
+            if [[ "${{ steps.version.outputs.is_stable }}" == "true" ]]; then
+              NEW_DEB_NAME="codelayer-linux-x64.deb"
+            else
+              NEW_DEB_NAME=$(basename "$DEB_PATH")
+            fi
+            mv "$DEB_PATH" "src-tauri/target/release/bundle/deb/$NEW_DEB_NAME"
+            echo "deb_filename=$NEW_DEB_NAME" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: humanlayer-wui-linux-appimage
+          path: humanlayer-wui/src-tauri/target/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+      - name: Upload deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: humanlayer-wui-linux-deb
+          path: humanlayer-wui/src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+
+      # Update existing GitHub Release with Linux artifacts
+      - name: Upload Linux artifacts to Release
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.is_stable == 'true' && format('v{0}', steps.version.outputs.release_version) || steps.version.outputs.release_version }}
+          files: |
+            humanlayer-wui/src-tauri/target/release/bundle/appimage/${{ steps.artifact_rename.outputs.appimage_filename }}
+            humanlayer-wui/src-tauri/target/release/bundle/deb/${{ steps.artifact_rename.outputs.deb_filename }}
+          # Don't create a new release, just update the existing one from macOS workflow
+          # If macOS hasn't run yet, this will create the release
+          draft: false
+          prerelease: ${{ steps.version.outputs.is_nightly == 'true' }}
+          fail_on_unmatched_files: false
+          body: |
+            # CodeLayer ${{ steps.version.outputs.is_nightly == 'true' && 'Nightly' || 'Stable' }} Release - Linux
+
+            Version: ${{ steps.version.outputs.release_version }}
+
+            ## Linux Installation
+
+            ### AppImage (Universal)
+            ```bash
+            # Download the AppImage
+            chmod +x CodeLayer-linux-x64.AppImage
+            ./CodeLayer-linux-x64.AppImage
+            ```
+
+            ### Debian/Ubuntu (.deb)
+            ```bash
+            sudo dpkg -i codelayer-linux-x64.deb
+            # Or use apt for dependency resolution:
+            sudo apt install ./codelayer-linux-x64.deb
+            ```
+
+            ## Logs
+
+            Logs can be found at:
+            ```
+            ~/.local/share/dev.humanlayer.wui${{ steps.version.outputs.is_nightly == 'true' && '.nightly' || '' }}/logs/
+            ```
+
+            ## Troubleshooting
+
+            If the AppImage doesn't run, ensure FUSE is installed:
+            ```bash
+            # Ubuntu/Debian
+            sudo apt install libfuse2
+
+            # Fedora
+            sudo dnf install fuse
+            ```
+
+            **WebKitGTK rendering issues (Wayland/Nvidia):**
+
+            If you see a blank window or graphics glitches:
+            ```bash
+            WEBKIT_DISABLE_DMABUF_RENDERER=1 ./CodeLayer-linux-x64.AppImage
+            # Or force X11: GDK_BACKEND=x11 ./CodeLayer-linux-x64.AppImage
+            ```
