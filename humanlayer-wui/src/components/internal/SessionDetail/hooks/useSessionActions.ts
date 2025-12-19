@@ -60,38 +60,19 @@ export function useSessionActions({
     logger.log('handleContinueSession()')
     const sessionConversation = useStore.getState().activeSessionDetail?.conversation
 
-    // Get the editor content and process mentions to use full paths
-    let responseInput = ''
-    if (responseEditor) {
-      const json = responseEditor.getJSON()
+    // Get the editor content as text
+    // The editor's getText() method will render mentions using their renderText function,
+    // which returns the full file path (id attribute) for file mentions
+    const textContent = responseEditor?.getText() || ''
 
-      const processNode = (node: any): string => {
-        if (node.type === 'text') {
-          return node.text || ''
-        } else if (node.type === 'mention' || node.type === 'slash-command') {
-          // Use the full path (id) instead of the display label
-          return node.attrs.id || node.attrs.label || ''
-        } else if (node.type === 'paragraph' && node.content) {
-          return node.content.map(processNode).join('')
-        } else if (node.content) {
-          return node.content.map(processNode).join('\n')
-        }
-        return ''
-      }
-
-      if (json.content) {
-        responseInput = json.content.map(processNode).join('\n')
-      }
-    }
-
-    if (!responseInput?.trim() || isResponding) return
+    if (!textContent.trim()) return
+    if (isResponding) return
 
     try {
       setIsResponding(true)
-      const messageToSend = responseInput.trim()
 
       // Check for unsupported commands
-      const unsupportedCmd = checkUnsupportedCommand(messageToSend)
+      const unsupportedCmd = checkUnsupportedCommand(textContent)
       if (unsupportedCmd) {
         // Show error toast
         toast.error(unsupportedCmd.message, {
@@ -120,7 +101,8 @@ export function useSessionActions({
         setViewMode(ViewMode.Normal)
       }
 
-      const response = await daemonClient.continueSession(targetSessionId, messageToSend)
+      // Send text content to continue session
+      const response = await daemonClient.continueSession(targetSessionId, textContent.trim())
 
       if (!response.new_session_id) {
         throw new Error('No new session ID returned from continueSession')
