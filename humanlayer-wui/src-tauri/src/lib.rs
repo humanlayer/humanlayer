@@ -169,14 +169,78 @@ pub fn extract_ticket_id(branch: &str) -> Option<String> {
         .map(|m| m.as_str().to_string())
 }
 
+pub fn sanitize_branch_id_for_path(branch_id: &str) -> String {
+    let mut out = String::with_capacity(branch_id.len());
+    let mut last_was_dash = false;
+
+    for ch in branch_id.chars() {
+        let is_safe = ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' || ch == '.';
+        if is_safe {
+            out.push(ch);
+            last_was_dash = false;
+        } else if !last_was_dash {
+            out.push('-');
+            last_was_dash = true;
+        }
+    }
+
+    let out = out.trim_matches('-').to_string();
+    if out.is_empty() {
+        "dev".to_string()
+    } else {
+        out
+    }
+}
+
 pub fn get_branch_id(is_dev: bool, branch_override: Option<String>) -> String {
     if is_dev {
         let branch = branch_override
             .or_else(get_git_branch)
             .unwrap_or_else(|| "dev".to_string());
-        extract_ticket_id(&branch).unwrap_or(branch)
+        let raw_id = extract_ticket_id(&branch).unwrap_or_else(|| branch.clone());
+        sanitize_branch_id_for_path(&raw_id)
     } else {
         "production".to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_branch_id_for_path_removes_slashes() {
+        assert_eq!(sanitize_branch_id_for_path("feature/foo"), "feature-foo");
+    }
+
+    #[test]
+    fn get_branch_id_is_safe_for_paths() {
+        let id = get_branch_id(true, Some("feature/foo".to_string()));
+        assert!(!id.contains('/'));
+        assert!(!id.contains('\\'));
+    }
+
+    #[test]
+    fn dev_db_copy_works_with_slash_branch_name() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let tmp_dir = std::env::temp_dir().join(format!("humanlayer-wui-dbcopy-test-{nonce}"));
+        std::fs::create_dir_all(&tmp_dir).unwrap();
+
+        let source_db = tmp_dir.join("daemon-dev.db");
+        std::fs::write(&source_db, b"test-db").unwrap();
+
+        let branch_id = get_branch_id(true, Some("feature/foo".to_string()));
+        let dest_db = tmp_dir.join(format!("daemon-{branch_id}.db"));
+
+        std::fs::copy(&source_db, &dest_db).unwrap();
+        assert!(dest_db.exists());
+
+        let _ = std::fs::remove_file(&dest_db);
+        let _ = std::fs::remove_file(&source_db);
+        let _ = std::fs::remove_dir(&tmp_dir);
     }
 }
 
