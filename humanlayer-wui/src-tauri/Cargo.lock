@@ -1863,6 +1863,7 @@ dependencies = [
  "reqwest 0.11.27",
  "serde",
  "serde_json",
+ "shellexpand",
  "tauri",
  "tauri-build",
  "tauri-plugin-clipboard-manager",
@@ -4015,6 +4016,15 @@ dependencies = [
  "libc",
  "sigchld",
  "windows-sys 0.60.2",
+]
+
+[[package]]
+name = "shellexpand"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b1fdf65dd6331831494dd616b30351c38e96e45921a27745cf98490458b90bb"
+dependencies = [
+ "dirs 6.0.0",
 ]
 
 [[package]]
