@@ -237,7 +237,6 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   // Fork cancel handler
   const handleForkCancel = useCallback(() => {
     setForkPreviewData(null)
-    responseEditor?.commands.setContent('')
   }, [responseEditor])
 
   // Reset scroll flag when session changes
