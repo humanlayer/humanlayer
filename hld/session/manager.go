@@ -16,6 +16,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/bus"
 	hldconfig "github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/store"
+	opencode "github.com/humanlayer/humanlayer/opencode-go"
 )
 
 // Manager handles the lifecycle of Claude Code sessions
@@ -23,8 +24,11 @@ type Manager struct {
 	activeProcesses    map[string]ClaudeSession // Maps session ID to active Claude process
 	mu                 sync.RWMutex
 	client             *claudecode.Client // Can be nil if Claude not available
+	opencodeClient     *opencode.Client   // Can be nil if OpenCode not available
 	claudeClientErr    error              // Store initialization error
+	opencodeClientErr  error              // Store initialization error for OpenCode
 	claudePath         string             // Configured Claude path
+	opencodePath       string             // Configured OpenCode path
 	lastCheckedPath    string             // Last path we checked
 	eventBus           bus.EventBus
 	store              store.ConversationStore
@@ -59,6 +63,13 @@ func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath
 			"error", m.claudeClientErr)
 	}
 
+	// Try to initialize OpenCode client but don't fail if unavailable
+	m.initializeOpenCodeClient()
+	if m.opencodeClientErr != nil {
+		logger.Debug("OpenCode binary not available at startup",
+			"error", m.opencodeClientErr)
+	}
+
 	return m, nil
 }
 
@@ -84,6 +95,13 @@ func NewManagerWithConfig(eventBus bus.EventBus, store store.ConversationStore, 
 		logger.Warn("Claude binary not available at startup",
 			"error", m.claudeClientErr,
 			"configured_path", cfg.ClaudePath)
+	}
+
+	// Try to initialize OpenCode client but don't fail if unavailable
+	m.initializeOpenCodeClient()
+	if m.opencodeClientErr != nil {
+		logger.Debug("OpenCode binary not available at startup",
+			"error", m.opencodeClientErr)
 	}
 
 	return m, nil
@@ -166,6 +184,268 @@ func (m *Manager) initializeClaudeClient() {
 	}
 }
 
+// initializeOpenCodeClient attempts to create or reinitialize the OpenCode client
+func (m *Manager) initializeOpenCodeClient() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Skip if already initialized successfully
+	if m.opencodeClient != nil && m.opencodeClientErr == nil {
+		return
+	}
+
+	// Create client based on configured path
+	var client *opencode.Client
+	var err error
+
+	if m.opencodePath != "" {
+		client = opencode.NewClientWithPath(m.opencodePath)
+		slog.Info("Using configured OpenCode path", "path", m.opencodePath)
+	} else {
+		// Auto-detect
+		client, err = opencode.NewClient()
+		if err == nil && client != nil {
+			slog.Debug("OpenCode binary auto-detected", "detected_path", client.GetPath())
+		}
+	}
+
+	// Update state
+	m.opencodeClient = client
+	m.opencodeClientErr = err
+
+	if err != nil {
+		slog.Debug("OpenCode binary not found",
+			"error", err,
+			"configured_path", m.opencodePath)
+	} else {
+		slog.Debug("OpenCode client initialized successfully",
+			"path", m.opencodePath)
+	}
+}
+
+// getOpenCodeClient ensures OpenCode client is initialized and returns it
+func (m *Manager) getOpenCodeClient() (*opencode.Client, error) {
+	m.initializeOpenCodeClient()
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if m.opencodeClientErr != nil {
+		return nil, fmt.Errorf("opencode not available: %w", m.opencodeClientErr)
+	}
+	return m.opencodeClient, nil
+}
+
+// launchOpenCodeSession handles launching a session with the OpenCode provider
+func (m *Manager) launchOpenCodeSession(ctx context.Context, config LaunchSessionConfig, sessionID, runID string, isDraft bool) (*Session, error) {
+	// Get OpenCode client
+	client, err := m.getOpenCodeClient()
+	if err != nil {
+		return nil, fmt.Errorf("cannot launch opencode session: %w", err)
+	}
+
+	// Convert claudecode.SessionConfig to opencode.SessionConfig
+	opencodeConfig := opencode.SessionConfig{
+		Query:      config.Query,
+		Model:      opencode.Model(config.Model),
+		WorkingDir: config.WorkingDir,
+		Title:      config.Title,
+		Env:        config.Env,
+	}
+
+	// Handle session continuation
+	if config.SessionID != "" {
+		opencodeConfig.SessionID = config.SessionID
+	}
+
+	// Capture current working directory if not specified
+	if opencodeConfig.WorkingDir == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			slog.Warn("failed to get current working directory", "error", err)
+		} else {
+			opencodeConfig.WorkingDir = cwd
+			slog.Debug("No working directory provided, falling back to cwd of daemon", "working_dir", cwd)
+		}
+	}
+
+	// Handle working directory validation and creation (same as Claude)
+	if opencodeConfig.WorkingDir != "" && !isDraft {
+		// Expand ~ if present
+		if strings.HasPrefix(opencodeConfig.WorkingDir, "~") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get home directory: %w", err)
+			}
+			opencodeConfig.WorkingDir = filepath.Join(home, strings.TrimPrefix(opencodeConfig.WorkingDir, "~"))
+		}
+
+		// Check directory status
+		info, err := os.Stat(opencodeConfig.WorkingDir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				if config.CreateDirectoryIfNotExists {
+					slog.Info("Creating working directory",
+						"path", opencodeConfig.WorkingDir,
+						"session_id", sessionID)
+					if err := os.MkdirAll(opencodeConfig.WorkingDir, 0755); err != nil {
+						return nil, fmt.Errorf("failed to create working directory %s: %w",
+							opencodeConfig.WorkingDir, err)
+					}
+				} else {
+					return nil, &DirectoryNotFoundError{
+						Path:    opencodeConfig.WorkingDir,
+						Message: fmt.Sprintf("working directory does not exist: %s", opencodeConfig.WorkingDir),
+					}
+				}
+			} else {
+				return nil, fmt.Errorf("error accessing working directory %s: %w",
+					opencodeConfig.WorkingDir, err)
+			}
+		} else {
+			if !info.IsDir() {
+				return nil, fmt.Errorf("working directory path exists but is not a directory: %s",
+					opencodeConfig.WorkingDir)
+			}
+		}
+	}
+
+	// Create session record directly in database
+	startTime := time.Now()
+
+	// Use claudecode types for the database (since that's what the store expects)
+	// We create a placeholder claudecode.SessionConfig for storage
+	claudeConfigForDB := claudecode.SessionConfig{
+		Query:        config.Query,
+		Model:        claudecode.Model(config.Model),
+		WorkingDir:   opencodeConfig.WorkingDir,
+		OutputFormat: claudecode.OutputStreamJSON,
+	}
+
+	dbSession := store.NewSessionFromConfig(sessionID, runID, claudeConfigForDB)
+	dbSession.Summary = CalculateSummary(config.Query)
+
+	// Set initial status based on isDraft
+	if isDraft {
+		dbSession.Status = store.SessionStatusDraft
+	} else {
+		dbSession.Status = store.SessionStatusStarting
+	}
+
+	// Set title from launch config if provided
+	if config.Title != "" {
+		dbSession.Title = config.Title
+	}
+
+	// Handle auto-accept edits from config
+	dbSession.AutoAcceptEdits = config.AutoAcceptEdits
+
+	// Handle dangerously skip permissions from config
+	if config.DangerouslySkipPermissions {
+		dbSession.DangerouslySkipPermissions = true
+		if config.DangerouslySkipPermissionsTimeout != nil && *config.DangerouslySkipPermissionsTimeout > 0 {
+			expiresAt := time.Now().Add(time.Duration(*config.DangerouslySkipPermissionsTimeout) * time.Millisecond)
+			dbSession.DangerouslySkipPermissionsExpiresAt = &expiresAt
+		}
+	}
+
+	if err := m.store.CreateSession(ctx, dbSession); err != nil {
+		return nil, fmt.Errorf("failed to store session in database: %w", err)
+	}
+
+	// Skip OpenCode launch if this is a draft session
+	if isDraft {
+		slog.Info("created draft session (opencode provider)",
+			"session_id", sessionID,
+			"run_id", runID,
+			"query", config.Query,
+			"working_dir", opencodeConfig.WorkingDir)
+
+		return &Session{
+			ID:        sessionID,
+			RunID:     runID,
+			Status:    StatusDraft,
+			StartTime: startTime,
+			Config:    claudeConfigForDB,
+		}, nil
+	}
+
+	slog.Info("launching OpenCode session with configuration",
+		"session_id", sessionID,
+		"run_id", runID,
+		"query", opencodeConfig.Query,
+		"working_dir", opencodeConfig.WorkingDir,
+		"model", opencodeConfig.Model)
+
+	// Launch OpenCode session
+	opencodeSession, err := client.Launch(opencodeConfig)
+	if err != nil {
+		slog.Error("failed to launch OpenCode session",
+			"session_id", sessionID,
+			"error", err,
+			"config", fmt.Sprintf("%+v", opencodeConfig))
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+		return nil, fmt.Errorf("failed to launch OpenCode session: %w", err)
+	}
+
+	// Wrap the session for storage (converts OpenCode events to Claude events)
+	wrappedSession := NewOpenCodeSessionWrapper(opencodeSession)
+
+	// Store active process
+	m.mu.Lock()
+	m.activeProcesses[sessionID] = wrappedSession
+	m.mu.Unlock()
+
+	// Update database with running status
+	statusRunning := string(StatusRunning)
+	now := time.Now()
+	update := store.SessionUpdate{
+		Status:         &statusRunning,
+		LastActivityAt: &now,
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+		slog.Error("failed to update session status to running", "error", err)
+	}
+
+	// Publish status change event
+	if m.eventBus != nil {
+		event := bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id": sessionID,
+				"run_id":     runID,
+				"old_status": string(StatusStarting),
+				"new_status": string(StatusRunning),
+				"provider":   "opencode",
+			},
+		}
+		slog.Info("publishing session status changed event",
+			"session_id", sessionID,
+			"run_id", runID,
+			"event_type", event.Type,
+			"provider", "opencode",
+		)
+		m.eventBus.Publish(event)
+	}
+
+	// Store query for injection after session ID is captured
+	m.pendingQueries.Store(sessionID, config.Query)
+
+	// Monitor session lifecycle in background
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, startTime, claudeConfigForDB)
+
+	slog.Info("launched OpenCode session",
+		"session_id", sessionID,
+		"run_id", runID,
+		"query", config.Query)
+
+	return &Session{
+		ID:        sessionID,
+		RunID:     runID,
+		Status:    StatusRunning,
+		StartTime: startTime,
+		Config:    claudeConfigForDB,
+	}, nil
+}
+
 // getClaudeClient ensures Claude client is initialized and returns it
 func (m *Manager) getClaudeClient() (*claudecode.Client, error) {
 	m.initializeClaudeClient()
@@ -180,14 +460,32 @@ func (m *Manager) getClaudeClient() (*claudecode.Client, error) {
 // LaunchSession starts a new Claude Code session
 // TODO(0): Consider whether we need to support non-draft session creation directly in daemon post-implementation
 func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig, isDraft bool) (*Session, error) {
+	// Determine provider (default to "claude")
+	provider := config.Provider
+	if provider == "" {
+		provider = "claude"
+	}
+
+	// Validate provider
+	if provider != "claude" && provider != "opencode" {
+		return nil, fmt.Errorf("unsupported provider: %s (must be 'claude' or 'opencode')", provider)
+	}
+
+	// Generate unique IDs
+	sessionID := uuid.New().String()
+	runID := uuid.New().String()
+
+	// Handle OpenCode provider
+	if provider == "opencode" {
+		return m.launchOpenCodeSession(ctx, config, sessionID, runID, isDraft)
+	}
+
+	// Default: Claude provider
 	// Get Claude client (will attempt initialization if needed)
 	client, err := m.getClaudeClient()
 	if err != nil {
 		return nil, fmt.Errorf("cannot launch session: %w", err)
 	}
-	// Generate unique IDs
-	sessionID := uuid.New().String()
-	runID := uuid.New().String()
 
 	// Extract the Claude config (without daemon-level settings)
 	claudeConfig := config.SessionConfig

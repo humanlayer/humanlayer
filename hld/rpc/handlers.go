@@ -44,6 +44,7 @@ type LaunchSessionRequest struct {
 	Query                             string                `json:"query"`
 	Title                             string                `json:"title,omitempty"`
 	Model                             string                `json:"model,omitempty"`
+	Provider                          string                `json:"provider,omitempty"` // "claude" or "opencode"
 	MCPConfig                         *claudecode.MCPConfig `json:"mcp_config,omitempty"`
 	PermissionPromptTool              string                `json:"permission_prompt_tool,omitempty"`
 	WorkingDir                        string                `json:"working_dir,omitempty"`
@@ -94,6 +95,8 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 			Verbose:               req.Verbose,
 			OutputFormat:          claudecode.OutputStreamJSON, // Always use streaming JSON for monitoring
 		},
+		// Provider selection (defaults to "claude" if not specified)
+		Provider: req.Provider,
 		// Daemon-level settings (not passed to Claude Code)
 		Title:                             req.Title,
 		DangerouslySkipPermissions:        req.DangerouslySkipPermissions,

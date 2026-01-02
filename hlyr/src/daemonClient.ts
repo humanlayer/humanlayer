@@ -88,6 +88,7 @@ interface LaunchSessionRequest {
   query: string
   title?: string
   model?: string
+  provider?: string // 'claude' or 'opencode'
   mcp_config?: unknown
   permission_prompt_tool?: string
   working_dir?: string
