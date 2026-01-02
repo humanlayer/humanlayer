@@ -338,6 +338,9 @@ func (m *Manager) launchOpenCodeSession(ctx context.Context, config LaunchSessio
 	// Handle auto-accept edits from config
 	dbSession.AutoAcceptEdits = config.AutoAcceptEdits
 
+	// Set provider for this session
+	dbSession.Provider = "opencode"
+
 	// Handle dangerously skip permissions from config
 	if config.DangerouslySkipPermissions {
 		dbSession.DangerouslySkipPermissions = true
@@ -643,6 +646,9 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 
 	// Handle auto-accept edits from config
 	dbSession.AutoAcceptEdits = config.AutoAcceptEdits
+
+	// Set provider for this session
+	dbSession.Provider = "claude"
 
 	// Handle dangerously skip permissions from config
 	if config.DangerouslySkipPermissions {
@@ -1744,6 +1750,19 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		return nil, fmt.Errorf("cannot continue session with status %s (must be completed, interrupted, running, or failed)", parentSession.Status)
 	}
 
+	// Determine provider from parent session (default to "claude" for backward compatibility)
+	provider := parentSession.Provider
+	if provider == "" {
+		provider = "claude"
+	}
+
+	// Route to provider-specific continuation logic
+	if provider == "opencode" {
+		return m.continueOpenCodeSession(ctx, req, parentSession)
+	}
+
+	// Continue with Claude session logic below...
+
 	// Validate parent session has claude_session_id (needed for resume)
 	if parentSession.ClaudeSessionID == "" {
 		return nil, fmt.Errorf("parent session missing claude_session_id (cannot resume)")
@@ -1912,6 +1931,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	dbSession := store.NewSessionFromConfig(sessionID, runID, config)
 	dbSession.ParentSessionID = req.ParentSessionID
 	dbSession.Summary = CalculateSummary(req.Query)
+	dbSession.Provider = "claude" // Set provider for continued Claude session
 	// Inherit auto-accept setting from parent
 	dbSession.AutoAcceptEdits = parentSession.AutoAcceptEdits
 	// Inherit dangerously skip permissions from parent
@@ -2170,6 +2190,182 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 	}, nil
 }
 
+// continueOpenCodeSession handles session continuation for OpenCode provider
+func (m *Manager) continueOpenCodeSession(ctx context.Context, req ContinueSessionConfig, parentSession *store.Session) (*Session, error) {
+	// Validate parent session has working directory (needed for resume)
+	if parentSession.WorkingDir == "" {
+		return nil, fmt.Errorf("parent session missing working_dir (cannot resume session without working directory)")
+	}
+
+	// If session is running, interrupt it and wait for completion
+	if parentSession.Status == store.SessionStatusRunning {
+		slog.Info("interrupting running opencode session before resume",
+			"parent_session_id", req.ParentSessionID)
+
+		if err := m.InterruptSession(ctx, req.ParentSessionID); err != nil {
+			return nil, fmt.Errorf("failed to interrupt running session: %w", err)
+		}
+
+		// Wait for the interrupted session to complete gracefully
+		m.mu.RLock()
+		activeSession, exists := m.activeProcesses[req.ParentSessionID]
+		m.mu.RUnlock()
+
+		if exists {
+			_, err := activeSession.Wait()
+			if err != nil {
+				slog.Debug("interrupted opencode session exited",
+					"parent_session_id", req.ParentSessionID,
+					"error", err)
+			}
+		}
+
+		// Re-fetch parent session to get updated completed status
+		var err error
+		parentSession, err = m.store.GetSession(ctx, req.ParentSessionID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to re-fetch parent session after interrupt: %w", err)
+		}
+
+		slog.Info("opencode session interrupted and completed, proceeding with resume",
+			"parent_session_id", req.ParentSessionID,
+			"final_status", parentSession.Status)
+	}
+
+	// Get OpenCode client
+	client, err := m.getOpenCodeClient()
+	if err != nil {
+		return nil, fmt.Errorf("cannot continue opencode session: %w", err)
+	}
+
+	// Build config for resumed session
+	opencodeConfig := opencode.SessionConfig{
+		Query:      req.Query,
+		Model:      opencode.Model(parentSession.Model),
+		WorkingDir: parentSession.WorkingDir,
+	}
+
+	// Set session ID for continuation (OpenCode uses ClaudeSessionID field for its session ID)
+	if parentSession.ClaudeSessionID != "" {
+		opencodeConfig.SessionID = parentSession.ClaudeSessionID
+	}
+
+	// Create new session with parent reference
+	sessionID := uuid.New().String()
+	runID := uuid.New().String()
+
+	// Create a placeholder claudecode.SessionConfig for storage (database uses Claude types)
+	claudeConfigForDB := claudecode.SessionConfig{
+		Query:        req.Query,
+		Model:        claudecode.Model(parentSession.Model),
+		WorkingDir:   parentSession.WorkingDir,
+		OutputFormat: claudecode.OutputStreamJSON,
+	}
+
+	// Store session in database with parent reference
+	dbSession := store.NewSessionFromConfig(sessionID, runID, claudeConfigForDB)
+	dbSession.ParentSessionID = req.ParentSessionID
+	dbSession.Summary = CalculateSummary(req.Query)
+	dbSession.Provider = "opencode"
+
+	// Inherit settings from parent
+	dbSession.AutoAcceptEdits = parentSession.AutoAcceptEdits
+	dbSession.DangerouslySkipPermissions = parentSession.DangerouslySkipPermissions
+	dbSession.DangerouslySkipPermissionsExpiresAt = parentSession.DangerouslySkipPermissionsExpiresAt
+	dbSession.Title = parentSession.Title
+
+	// Check if dangerously skip permissions has expired on the parent
+	if dbSession.DangerouslySkipPermissions && dbSession.DangerouslySkipPermissionsExpiresAt != nil && time.Now().After(*dbSession.DangerouslySkipPermissionsExpiresAt) {
+		dbSession.DangerouslySkipPermissions = false
+		dbSession.DangerouslySkipPermissionsExpiresAt = nil
+	}
+
+	// Explicitly ensure inherited values are stored
+	if dbSession.Model == "" && parentSession.Model != "" {
+		dbSession.Model = parentSession.Model
+	}
+	if dbSession.WorkingDir == "" && parentSession.WorkingDir != "" {
+		dbSession.WorkingDir = parentSession.WorkingDir
+	}
+
+	if err := m.store.CreateSession(ctx, dbSession); err != nil {
+		return nil, fmt.Errorf("failed to store session in database: %w", err)
+	}
+
+	slog.Info("attempting to continue OpenCode session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"parent_status", parentSession.Status,
+		"opencode_session_id", parentSession.ClaudeSessionID,
+		"query", req.Query)
+
+	// Launch continued OpenCode session
+	opencodeSession, err := client.Launch(opencodeConfig)
+	if err != nil {
+		slog.Error("failed to continue OpenCode session",
+			"session_id", sessionID,
+			"parent_session_id", req.ParentSessionID,
+			"error", err)
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+		return nil, fmt.Errorf("failed to launch continued OpenCode session: %w", err)
+	}
+
+	// Wrap the session for storage (converts OpenCode events to Claude events)
+	wrappedSession := NewOpenCodeSessionWrapper(opencodeSession)
+
+	// Store active process
+	m.mu.Lock()
+	m.activeProcesses[sessionID] = wrappedSession
+	m.mu.Unlock()
+
+	// Update database with running status
+	statusRunning := string(StatusRunning)
+	now := time.Now()
+	update := store.SessionUpdate{
+		Status:         &statusRunning,
+		LastActivityAt: &now,
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+		slog.Error("failed to update session status to running", "error", err)
+	}
+
+	// Publish status change event
+	if m.eventBus != nil {
+		m.eventBus.Publish(bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id":        sessionID,
+				"run_id":            runID,
+				"parent_session_id": req.ParentSessionID,
+				"old_status":        string(StatusStarting),
+				"new_status":        string(StatusRunning),
+				"provider":          "opencode",
+			},
+		})
+	}
+
+	// Store query for injection after session ID is captured
+	m.pendingQueries.Store(sessionID, req.Query)
+
+	// Monitor session lifecycle in background
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, time.Now(), claudeConfigForDB)
+
+	slog.Info("continued OpenCode session",
+		"session_id", sessionID,
+		"parent_session_id", req.ParentSessionID,
+		"run_id", runID,
+		"query", req.Query)
+
+	// Return minimal session info
+	return &Session{
+		ID:        sessionID,
+		RunID:     runID,
+		Status:    StatusRunning,
+		StartTime: time.Now(),
+		Config:    claudeConfigForDB,
+	}, nil
+}
+
 // InterruptSession interrupts a running session
 func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error {
 	// Hold lock to ensure session reference remains valid during interrupt
@@ -2221,6 +2417,18 @@ func (m *Manager) InterruptSession(ctx context.Context, sessionID string) error 
 
 // launchDraftWithConfig launches a draft session using the existing launch flow
 func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID string, config LaunchSessionConfig) error {
+	// Determine provider (default to "claude")
+	provider := config.Provider
+	if provider == "" {
+		provider = "claude"
+	}
+
+	// Route to provider-specific launch logic
+	if provider == "opencode" {
+		return m.launchDraftWithOpenCode(ctx, sessionID, runID, config)
+	}
+
+	// Default: Claude provider
 	// Get Claude client (will attempt initialization if needed)
 	client, err := m.getClaudeClient()
 	if err != nil {
@@ -2375,6 +2583,94 @@ func (m *Manager) launchDraftWithConfig(ctx context.Context, sessionID, runID st
 		"session_id", sessionID,
 		"run_id", runID,
 		"query", claudeConfig.Query)
+
+	return nil
+}
+
+// launchDraftWithOpenCode launches a draft session using OpenCode
+func (m *Manager) launchDraftWithOpenCode(ctx context.Context, sessionID, runID string, config LaunchSessionConfig) error {
+	// Get OpenCode client
+	client, err := m.getOpenCodeClient()
+	if err != nil {
+		return fmt.Errorf("cannot launch opencode session: %w", err)
+	}
+
+	// Convert config to OpenCode format
+	opencodeConfig := opencode.SessionConfig{
+		Query:      config.Query,
+		Model:      opencode.Model(config.Model),
+		WorkingDir: config.WorkingDir,
+	}
+
+	// Launch OpenCode session
+	slog.Info("launching draft session with OpenCode",
+		"session_id", sessionID,
+		"run_id", runID,
+		"query", opencodeConfig.Query,
+		"working_dir", opencodeConfig.WorkingDir)
+
+	opencodeSession, err := client.Launch(opencodeConfig)
+	if err != nil {
+		slog.Error("failed to launch OpenCode session from draft",
+			"session_id", sessionID,
+			"error", err)
+		m.updateSessionStatus(ctx, sessionID, StatusFailed, err.Error())
+		return fmt.Errorf("failed to launch OpenCode session: %w", err)
+	}
+
+	// Wrap the session for storage (converts OpenCode events to Claude events)
+	wrappedSession := NewOpenCodeSessionWrapper(opencodeSession)
+
+	// Store active process
+	m.mu.Lock()
+	m.activeProcesses[sessionID] = wrappedSession
+	m.mu.Unlock()
+
+	// Update database with running status
+	statusRunning := string(StatusRunning)
+	now := time.Now()
+	update := store.SessionUpdate{
+		Status:         &statusRunning,
+		LastActivityAt: &now,
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, update); err != nil {
+		slog.Error("failed to update session status to running", "error", err)
+		// Continue anyway
+	}
+
+	// Publish status change event
+	if m.eventBus != nil {
+		event := bus.Event{
+			Type: bus.EventSessionStatusChanged,
+			Data: map[string]interface{}{
+				"session_id": sessionID,
+				"run_id":     runID,
+				"old_status": string(StatusStarting),
+				"new_status": string(StatusRunning),
+				"provider":   "opencode",
+			},
+		}
+		m.eventBus.Publish(event)
+	}
+
+	// Store query for injection after session ID is captured
+	m.pendingQueries.Store(sessionID, config.Query)
+
+	// Create a placeholder claudeConfig for monitoring (uses Claude types for DB)
+	claudeConfigForDB := claudecode.SessionConfig{
+		Query:        config.Query,
+		Model:        claudecode.Model(config.Model),
+		WorkingDir:   config.WorkingDir,
+		OutputFormat: claudecode.OutputStreamJSON,
+	}
+
+	// Monitor session lifecycle in background
+	go m.monitorSession(ctx, sessionID, runID, wrappedSession, time.Now(), claudeConfigForDB)
+
+	slog.Info("successfully launched draft session with OpenCode",
+		"session_id", sessionID,
+		"run_id", runID,
+		"query", opencodeConfig.Query)
 
 	return nil
 }
@@ -2552,6 +2848,7 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 		ProxyBaseURL:               sess.ProxyBaseURL,
 		ProxyModelOverride:         sess.ProxyModelOverride,
 		ProxyAPIKey:                sess.ProxyAPIKey,
+		Provider:                   sess.Provider, // Inherit provider from draft session
 	}
 
 	// If dangerously skip permissions has an expiry, calculate the timeout

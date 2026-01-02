@@ -109,15 +109,58 @@ func (w *OpenCodeSessionWrapper) convertEvent(oc opencode.StreamEvent) *claudeco
 	case "tool_use":
 		event.Type = "assistant"
 		if oc.PartData != nil {
+			// Check if this is a tool_use with completed output (tool_result)
+			if oc.PartData.State != nil && oc.PartData.State.Output != "" {
+				// This is a tool result - tool has completed with output
+				event.Type = "assistant"
+				event.Message = &claudecode.Message{
+					ID:   oc.PartData.MessageID,
+					Role: "user", // tool_result comes from the "user" side in Claude's conversation model
+					Content: []claudecode.Content{
+						{
+							Type:      "tool_result",
+							ToolUseID: oc.PartData.CallID,
+							Content:   claudecode.ContentField{Value: oc.PartData.State.Output},
+						},
+					},
+				}
+			} else {
+				// This is the initial tool_use invocation
+				var input map[string]interface{}
+				if oc.PartData.State != nil {
+					input = oc.PartData.State.Input
+				}
+				event.Message = &claudecode.Message{
+					ID:   oc.PartData.MessageID,
+					Role: "assistant",
+					Content: []claudecode.Content{
+						{
+							Type:  "tool_use",
+							ID:    oc.PartData.CallID,
+							Name:  oc.PartData.Tool,
+							Input: input,
+						},
+					},
+				}
+			}
+		}
+
+	case "tool_result":
+		// Explicit tool_result event type (if OpenCode sends these separately)
+		event.Type = "assistant"
+		if oc.PartData != nil {
+			output := ""
+			if oc.PartData.State != nil {
+				output = oc.PartData.State.Output
+			}
 			event.Message = &claudecode.Message{
 				ID:   oc.PartData.MessageID,
-				Role: "assistant",
+				Role: "user",
 				Content: []claudecode.Content{
 					{
-						Type:  "tool_use",
-						ID:    oc.PartData.CallID,
-						Name:  oc.PartData.Tool,
-						Input: oc.PartData.State.Input,
+						Type:      "tool_result",
+						ToolUseID: oc.PartData.CallID,
+						Content:   claudecode.ContentField{Value: output},
 					},
 				},
 			}
@@ -129,10 +172,27 @@ func (w *OpenCodeSessionWrapper) convertEvent(oc opencode.StreamEvent) *claudeco
 			event.Subtype = "success"
 			event.CostUSD = oc.PartData.Cost
 			if oc.PartData.Tokens != nil {
-				// Note: claudecode.StreamEvent doesn't have direct token fields
-				// The usage is typically in the final result
+				event.Usage = &claudecode.Usage{
+					InputTokens:  oc.PartData.Tokens.Input,
+					OutputTokens: oc.PartData.Tokens.Output,
+				}
 			}
 		}
+
+	case "error":
+		// Error events from OpenCode
+		event.Type = "result"
+		event.Subtype = "error"
+		event.IsError = true
+		if oc.PartData != nil {
+			event.Error = oc.PartData.Text
+		}
+
+	case "system", "init":
+		// System/init events for session initialization
+		event.Type = "system"
+		event.Subtype = "init"
+		// SessionID is already set above
 
 	case "step_start":
 		// Skip step_start events - they don't have a direct Claude equivalent
