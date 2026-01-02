@@ -1,6 +1,8 @@
 package session
 
 import (
+	"sync"
+
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	opencode "github.com/humanlayer/humanlayer/opencode-go"
 )
@@ -8,16 +10,22 @@ import (
 // OpenCodeSessionWrapper wraps an opencode.Session to implement ClaudeSession interface
 // This allows the session manager to use OpenCode sessions with minimal changes
 type OpenCodeSessionWrapper struct {
-	session       *opencode.Session
-	events        chan claudecode.StreamEvent
-	eventsStarted bool
+	session    *opencode.Session
+	events     chan claudecode.StreamEvent
+	eventsOnce sync.Once     // Ensures convertEvents goroutine starts only once
+	done       chan struct{} // Signals shutdown to prevent goroutine leaks
 }
 
 // NewOpenCodeSessionWrapper creates a new wrapper around an opencode.Session
+// Panics if session is nil to fail fast rather than causing nil pointer panics later
 func NewOpenCodeSessionWrapper(session *opencode.Session) ClaudeSession {
+	if session == nil {
+		panic("NewOpenCodeSessionWrapper: session cannot be nil")
+	}
 	return &OpenCodeSessionWrapper{
 		session: session,
 		events:  make(chan claudecode.StreamEvent, 100),
+		done:    make(chan struct{}),
 	}
 }
 
@@ -27,7 +35,15 @@ func (w *OpenCodeSessionWrapper) Interrupt() error {
 }
 
 // Kill implements the ClaudeSession interface
+// Also signals the converter goroutine to stop to prevent leaks
 func (w *OpenCodeSessionWrapper) Kill() error {
+	// Signal converter goroutine to stop
+	select {
+	case <-w.done:
+		// Already closed
+	default:
+		close(w.done)
+	}
 	return w.session.Kill()
 }
 
@@ -64,22 +80,29 @@ func (w *OpenCodeSessionWrapper) Wait() (*claudecode.Result, error) {
 
 // GetEvents implements the ClaudeSession interface
 // Converts OpenCode events to Claude events on-the-fly
+// Thread-safe: uses sync.Once to ensure converter goroutine starts only once
 func (w *OpenCodeSessionWrapper) GetEvents() <-chan claudecode.StreamEvent {
-	if !w.eventsStarted {
-		w.eventsStarted = true
+	w.eventsOnce.Do(func() {
 		go w.convertEvents()
-	}
+	})
 	return w.events
 }
 
 // convertEvents reads OpenCode events and converts them to Claude events
+// Uses select with done channel to prevent goroutine leaks if consumer stops reading
 func (w *OpenCodeSessionWrapper) convertEvents() {
 	defer close(w.events)
 
 	for ocEvent := range w.session.Events {
 		event := w.convertEvent(ocEvent)
 		if event != nil {
-			w.events <- *event
+			select {
+			case w.events <- *event:
+				// Event sent successfully
+			case <-w.done:
+				// Shutdown signal received, stop processing
+				return
+			}
 		}
 	}
 }
