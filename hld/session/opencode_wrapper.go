@@ -1,6 +1,7 @@
 package session
 
 import (
+	"log/slog"
 	"sync"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -222,7 +223,10 @@ func (w *OpenCodeSessionWrapper) convertEvent(oc opencode.StreamEvent) *claudeco
 		return nil
 
 	default:
-		// Unknown event type, skip
+		// Unknown event type, log for debugging and skip
+		slog.Debug("skipping unknown OpenCode event type",
+			"type", oc.Type,
+			"session_id", oc.SessionID)
 		return nil
 	}
 
