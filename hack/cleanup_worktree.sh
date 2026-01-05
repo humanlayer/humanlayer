@@ -35,7 +35,7 @@ cleanup_worktree() {
     local dir_exists=false
 
     # Check what exists
-    if git worktree list | grep -q "$worktree_path"; then
+    if git worktree list | grep -qE "^${worktree_path}\b"; then
         worktree_in_git=true
     fi
     if git show-ref --verify --quiet "refs/heads/${worktree_name}"; then
