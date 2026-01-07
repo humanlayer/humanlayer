@@ -119,6 +119,9 @@ type Session struct {
 
 	// Editor state for draft sessions (JSON blob)
 	EditorState *string `db:"editor_state"`
+
+	// Provider type (e.g., "claude", "opencode")
+	Provider string `db:"provider"`
 }
 
 // SessionUpdate contains fields that can be updated

@@ -5,6 +5,7 @@ go 1.24.0
 replace (
 	github.com/humanlayer/humanlayer/claudecode-go => ../claudecode-go
 	github.com/humanlayer/humanlayer/humanlayer-go => ../humanlayer-go
+	github.com/humanlayer/humanlayer/opencode-go => ../opencode-go
 )
 
 require (
@@ -13,6 +14,7 @@ require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/humanlayer/humanlayer/claudecode-go v0.0.0-00010101000000-000000000000
+	github.com/humanlayer/humanlayer/opencode-go v0.0.0-00010101000000-000000000000
 	github.com/mark3labs/mcp-go v0.37.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/oapi-codegen/runtime v1.1.2

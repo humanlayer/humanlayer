@@ -72,6 +72,8 @@ type Info struct {
 // LaunchSessionConfig contains the configuration for launching a new session
 type LaunchSessionConfig struct {
 	claudecode.SessionConfig
+	// Provider selection ("claude" or "opencode", defaults to "claude")
+	Provider string
 	// Daemon-level settings that don't get passed to Claude Code
 	Title                             string // Session title (optional)
 	AutoAcceptEdits                   bool   // Auto-accept edit tools

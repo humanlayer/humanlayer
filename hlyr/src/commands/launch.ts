@@ -7,6 +7,7 @@ interface LaunchOptions {
   query?: string
   title?: string
   model?: string
+  provider?: string // 'claude' or 'opencode'
   workingDir?: string
   additionalDirectories?: string[]
   addDir?: string[] // CLI option name maps to this
@@ -34,6 +35,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
 
     console.log('Launching Claude Code session...')
     console.log('Query:', query)
+    if (options.provider) console.log('Provider:', options.provider)
     if (options.title) console.log('Title:', options.title)
     if (options.model) console.log('Model:', options.model)
     console.log('Working directory:', options.workingDir || process.cwd())
@@ -59,6 +61,7 @@ export const launchCommand = async (query: string, options: LaunchOptions = {}) 
         query: query,
         title: options.title,
         model: options.model,
+        provider: options.provider,
         working_dir: options.workingDir || process.cwd(),
         additional_directories: additionalDirs,
         max_turns: options.maxTurns,
