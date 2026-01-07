@@ -174,7 +174,8 @@ pub fn get_branch_id(is_dev: bool, branch_override: Option<String>) -> String {
         let branch = branch_override
             .or_else(get_git_branch)
             .unwrap_or_else(|| "dev".to_string());
-        extract_ticket_id(&branch).unwrap_or(branch)
+        let id = extract_ticket_id(&branch).unwrap_or(branch);
+        id.replace('/', "-")
     } else {
         "production".to_string()
     }
@@ -346,7 +347,7 @@ async fn read_last_log_lines(n: usize, log_path: Option<String>) -> Result<Strin
         let home = dirs::home_dir().ok_or("Failed to get home directory")?;
         home.join(".humanlayer")
             .join("logs")
-            .join(format!("wui-{}", branch_id))
+            .join(format!("wui-{branch_id}"))
             .join("codelayer.log")
     };
 
@@ -357,7 +358,7 @@ async fn read_last_log_lines(n: usize, log_path: Option<String>) -> Result<Strin
 
     // Read file and get last n lines
     let file = File::open(&log_file)
-        .map_err(|e| format!("Failed to open log file: {}", e))?;
+        .map_err(|e| format!("Failed to open log file: {e}"))?;
     let reader = BufReader::new(file);
 
     // Use a deque to keep only the last n lines in memory
@@ -373,7 +374,7 @@ async fn read_last_log_lines(n: usize, log_path: Option<String>) -> Result<Strin
             }
             Err(e) => {
                 // Log the error but continue reading
-                eprintln!("Error reading line: {}", e);
+                eprintln!("Error reading line: {e}");
             }
         }
     }
@@ -565,7 +566,7 @@ pub fn run() {
                 let shortcut = app.handle().global_shortcut();
 
                 // Register the shortcut with a callback
-                shortcut.on_shortcut("cmd+shift+h", move |_app, _shortcut, _event| {
+                shortcut.on_shortcut("CommandOrControl+Shift+h", move |_app, _shortcut, _event| {
                     // Show quick launcher window
                     let _ = show_quick_launcher(app_handle.clone());
                 })?;
