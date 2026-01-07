@@ -56,11 +56,10 @@ WORKTREE_PATH="${WORKTREES_BASE}/${WORKTREE_DIR_NAME}"
 echo "🌳 Creating worktree: ${WORKTREE_NAME}"
 echo "📁 Location: ${WORKTREE_PATH}"
 
-# Check if worktrees base directory exists
+# Create worktrees base directory if it doesn't exist
 if [ ! -d "$WORKTREES_BASE" ]; then
-    echo "❌ Error: Directory $WORKTREES_BASE does not exist."
-    echo "   Please create it first: mkdir -p $WORKTREES_BASE"
-    exit 1
+    echo "📁 Creating worktrees base directory: $WORKTREES_BASE"
+    mkdir -p "$WORKTREES_BASE"
 fi
 
 # Check if worktree already exists

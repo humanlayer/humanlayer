@@ -1,41 +1,43 @@
-
 ---
-description: Create worktree and launch implementation session for a plan
+description: Create a new worktree for parallel development work
 ---
 
-2. set up worktree for implementation:
-2a. read `hack/create_worktree.sh` and create a new worktree with the Linear branch name: `./hack/create_worktree.sh ENG-XXXX BRANCH_NAME`
+# Create Worktree
 
-3. determine required data:
+You are tasked with creating a new git worktree for parallel development work.
 
-branch name
-path to plan file (use relative path only)
-launch prompt
-command to run
+## Process
 
-**IMPORTANT PATH USAGE:**
-- The thoughts/ directory is synced between the main repo and worktrees
-- Always use ONLY the relative path starting with `thoughts/shared/...` without any directory prefix
-- Example: `thoughts/shared/plans/fix-mcp-keepalive-proper.md` (not the full absolute path)
-- This works because thoughts are synced and accessible from the worktree
+1. **Create the worktree**:
+   - Run `./hack/create_worktree.sh` with no arguments to auto-generate a name
+   - The script will:
+     - Generate a unique name (e.g., `swift_fix_1430`)
+     - Create the worktree at `~/wt/humanlayer/{name}/`
+     - Copy `.claude` directory
+     - Run `make setup`
+     - Initialize thoughts
 
-3a. confirm with the user by sending a message to the Human
+2. **Capture the worktree path**:
+   - Note the path from the script output (e.g., `~/wt/humanlayer/swift_fix_1430`)
 
+3. **Launch a session in the worktree**:
+   - Run: `humanlayer launch -w {WORKTREE_PATH} "Your task prompt here"`
+   - Or if already in a Claude session, inform the user of the worktree location
+
+## Example
+
+```bash
+# Create worktree
+./hack/create_worktree.sh
+# Output: ✅ Worktree created successfully!
+# Output: 📁 Path: /Users/you/wt/humanlayer/swift_fix_1430
+
+# Launch session in worktree
+humanlayer launch -w ~/wt/humanlayer/swift_fix_1430 "Implement the feature"
 ```
-based on the input, I plan to create a worktree with the following details:
 
-worktree path: ~/wt/humanlayer/ENG-XXXX
-branch name: BRANCH_NAME
-path to plan file: $FILEPATH
-launch prompt:
+## Notes
 
-    /implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link
-
-command to run:
-
-    humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"
-```
-
-incorporate any user feedback then:
-
-4. launch implementation session: `humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"`
+- The `thoughts/` directory is synced between worktrees
+- To clean up later: `./hack/cleanup_worktree.sh {worktree_name}`
+- You can also specify a custom name: `./hack/create_worktree.sh my_feature_name`
