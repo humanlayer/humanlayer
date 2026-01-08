@@ -21,6 +21,13 @@ case "$(uname -s)" in
                 exit 0
             fi
 
+            # Normalize distro IDs that are Arch-based
+            case "$DISTRO" in
+                endeavouros)
+                    DISTRO=arch
+                    ;;
+            esac
+
             # Function to check if a command exists
             command_exists() {
                 command -v "$1" >/dev/null 2>&1
