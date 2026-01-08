@@ -26,10 +26,19 @@ import { DraftLauncherInput } from './DraftLauncherInput'
 interface DraftLauncherFormProps {
   session: Session | null
   onSessionUpdated?: () => void
+  initialPrompt?: string
+  initialWorkingDir?: string
+  initialTitle?: string
   //onCreateDraft?: () => Promise<Session | null | undefined>
 }
 
-export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, onSessionUpdated }) => {
+export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({
+  session,
+  onSessionUpdated,
+  initialPrompt,
+  initialWorkingDir,
+  initialTitle,
+}) => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const titleInputRef = useRef<HTMLInputElement>(null)
@@ -37,18 +46,20 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
   // Core Form State
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [title, setTitle] = useState(session?.title ?? session?.summary ?? '')
+  const [title, setTitle] = useState(session?.title ?? session?.summary ?? initialTitle ?? '')
 
   // Refs for mutable values to avoid re-render issues
   const titleRef = useRef(title)
-  const workingDirectoryRef = useRef(session?.workingDir ?? '')
+  const workingDirectoryRef = useRef(initialWorkingDir ?? session?.workingDir ?? '')
   const sessionIdRef = useRef<string | null>(null)
   const draftCreatingRef = useRef(false)
+  const hasAppliedInitialTitleRef = useRef(false)
+  const hasAppliedInitialWorkingDirRef = useRef(false)
 
   // Local Storage State
   const [workingDirectory, setWorkingDirectory] = useLocalStorage(
     'draft-working-directory',
-    session?.workingDir ?? '',
+    session?.workingDir ?? initialWorkingDir ?? '',
   )
   const [
     defaultAutoAcceptEditsSetting,
@@ -144,6 +155,22 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       titleInputRef.current.focus()
     }
   }, []) // Run only once on mount
+
+  useEffect(() => {
+    if (!session && initialWorkingDir && !hasAppliedInitialWorkingDirRef.current) {
+      setWorkingDirectory(initialWorkingDir)
+      workingDirectoryRef.current = initialWorkingDir
+      hasAppliedInitialWorkingDirRef.current = true
+    }
+  }, [initialWorkingDir, session, setWorkingDirectory])
+
+  useEffect(() => {
+    if (!session && initialTitle && !hasAppliedInitialTitleRef.current && !titleRef.current) {
+      setTitle(initialTitle)
+      titleRef.current = initialTitle
+      hasAppliedInitialTitleRef.current = true
+    }
+  }, [initialTitle, session])
 
   // Load localStorage values once they're ready
   useEffect(() => {
@@ -833,6 +860,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
             dangerouslyBypassPermissionsEnabled={defaultDangerouslyBypassPermissionsSetting}
             autoAcceptEditsEnabled={defaultAutoAcceptEditsSetting}
             onContentChange={handleEditorContentChange}
+            initialPrompt={initialPrompt}
           />
         </div>
 
