@@ -51,6 +51,7 @@ const hotkeyData = [
 
   // Session Detail
   { category: 'Session Detail', key: 'Escape', description: 'Close detail view' },
+  { category: 'Session Detail', key: '⌘+\\', description: 'Toggle terminal' },
   { category: 'Session Detail', key: 'J', description: 'Next event' },
   { category: 'Session Detail', key: 'K', description: 'Previous event' },
   { category: 'Session Detail', key: 'G,G', description: 'Scroll to top' },
