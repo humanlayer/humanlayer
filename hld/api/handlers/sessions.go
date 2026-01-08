@@ -1696,6 +1696,30 @@ func (h *SessionHandlers) GetSlashCommands(ctx context.Context, req api.GetSlash
 		)
 	}
 
+	// Discover plugin commands (new code)
+	slog.Debug("Discovering plugin commands",
+		"config_dir", configDir,
+		"operation", "GetSlashCommands")
+
+	pluginCommands, err := discoverPluginCommands(configDir)
+	if err != nil {
+		// Log error but don't fail the entire request
+		slog.Warn("Failed to discover plugin commands",
+			"error", err.Error(),
+			"config_dir", configDir,
+			"operation", "GetSlashCommands")
+		// Continue without plugin commands
+	} else {
+		// Add plugin commands to the map
+		for _, cmd := range pluginCommands {
+			commandMap[cmd.Name] = cmd
+		}
+
+		slog.Debug("Added plugin commands to results",
+			"count", len(pluginCommands),
+			"operation", "GetSlashCommands")
+	}
+
 	// Extract all commands from map
 	var allCommands []api.SlashCommand
 	for _, cmd := range commandMap {
