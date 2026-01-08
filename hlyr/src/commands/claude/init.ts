@@ -109,7 +109,7 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
     let selectedCategories: string[]
 
     if (options.all) {
-      selectedCategories = ['commands', 'agents', 'settings']
+      selectedCategories = ['commands', 'agents', 'settings', 'scripts']
     } else {
       // Interactive selection
       const selection = await p.multiselect({
@@ -130,8 +130,13 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
             label: 'Settings',
             hint: 'Project permissions configuration',
           },
+          {
+            value: 'scripts',
+            label: 'Scripts',
+            hint: 'Required hack scripts (spec_metadata.sh, create_worktree.sh)',
+          },
         ],
-        initialValues: ['commands', 'agents', 'settings'],
+        initialValues: ['commands', 'agents', 'settings', 'scripts'],
         required: false,
       })
 
@@ -326,6 +331,40 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
 
         filesSkipped += allFiles.length - filesToCopy.length
         p.log.success(`Copied ${filesToCopy.length} ${category} file(s)`)
+      } else if (category === 'scripts') {
+        // Copy required hack scripts to target repo's hack directory
+        const requiredScripts = ['spec_metadata.sh', 'create_worktree.sh']
+        const sourceHackDir = path.resolve(sourceClaudeDir, '..', 'hack')
+        const targetHackDir = path.join(targetDir, 'hack')
+
+        if (!fs.existsSync(sourceHackDir)) {
+          p.log.warn('hack directory not found in source, skipping scripts')
+          continue
+        }
+
+        // Create hack directory in target
+        fs.mkdirSync(targetHackDir, { recursive: true })
+
+        let scriptsCopied = 0
+        for (const script of requiredScripts) {
+          const sourcePath = path.join(sourceHackDir, script)
+          const targetPath = path.join(targetHackDir, script)
+
+          if (!fs.existsSync(sourcePath)) {
+            p.log.warn(`Script ${script} not found in source, skipping`)
+            continue
+          }
+
+          fs.copyFileSync(sourcePath, targetPath)
+          // Make script executable (chmod +x)
+          fs.chmodSync(targetPath, 0o755)
+          scriptsCopied++
+        }
+
+        if (scriptsCopied > 0) {
+          filesCopied += scriptsCopied
+          p.log.success(`Copied ${scriptsCopied} hack script(s)`)
+        }
       } else if (category === 'settings') {
         const settingsPath = path.join(sourceClaudeDir, 'settings.json')
         const targetSettingsPath = path.join(claudeTargetDir, 'settings.json')
@@ -370,6 +409,13 @@ export async function claudeInitCommand(options: InitOptions): Promise<void> {
     if (selectedCategories.includes('settings')) {
       ensureGitignoreEntry(targetDir, '.claude/settings.local.json')
       p.log.info('Updated .gitignore to exclude settings.local.json')
+    }
+
+    // Update .gitignore to exclude hack scripts
+    if (selectedCategories.includes('scripts')) {
+      ensureGitignoreEntry(targetDir, 'hack/spec_metadata.sh')
+      ensureGitignoreEntry(targetDir, 'hack/create_worktree.sh')
+      p.log.info('Updated .gitignore to exclude hack scripts')
     }
 
     let message = `Successfully copied ${filesCopied} file(s) to ${claudeTargetDir}`
