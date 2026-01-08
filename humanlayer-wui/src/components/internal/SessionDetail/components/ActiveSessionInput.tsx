@@ -19,6 +19,9 @@ import { Content } from '@tiptap/react'
 import { getCurrentWebview } from '@tauri-apps/api/webview'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { Card, CardContent } from '@/components/ui/card'
+import { invoke } from '@tauri-apps/api/core'
+import { getPreferredEditor, EDITOR_OPTIONS, EditorType } from '@/lib/preferences'
+import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
 interface ActiveSessionInputProps {
   session: Session
@@ -161,7 +164,6 @@ export const ActiveSessionInput = forwardRef<
     const handleChange = useCallback(
       async (value: Content) => {
         const valueStr = JSON.stringify(value)
-
         // Save to localStorage for active sessions
         localStorage.setItem(`${ResponseInputLocalStorageKey}.${session.id}`, valueStr)
       },
@@ -212,6 +214,60 @@ export const ActiveSessionInput = forwardRef<
         handleContinueSession()
       }
     }
+
+    // Handler to open working directory in preferred editor
+    const handleOpenInEditor = useCallback(
+      async (editorType?: EditorType) => {
+        if (!session.workingDir) {
+          toast.error('No working directory available')
+          return
+        }
+
+        // Use provided editor or fall back to user's preferred editor
+        const targetEditor = editorType || getPreferredEditor()
+        const editorConfig = EDITOR_OPTIONS.find(e => e.value === targetEditor)
+
+        if (!editorConfig) {
+          toast.error('Editor configuration not found')
+          return
+        }
+
+        try {
+          // Use our custom Tauri command that handles cross-platform editor opening
+          if (targetEditor === 'default') {
+            // Pass null/undefined for editor to use system default
+            await invoke('open_in_editor', {
+              path: session.workingDir,
+              editor: null,
+            })
+            logger.log(`Opened ${session.workingDir} with system default`)
+            toast.success('Opened in system default', {
+              description: session.workingDir,
+            })
+          } else {
+            // Pass the editor command
+            await invoke('open_in_editor', {
+              path: session.workingDir,
+              editor: editorConfig.command,
+            })
+            logger.log(`Opened ${session.workingDir} in ${editorConfig.label}`)
+            toast.success(`Opened in ${editorConfig.label}`, {
+              description: session.workingDir,
+            })
+          }
+        } catch (error) {
+          logger.error('Failed to open in editor:', error)
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          toast.error(`Failed to open directory`, {
+            description:
+              targetEditor === 'default'
+                ? 'Could not open with system default application'
+                : `Make sure ${editorConfig.label} is installed and available in your PATH. Error: ${errorMessage}`,
+          })
+        }
+      },
+      [session.workingDir],
+    )
 
     // Forward ref handling
     useImperativeHandle(ref, () => {
@@ -445,6 +501,22 @@ export const ActiveSessionInput = forwardRef<
       { enableOnFormTags: false },
     )
 
+    // Cmd+Shift+E to open in editor
+    useHotkeys(
+      'mod+shift+e',
+      e => {
+        e.preventDefault()
+        if (session.workingDir) {
+          handleOpenInEditor()
+        }
+      },
+      {
+        scopes: [HOTKEY_SCOPES.SESSION_DETAIL, HOTKEY_SCOPES.SESSION_DETAIL_ARCHIVED],
+        enableOnFormTags: true,
+        enableOnContentEditable: true,
+      },
+    )
+
     // Wrapped handlers that blur editor when opening modals
     const handleToggleForkView = useCallback(() => {
       // Blur editor before opening fork modal
@@ -641,10 +713,13 @@ export const ActiveSessionInput = forwardRef<
                   autoAcceptEnabled={autoAcceptEnabled}
                   sessionStatus={session.status}
                   isArchived={isArchived}
+                  workingDir={session.workingDir}
+                  preferredEditor={getPreferredEditor()}
                   onToggleFork={handleToggleForkView}
                   onToggleBypass={handleToggleDangerouslySkipPermissions}
                   onToggleAutoAccept={onToggleAutoAccept || (() => {})}
                   onToggleArchive={onToggleArchive || (() => {})}
+                  onOpenInEditor={handleOpenInEditor}
                 />
                 <div className="flex items-center justify-end gap-2">
                   <Button

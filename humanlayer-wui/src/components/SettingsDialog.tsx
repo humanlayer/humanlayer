@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select'
 import React, { useState, useEffect } from 'react'
 import { useStore } from '@/AppStore'
 import { usePostHogTracking } from '@/hooks/usePostHogTracking'
@@ -13,6 +14,7 @@ import { CheckCircle2, XCircle, RefreshCw, Pencil, Copy } from 'lucide-react'
 import { HotkeyScopeBoundary } from './HotkeyScopeBoundary'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { clearSavedModelPreferences } from '@/hooks/useSessionLauncher'
+import { getPreferredEditor, setPreferredEditor, EDITOR_OPTIONS, EditorType } from '@/lib/preferences'
 import { invoke } from '@tauri-apps/api/core'
 import { appLogDir } from '@tauri-apps/api/path'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
@@ -35,6 +37,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   const [claudePath, setClaudePath] = useState('')
   const [isUpdatingPath, setIsUpdatingPath] = useState(false)
   const [showClaudePathInput, setShowClaudePathInput] = useState(false)
+  const [preferredEditor, setPreferredEditorState] = useState<EditorType>(getPreferredEditor())
 
   // Log-related state
   const [logPath, setLogPath] = useState<string>('')
@@ -45,6 +48,7 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
   useEffect(() => {
     if (open) {
       fetchClaudeConfig()
+      setPreferredEditorState(getPreferredEditor())
       // Track settings opened event
       trackEvent(POSTHOG_EVENTS.SETTINGS_OPENED, {})
     }
@@ -201,6 +205,15 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
     } finally {
       setIsUpdatingPath(false)
     }
+  }
+
+  const handleEditorChange = (value: EditorType) => {
+    setPreferredEditorState(value)
+    setPreferredEditor(value)
+    const editorLabel = EDITOR_OPTIONS.find(e => e.value === value)?.label
+    toast.success('Editor Preference Updated', {
+      description: `Default editor set to ${editorLabel}`,
+    })
   }
 
   const handleLogLineCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -421,6 +434,39 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                   )}
                 </p>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Default Editor</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Default Editor:</span>
+                <Select value={preferredEditor} onValueChange={handleEditorChange}>
+                  <SelectTrigger className="w-[200px] h-8 px-2.5">
+                    <div className="flex items-center gap-1.5">
+                      <span>{EDITOR_OPTIONS.find(e => e.value === preferredEditor)?.label}</span>
+                      <Pencil className="h-3 w-3" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITOR_OPTIONS.map(editor => (
+                      <SelectItem key={editor.value} value={editor.value}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium">{editor.label}</span>
+                          {editor.description && (
+                            <span className="text-xs opacity-70 group-data-[state=checked]:opacity-100">
+                              {editor.description}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Set your default editor for opening session directories. You can also choose a different
+                editor each time using the dropdown menu on the button (⌘⇧E for default).
+              </p>
             </div>
 
             <div className="flex items-center justify-between">
