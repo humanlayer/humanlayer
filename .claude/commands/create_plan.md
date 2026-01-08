@@ -171,7 +171,7 @@ After structure approval:
 
 1. **Write the plan** to `thoughts/shared/plans/YYYY-MM-DD-ENG-XXXX-description.md`
    - Format: `YYYY-MM-DD-ENG-XXXX-description.md` where:
-     - YYYY-MM-DD is today's date
+     - YYYY-MM-DD is today's date (get with `date +"%Y-%m-%d"`)
      - ENG-XXXX is the ticket number (omit if no ticket)
      - description is a brief kebab-case description
    - Examples:
