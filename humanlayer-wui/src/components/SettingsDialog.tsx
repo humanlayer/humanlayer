@@ -17,6 +17,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { appLogDir } from '@tauri-apps/api/path'
 import { writeText } from '@tauri-apps/plugin-clipboard-manager'
 import { copyToClipboard } from '@/utils/clipboard'
+import { HotkeySettings } from './HotkeySettings'
 
 interface SettingsDialogProps {
   open: boolean
@@ -482,6 +483,11 @@ export function SettingsDialog({ open, onOpenChange, onConfigUpdate }: SettingsD
                 </Button>
               </div>
             </div>
+
+            <div className="border-t border-border" />
+
+            {/* Keyboard Shortcuts Section */}
+            <HotkeySettings />
           </div>
         </DialogContent>
       </Dialog>
