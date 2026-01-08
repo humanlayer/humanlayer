@@ -1,7 +1,7 @@
 import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
 import { ToolCallContentProps } from './types'
-import { getApprovalStatusColor } from './utils/formatters'
+import { getApprovalStatusColor, detectToolError, extractMcpError } from './utils/formatters'
 
 interface WebFetchToolInput {
   url: string
@@ -20,14 +20,27 @@ export function WebFetchToolCallContent({
   let statusColor =
     isGroupItem && !approvalStatusColor ? 'text-[var(--terminal-accent)]' : approvalStatusColor
 
-  const formatFetchResult = (content: string) => {
+  const formatFetchResult = (content: string): { text: string; isError: boolean; suggestion?: string | null } => {
+    // Check for errors FIRST using centralized detection
+    if (detectToolError('WebFetch', content)) {
+      const mcpError = extractMcpError(content)
+      if (mcpError) {
+        return {
+          text: `Fetch failed: ${mcpError.message}`,
+          suggestion: mcpError.suggestion,
+          isError: true,
+        }
+      }
+      return { text: 'Fetch failed', isError: true }
+    }
+
     // Try to extract character count or size info
     const charCount = content.length
     if (charCount > 0) {
       const kbSize = (charCount / 1024).toFixed(1)
-      return `Fetched ${kbSize}KB of content`
+      return { text: `Fetched ${kbSize}KB of content`, isError: false }
     }
-    return 'No content retrieved'
+    return { text: 'No content retrieved', isError: false }
   }
 
   const formattedResult = toolResultContent ? formatFetchResult(toolResultContent) : null
@@ -36,7 +49,8 @@ export function WebFetchToolCallContent({
     <div className="space-y-2">
       <ToolHeader
         name="Web Fetch"
-        nameColor={statusColor}
+        nameColor={formattedResult?.isError ? undefined : statusColor}
+        nameStyle={formattedResult?.isError ? { color: 'var(--terminal-error)' } : undefined}
         primaryParam={
           <div className="flex items-center gap-2">
             <span className="text-sm">
@@ -62,14 +76,21 @@ export function WebFetchToolCallContent({
       {formattedResult && (
         <div className="mt-1 text-sm text-muted-foreground font-mono flex items-start gap-1">
           <span className="text-muted-foreground/50">⎿</span>
-          <span>
-            {formattedResult}
-            {isFocused && toolResultContent && toolResultContent.length > 100 && (
-              <span className="text-xs text-muted-foreground/50 ml-2">
-                <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
-              </span>
+          <div>
+            <span className={formattedResult.isError ? 'text-destructive' : ''}>
+              {formattedResult.text}
+              {isFocused && toolResultContent && toolResultContent.length > 100 && (
+                <span className="text-xs text-muted-foreground/50 ml-2">
+                  <kbd className="px-1 py-0.5 text-xs bg-muted/50 rounded">i</kbd> expand
+                </span>
+              )}
+            </span>
+            {formattedResult.isError && formattedResult.suggestion && (
+              <div className="text-xs text-muted-foreground mt-1">
+                {formattedResult.suggestion}
+              </div>
             )}
-          </span>
+          </div>
         </div>
       )}
     </div>
