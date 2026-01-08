@@ -6,7 +6,8 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder};
 use tauri_plugin_store::StoreExt;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -455,6 +456,154 @@ fn show_quick_launcher(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// Build application menu with default items plus custom About
+fn build_app_menu(app: &tauri::AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
+    // Create menu builder
+    let menu = MenuBuilder::new(app);
+
+    #[cfg(target_os = "macos")]
+    {
+        // On macOS, create the full menu bar with default menus
+        use tauri::menu::{Submenu, PredefinedMenuItem};
+
+        // App menu (macOS only) with standard items
+        let app_menu = Submenu::with_items(
+            app,
+            "CodeLayer",
+            true,
+            &[
+                // About item will be in the Help menu instead
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::services(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::hide(app, None)?,
+                &PredefinedMenuItem::hide_others(app, None)?,
+                &PredefinedMenuItem::show_all(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::quit(app, None)?,
+            ],
+        )?;
+
+        // Edit menu with standard items
+        let edit_menu = Submenu::with_items(
+            app,
+            "Edit",
+            true,
+            &[
+                &PredefinedMenuItem::undo(app, None)?,
+                &PredefinedMenuItem::redo(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::cut(app, None)?,
+                &PredefinedMenuItem::copy(app, None)?,
+                &PredefinedMenuItem::paste(app, None)?,
+                &PredefinedMenuItem::select_all(app, None)?,
+            ],
+        )?;
+
+        // View menu with standard items
+        let view_menu = Submenu::with_items(
+            app,
+            "View",
+            true,
+            &[
+                &PredefinedMenuItem::fullscreen(app, None)?,
+            ],
+        )?;
+
+        // Window menu with standard items
+        let window_menu = Submenu::with_items(
+            app,
+            "Window",
+            true,
+            &[
+                &PredefinedMenuItem::minimize(app, None)?,
+                &PredefinedMenuItem::maximize(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::close_window(app, None)?,
+            ],
+        )?;
+
+        // Help menu with custom About item
+        let about_item = MenuItemBuilder::with_id("about", "About CodeLayer")
+            .build(app)?;
+
+        let help_menu = Submenu::with_items(
+            app,
+            "Help",
+            true,
+            &[&about_item],
+        )?;
+
+        menu
+            .item(&app_menu)
+            .item(&edit_menu)
+            .item(&view_menu)
+            .item(&window_menu)
+            .item(&help_menu)
+            .build()
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        // On Windows/Linux, simpler menu structure
+        use tauri::menu::{Submenu, PredefinedMenuItem};
+
+        // File menu
+        let file_menu = Submenu::with_items(
+            app,
+            "File",
+            true,
+            &[
+                &PredefinedMenuItem::quit(app, None)?,
+            ],
+        )?;
+
+        // Edit menu
+        let edit_menu = Submenu::with_items(
+            app,
+            "Edit",
+            true,
+            &[
+                &PredefinedMenuItem::undo(app, None)?,
+                &PredefinedMenuItem::redo(app, None)?,
+                &PredefinedMenuItem::separator(app)?,
+                &PredefinedMenuItem::cut(app, None)?,
+                &PredefinedMenuItem::copy(app, None)?,
+                &PredefinedMenuItem::paste(app, None)?,
+                &PredefinedMenuItem::select_all(app, None)?,
+            ],
+        )?;
+
+        // View menu
+        let view_menu = Submenu::with_items(
+            app,
+            "View",
+            true,
+            &[
+                &PredefinedMenuItem::fullscreen(app, None)?,
+            ],
+        )?;
+
+        // Help menu with custom About item
+        let about_item = MenuItemBuilder::with_id("about", "About CodeLayer")
+            .build(app)?;
+
+        let help_menu = Submenu::with_items(
+            app,
+            "Help",
+            true,
+            &[&about_item],
+        )?;
+
+        menu
+            .item(&file_menu)
+            .item(&edit_menu)
+            .item(&view_menu)
+            .item(&help_menu)
+            .build()
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Create daemon manager outside of builder
@@ -518,6 +667,20 @@ pub fn run() {
         .setup(move |app| {
             // Register the daemon manager as managed state
             app.manage(daemon_manager.clone());
+
+            // Build and set the application menu
+            let menu = build_app_menu(app.handle())?;
+            app.set_menu(menu)?;
+
+            // Handle menu events
+            app.on_menu_event(move |app_handle, event| {
+                if event.id() == "about" {
+                    // Emit event to frontend to show About dialog
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.emit("show-about", ());
+                    }
+                }
+            });
 
             // Restore window state if it exists
             if let Some(main_window) = app.get_webview_window("main") {

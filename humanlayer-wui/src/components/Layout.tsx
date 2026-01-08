@@ -23,6 +23,7 @@ import { HotkeyPanel } from '@/components/HotkeyPanel'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { SettingsDialog } from '@/components/SettingsDialog'
 import { OptInTelemetryModal } from '@/components/OptInTelemetryModal'
+import { AboutDialog } from '@/components/AboutDialog'
 import { SessionLauncher } from '@/components/SessionLauncher'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
@@ -60,6 +61,7 @@ export function Layout() {
   const setSettingsDialogOpen = useStore(state => state.setSettingsDialogOpen)
   const clearActiveSessionDetail = useStore(state => state.clearActiveSessionDetail)
   const [showTelemetryModal, setShowTelemetryModal] = useState(false)
+  const [showAboutDialog, setShowAboutDialog] = useState(false)
 
   // Use the daemon connection hook for all connection management
   const { connected, connecting, version, healthStatus, connect, checkHealth } = useDaemonConnection()
@@ -424,6 +426,7 @@ export function Layout() {
       }
     }
   }, [connected, userSettings])
+
   const refreshActiveSessionConversation = useStore(state => state.refreshActiveSessionConversation)
   const clearNotificationsForSession = useStore(state => state.clearNotificationsForSession)
   const wasRecentlyNavigatedFrom = useStore(state => state.wasRecentlyNavigatedFrom)
@@ -887,6 +890,26 @@ export function Layout() {
     }
   }, [navigate])
 
+  // Listen for "show-about" event from native menu
+  useEffect(() => {
+    let unlistenPromise: Promise<() => void> | null = null
+
+    const setupListener = async () => {
+      const unlisten = await listen('show-about', () => {
+        setShowAboutDialog(true)
+      })
+      return unlisten
+    }
+
+    unlistenPromise = setupListener()
+
+    return () => {
+      if (unlistenPromise) {
+        unlistenPromise.then(unlisten => unlisten())
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (location.state?.continuationSession) {
       const session = location.state.continuationSession.session
@@ -1112,6 +1135,9 @@ export function Layout() {
 
       {/* Telemetry opt-in modal */}
       <OptInTelemetryModal open={showTelemetryModal} onOpenChange={setShowTelemetryModal} />
+
+      {/* About dialog */}
+      <AboutDialog open={showAboutDialog} onOpenChange={setShowAboutDialog} />
 
       {/* Global Dangerous Skip Permissions Monitor */}
       <DangerousSkipPermissionsMonitor />
