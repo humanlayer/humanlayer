@@ -18,6 +18,7 @@ export function CodeLayerToaster() {
       }}
       toastOptions={{
         unstyled: true,
+        closeButton: true,
         classNames: {
           // Base toast container - Sonner default: padding: 16px, gap: 6px, border-radius: 8px
           toast: `
