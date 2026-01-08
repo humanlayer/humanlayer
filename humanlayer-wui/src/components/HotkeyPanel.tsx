@@ -70,6 +70,8 @@ const hotkeyData = [
   { category: 'Session Detail', key: '⌥+A', description: 'Toggle auto-accept edits' },
   { category: 'Session Detail', key: 'Enter', description: 'Focus response input' },
   { category: 'Session Detail', key: '⌘+Enter', description: 'Submit response' },
+  { category: 'Session Detail', key: 'Escape', description: 'Blur input' },
+  { category: 'Session Detail', key: 'Ctrl+[', description: 'Blur input (vim)' },
   { category: 'Session Detail', key: '⌥+Y', description: 'Toggle bypass permissions' },
 ]
 

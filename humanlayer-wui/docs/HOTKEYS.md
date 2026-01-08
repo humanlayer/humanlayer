@@ -223,4 +223,5 @@ The system handles StrictMode double-mounting automatically through:
 - `Option+A` / `Alt+A` - Toggle auto-accept edits
 - `Enter` - Focus response input
 - `Cmd+Enter` / `Ctrl+Enter` - Submit response
+- `Escape` / `Ctrl+[` - Blur response input
 - `Option+Y` / `Alt+Y` - Toggle bypass permissions
