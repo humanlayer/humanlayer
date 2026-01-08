@@ -445,6 +445,33 @@ export class HTTPDaemonClient implements IDaemonClient {
     return response
   }
 
+  async hardDeleteSession(sessionId: string): Promise<{ success: boolean }> {
+    await this.ensureConnected()
+    const baseUrl = await getDaemonUrl()
+    const response = await fetch(`${baseUrl}/api/v1/sessions/${sessionId}/hard-delete`, {
+      method: 'DELETE',
+      headers: getDefaultHeaders(),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to delete session: ${response.statusText}`)
+    }
+    return { success: true }
+  }
+
+  async bulkHardDeleteSessions(sessionIds: string[]): Promise<{ deleted: number; failed: number }> {
+    await this.ensureConnected()
+    const baseUrl = await getDaemonUrl()
+    const response = await fetch(`${baseUrl}/api/v1/sessions/hard-delete/bulk`, {
+      method: 'POST',
+      headers: getDefaultHeaders(),
+      body: JSON.stringify({ session_ids: sessionIds }),
+    })
+    if (!response.ok) {
+      throw new Error(`Failed to bulk delete sessions: ${response.statusText}`)
+    }
+    return response.json()
+  }
+
   async updateSession(
     sessionId: string,
     updates: {

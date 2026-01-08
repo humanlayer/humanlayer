@@ -2,6 +2,7 @@ package session
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
@@ -85,10 +86,25 @@ type LaunchSessionConfig struct {
 	ProxyAPIKey        string // API key for proxy service
 }
 
+// ContentBlock represents a content block in a message (text or image)
+type ContentBlock struct {
+	Type   string       `json:"type"`
+	Text   string       `json:"text,omitempty"`
+	Source *ImageSource `json:"source,omitempty"`
+}
+
+// ImageSource represents the source of an image
+type ImageSource struct {
+	Type      string `json:"type"`
+	MediaType string `json:"media_type"`
+	Data      string `json:"data"`
+}
+
 // ContinueSessionConfig contains the configuration for continuing a session
 type ContinueSessionConfig struct {
 	ParentSessionID       string                // The parent session to resume from
-	Query                 string                // The new query
+	Query                 string                // The new query (text-only, legacy format)
+	Content               []ContentBlock        // Content blocks (new format, supports images)
 	SystemPrompt          string                // Optional system prompt override
 	AppendSystemPrompt    string                // Optional append to system prompt
 	MCPConfig             *claudecode.MCPConfig // Optional MCP config override
@@ -102,6 +118,39 @@ type ContinueSessionConfig struct {
 	ProxyBaseURL          string                // Proxy base URL
 	ProxyModelOverride    string                // Model to use with proxy
 	ProxyAPIKey           string                // API key for proxy service
+}
+
+// GetQueryFromContentBlocks extracts text from content blocks to build a query string.
+// This is used when content blocks contain text and images, since the Claude CLI
+// currently only accepts text via command line arguments. Images are currently
+// not passed through (requires future Claude CLI support).
+func (c *ContinueSessionConfig) GetQueryFromContentBlocks() string {
+	if len(c.Content) == 0 {
+		return c.Query
+	}
+
+	var texts []string
+	for _, block := range c.Content {
+		if block.Type == "text" && block.Text != "" {
+			texts = append(texts, block.Text)
+		}
+	}
+
+	if len(texts) == 0 {
+		return c.Query
+	}
+
+	return strings.Join(texts, "\n")
+}
+
+// HasImageContent checks if the content blocks contain any images
+func (c *ContinueSessionConfig) HasImageContent() bool {
+	for _, block := range c.Content {
+		if block.Type == "image" && block.Source != nil {
+			return true
+		}
+	}
+	return false
 }
 
 // DirectoryNotFoundError indicates a directory doesn't exist and needs creation
