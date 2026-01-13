@@ -2,6 +2,9 @@ import { useState, useCallback, useEffect } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { HotkeyScope } from '@/hooks/hotkeys/scopes'
+import { useNavigate } from 'react-router-dom'
+import { useStore } from '@/AppStore'
+import { toast } from 'sonner'
 
 interface NavigableItem {
   id: number
@@ -35,6 +38,8 @@ export function useSessionNavigation({
 }: UseSessionNavigationProps) {
   const [focusedEventId, setFocusedEventId] = useState<number | null>(null)
   const [focusSource, setFocusSource] = useState<'mouse' | 'keyboard' | null>(null)
+  const navigate = useNavigate()
+  const sessions = useStore(state => state.sessions)
 
   // Helper to check if element is in viewport
   const isElementInView = useCallback((element: Element, container: Element) => {
@@ -303,6 +308,41 @@ export function useSessionNavigation({
         if (hasSubEvents && !expandedTasks.has(focusedEvent.toolId)) {
           toggleTaskGroup(focusedEvent.toolId)
         }
+      }
+    },
+    { enabled: !expandedToolResult && !disabled, scopes: [scope] },
+  )
+
+  // Cmd+Enter to open sub-session
+  useHotkeys(
+    'meta+enter, ctrl+enter',
+    () => {
+      if (!focusedEventId) return
+
+      const focusedEvent = events.find(e => e.id === focusedEventId)
+      if (!focusedEvent || focusedEvent.toolName !== 'Task') return
+
+      const currentSessionId = focusedEvent.sessionId
+      if (!currentSessionId) return
+
+      const taskCreatedAt = new Date(focusedEvent.createdAt).getTime()
+
+      // Find the child session related to this task
+      // We look for sessions where parentSessionId matches current session
+      // and createdAt is greater than or equal to the task's createdAt
+      // We sort by createdAt ascending and take the first one
+      const relatedSession = sessions
+        .filter(
+          s =>
+            s.parentSessionId === currentSessionId &&
+            new Date(s.createdAt).getTime() >= taskCreatedAt,
+        )
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())[0]
+
+      if (relatedSession) {
+        navigate(`/sessions/${relatedSession.id}`)
+      } else {
+        toast.error('No sub-session found for this task')
       }
     },
     { enabled: !expandedToolResult && !disabled, scopes: [scope] },
