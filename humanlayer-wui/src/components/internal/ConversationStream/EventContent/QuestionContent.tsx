@@ -327,9 +327,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
           </div>
         ))}
 
-        {error && (
-          <div className="text-sm text-destructive">{error}</div>
-        )}
+        {error && <div className="text-sm text-destructive">{error}</div>}
 
         <div className="flex gap-2">
           <Button size="sm" disabled={!canSubmit || submitting} onClick={handleSubmit}>
