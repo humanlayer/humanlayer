@@ -27,6 +27,7 @@ func (h *QuestionHandlers) ListQuestions(ctx context.Context, req api.ListQuesti
 	if req.Params.SessionId != nil {
 		questions, err = h.questionManager.GetPendingQuestions(ctx, *req.Params.SessionId)
 	} else {
+		slog.Warn("ListQuestions called without sessionId, returning empty list", "operation", "ListQuestions")
 		questions = []*store.Question{}
 	}
 
@@ -168,7 +169,9 @@ func storeQuestionToAPI(q *store.Question) api.Question {
 	// Convert QuestionsJSON (json.RawMessage) to map
 	if len(q.QuestionsJSON) > 0 {
 		var questionsMap map[string]interface{}
-		if err := json.Unmarshal(q.QuestionsJSON, &questionsMap); err == nil {
+		if err := json.Unmarshal(q.QuestionsJSON, &questionsMap); err != nil {
+			slog.Warn("failed to unmarshal questions_json", "error", err, "question_id", q.ID)
+		} else {
 			apiQ.QuestionsJson = questionsMap
 		}
 	}
@@ -176,7 +179,9 @@ func storeQuestionToAPI(q *store.Question) api.Question {
 	// Convert AnswersJSON (json.RawMessage) to map
 	if len(q.AnswersJSON) > 0 {
 		var answersMap map[string]interface{}
-		if err := json.Unmarshal(q.AnswersJSON, &answersMap); err == nil {
+		if err := json.Unmarshal(q.AnswersJSON, &answersMap); err != nil {
+			slog.Warn("failed to unmarshal answers_json", "error", err, "question_id", q.ID)
+		} else {
 			apiQ.AnswersJson = &answersMap
 		}
 	}

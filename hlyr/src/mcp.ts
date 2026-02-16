@@ -108,8 +108,9 @@ export async function startClaudeApprovalsMCPServer() {
               minItems: 1,
               maxItems: 4,
             },
+            tool_use_id: { type: 'string', description: 'Claude tool use ID for correlation' },
           },
-          required: ['questions'],
+          required: ['questions', 'tool_use_id'],
         },
       },
     ]

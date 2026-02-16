@@ -37,7 +37,7 @@ interface SubscribeResponse {
 }
 
 interface Event {
-  type: 'new_approval' | 'approval_resolved' | 'session_status_changed'
+  type: 'new_approval' | 'approval_resolved' | 'session_status_changed' | 'new_question' | 'question_answered'
   timestamp: string
   data: {
     // Common fields

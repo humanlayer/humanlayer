@@ -33,6 +33,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
   const [question, setQuestion] = useState<Question | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   // Answers: keyed by question index, value is label or array of labels
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({})
   // "Other" text inputs keyed by question index
@@ -112,6 +113,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     setSubmitting(true)
 
     try {
+      setError(null)
       // Build the answers object in Claude's expected format
       const answersJson: Record<string, unknown> = {}
       questionsInput.forEach((q, idx) => {
@@ -128,6 +130,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
       setQuestion(updated)
     } catch (err) {
       logger.error('Failed to answer question:', err)
+      setError('Failed to submit answer. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -138,11 +141,13 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     setSubmitting(true)
 
     try {
+      setError(null)
       await daemonClient.answerQuestion(question.id, undefined, true)
       const updated = await daemonClient.getQuestion(question.id)
       setQuestion(updated)
     } catch (err) {
       logger.error('Failed to decline question:', err)
+      setError('Failed to decline question. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -321,6 +326,10 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
             )}
           </div>
         ))}
+
+        {error && (
+          <div className="text-sm text-destructive">{error}</div>
+        )}
 
         <div className="flex gap-2">
           <Button size="sm" disabled={!canSubmit || submitting} onClick={handleSubmit}>
