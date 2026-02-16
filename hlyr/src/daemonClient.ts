@@ -389,10 +389,7 @@ export class DaemonClient extends EventEmitter {
     }
   }
 
-  async createQuestion(
-    sessionId: string,
-    questionsJSON: unknown,
-  ): Promise<{ question_id: string }> {
+  async createQuestion(sessionId: string, questionsJSON: unknown): Promise<{ question_id: string }> {
     return this.call<{ question_id: string }>('createQuestion', {
       session_id: sessionId,
       questions_json: questionsJSON,
