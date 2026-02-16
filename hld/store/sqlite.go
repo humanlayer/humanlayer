@@ -2971,15 +2971,17 @@ func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, er
 
 	var q Question
 	var toolUseID sql.NullString
+	var questionsJSON string
 	var answersJSON sql.NullString
 	var answeredAt sql.NullTime
-	err := row.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &q.QuestionsJSON, &answersJSON, &q.CreatedAt, &answeredAt)
+	err := row.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt)
 	if err == sql.ErrNoRows {
 		return nil, &NotFoundError{Type: "question", ID: id}
 	}
 	if err != nil {
 		return nil, err
 	}
+	q.QuestionsJSON = json.RawMessage(questionsJSON)
 	if toolUseID.Valid {
 		q.ToolUseID = &toolUseID.String
 	}
@@ -3007,11 +3009,13 @@ func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string)
 	for rows.Next() {
 		var q Question
 		var toolUseID sql.NullString
+		var questionsJSON string
 		var answersJSON sql.NullString
 		var answeredAt sql.NullTime
-		if err := rows.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &q.QuestionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
+		if err := rows.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
 			return nil, err
 		}
+		q.QuestionsJSON = json.RawMessage(questionsJSON)
 		if toolUseID.Valid {
 			q.ToolUseID = &toolUseID.String
 		}
