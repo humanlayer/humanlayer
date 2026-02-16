@@ -21,7 +21,20 @@ func NewManager(store store.ConversationStore, eventBus bus.EventBus) Manager {
 	return &manager{store: store, eventBus: eventBus}
 }
 
+// maxQuestionsJSONSize is the maximum allowed size for questions JSON payload (1MB)
+const maxQuestionsJSONSize = 1 << 20
+
 func (m *manager) CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage, toolUseID string) (*store.Question, error) {
+	if len(questionsJSON) == 0 {
+		return nil, fmt.Errorf("questions_json is required")
+	}
+	if len(questionsJSON) > maxQuestionsJSONSize {
+		return nil, fmt.Errorf("questions_json exceeds maximum size of %d bytes", maxQuestionsJSONSize)
+	}
+	if !json.Valid(questionsJSON) {
+		return nil, fmt.Errorf("questions_json is not valid JSON")
+	}
+
 	session, err := m.store.GetSession(ctx, sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session: %w", err)
@@ -80,8 +93,8 @@ func (m *manager) AnswerQuestion(ctx context.Context, id string, answersJSON jso
 
 	q, err := m.store.GetQuestion(ctx, id)
 	if err != nil {
-		slog.Warn("failed to get question after answering", "error", err, "question_id", id)
-		return nil
+		slog.Error("failed to get question after answering", "error", err, "question_id", id)
+		return fmt.Errorf("question answered but failed to retrieve updated state: %w", err)
 	}
 
 	m.publishQuestionAnsweredEvent(q)
@@ -97,8 +110,8 @@ func (m *manager) DeclineQuestion(ctx context.Context, id string) error {
 
 	q, err := m.store.GetQuestion(ctx, id)
 	if err != nil {
-		slog.Warn("failed to get question after declining", "error", err, "question_id", id)
-		return nil
+		slog.Error("failed to get question after declining", "error", err, "question_id", id)
+		return fmt.Errorf("question declined but failed to retrieve updated state: %w", err)
 	}
 
 	m.publishQuestionAnsweredEvent(q)

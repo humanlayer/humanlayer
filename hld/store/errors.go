@@ -10,8 +10,8 @@ var (
 	// ErrNotFound is returned when a requested entity is not found
 	ErrNotFound = errors.New("not found")
 
-	// ErrAlreadyDecided is returned when attempting to decide an approval that has already been decided
-	ErrAlreadyDecided = errors.New("approval already decided")
+	// ErrAlreadyDecided is returned when attempting to decide an entity that has already been decided
+	ErrAlreadyDecided = errors.New("already decided")
 
 	// ErrInvalidStatus is returned when an invalid status is provided
 	ErrInvalidStatus = errors.New("invalid status")
@@ -33,12 +33,13 @@ func (e *NotFoundError) Unwrap() error {
 
 // AlreadyDecidedError wraps ErrAlreadyDecided with additional context
 type AlreadyDecidedError struct {
+	Type   string // e.g., "approval", "question"
 	ID     string
 	Status string // current status
 }
 
 func (e *AlreadyDecidedError) Error() string {
-	return fmt.Sprintf("approval %s already decided with status: %s", e.ID, e.Status)
+	return fmt.Sprintf("%s %s already decided with status: %s", e.Type, e.ID, e.Status)
 }
 
 func (e *AlreadyDecidedError) Unwrap() error {

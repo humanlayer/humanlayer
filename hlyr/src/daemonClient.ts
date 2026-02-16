@@ -403,11 +403,32 @@ export class DaemonClient extends EventEmitter {
 
   async getQuestion(
     questionId: string,
-  ): Promise<{ question: { id: string; status: string; answers_json?: unknown } }> {
-    return this.call<{ question: { id: string; status: string; answers_json?: unknown } }>(
-      'getQuestion',
-      { question_id: questionId },
-    )
+  ): Promise<{
+    question: {
+      id: string
+      session_id: string
+      run_id: string
+      tool_use_id?: string
+      status: string
+      questions_json?: unknown
+      answers_json?: unknown
+      created_at: string
+      answered_at?: string
+    }
+  }> {
+    return this.call<{
+      question: {
+        id: string
+        session_id: string
+        run_id: string
+        tool_use_id?: string
+        status: string
+        questions_json?: unknown
+        answers_json?: unknown
+        created_at: string
+        answered_at?: string
+      }
+    }>('getQuestion', { question_id: questionId })
   }
 
   close() {

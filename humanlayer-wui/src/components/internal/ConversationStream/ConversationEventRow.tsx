@@ -52,7 +52,7 @@ import {
   QuestionContent,
   UnknownToolCallContent,
 } from './EventContent'
-import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
+import { BashToolInput, MCP_ASK_USER_QUESTION, parseToolInput, ToolName } from './EventContent/types'
 import type {
   ReadToolInput,
   WriteToolInput,
@@ -612,7 +612,7 @@ function ConversationEventRowInner({
           />
         )
       }
-    } else if (event.toolName === 'mcp__codelayer__ask_user_question') {
+    } else if (event.toolName === MCP_ASK_USER_QUESTION) {
       // Custom rendering for ask_user_question
       if (sessionId) {
         messageContent = <QuestionContent event={event} sessionId={sessionId} />

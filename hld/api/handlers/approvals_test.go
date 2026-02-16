@@ -395,7 +395,7 @@ func TestApprovalHandlers_DecideApproval(t *testing.T) {
 			mockSetup: func() {
 				mockApprovalManager.EXPECT().
 					ApproveToolCall(gomock.Any(), "appr-111", "").
-					Return(&store.AlreadyDecidedError{ID: "appr-111", Status: "approved"})
+					Return(&store.AlreadyDecidedError{Type: "approval", ID: "appr-111", Status: "approved"})
 			},
 			expectedStatus: 400,
 			expectedError: &api.ErrorDetail{

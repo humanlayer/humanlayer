@@ -55,11 +55,8 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
   const fetchQuestion = useCallback(async () => {
     try {
       const questions = await daemonClient.listQuestions(sessionId)
-      // Match by tool_use_id if available
-      // Match by tool_use_id first, fall back to first pending question for the session
-      const matched =
-        questions.find(q => q.toolUseId && q.toolUseId === event.toolId) ||
-        questions.find(q => q.status === 'pending')
+      // Match by tool_use_id for reliable correlation
+      const matched = questions.find(q => q.toolUseId && q.toolUseId === event.toolId)
       if (matched) {
         setQuestion(matched)
       }
@@ -81,7 +78,14 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     }
   }, [event.isCompleted, question?.status, fetchQuestion])
 
+  const RADIO_OTHER_VALUE = '__other__'
+
   const handleSingleSelect = (questionIndex: number, value: string) => {
+    if (value === RADIO_OTHER_VALUE) {
+      setOtherSelected(prev => ({ ...prev, [questionIndex]: true }))
+      setAnswers(prev => ({ ...prev, [questionIndex]: '' }))
+      return
+    }
     setAnswers(prev => ({ ...prev, [questionIndex]: value }))
     setOtherSelected(prev => ({ ...prev, [questionIndex]: false }))
   }
@@ -179,9 +183,12 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
               <div className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
                 <Check className="size-3.5" />
                 <span>
-                  {question.answersJson?.[q.header || `question_${idx}`] != null
-                    ? String(question.answersJson[q.header || `question_${idx}`])
-                    : 'Answered'}
+                  {(() => {
+                    const answer = question.answersJson?.[q.header || `question_${idx}`]
+                    if (answer == null) return 'Answered'
+                    if (Array.isArray(answer)) return answer.join(', ')
+                    return String(answer)
+                  })()}
                 </span>
               </div>
             </div>
@@ -285,7 +292,9 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
               // Single-select with radio buttons
               <RadioGroup
                 className="pl-1"
-                value={otherSelected[idx] ? '' : (answers[idx] as string) || ''}
+                value={
+                  otherSelected[idx] ? RADIO_OTHER_VALUE : (answers[idx] as string) || ''
+                }
                 onValueChange={value => handleSingleSelect(idx, value)}
               >
                 {q.options.map((opt, optIdx) => (
@@ -305,10 +314,8 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
                 {/* Other option */}
                 <div className="flex items-start gap-2">
                   <RadioGroupItem
-                    value=""
+                    value={RADIO_OTHER_VALUE}
                     id={`q${idx}-other`}
-                    checked={!!otherSelected[idx]}
-                    onClick={() => handleOtherToggle(idx, false)}
                   />
                   <Label htmlFor={`q${idx}-other`} className="flex flex-col items-start gap-0.5">
                     <span className="text-sm">Other</span>

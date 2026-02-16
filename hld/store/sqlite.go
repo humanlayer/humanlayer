@@ -2918,7 +2918,7 @@ func (s *SQLiteStore) UpdateApprovalResponse(ctx context.Context, id string, sta
 
 	// Check if already decided
 	if approval.Status != ApprovalStatusLocalPending {
-		return &AlreadyDecidedError{ID: id, Status: approval.Status.String()}
+		return &AlreadyDecidedError{Type: "approval", ID: id, Status: approval.Status.String()}
 	}
 
 	query := `
@@ -3044,7 +3044,7 @@ func (s *SQLiteStore) AnswerQuestion(ctx context.Context, id string, status Ques
 		return err
 	}
 	if currentStatus != string(QuestionStatusPending) {
-		return &AlreadyDecidedError{ID: id, Status: currentStatus}
+		return &AlreadyDecidedError{Type: "question", ID: id, Status: currentStatus}
 	}
 
 	now := time.Now()

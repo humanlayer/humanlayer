@@ -254,16 +254,16 @@ export async function startClaudeApprovalsMCPServer() {
         const questionId = createResponse.question_id
         logger.info('Created question', { questionId })
 
-        // Poll for answer
-        let polling = true
-        while (polling) {
+        // Poll for answer (timeout after 30 minutes)
+        const maxPollDurationMs = 30 * 60 * 1000
+        const pollStartTime = Date.now()
+
+        while (Date.now() - pollStartTime < maxPollDurationMs) {
           try {
             const resp = await daemonClient.getQuestion(questionId)
             const q = resp.question
 
             if (q.status !== 'pending') {
-              polling = false
-
               if (q.status === 'declined') {
                 logger.info('Question declined', { questionId })
                 return {
@@ -300,8 +300,11 @@ export async function startClaudeApprovalsMCPServer() {
           }
         }
 
-        // Should not reach here
-        throw new McpError(ErrorCode.InternalError, 'Unexpected end of polling loop')
+        logger.warn('Question polling timed out', { questionId })
+        throw new McpError(
+          ErrorCode.InternalError,
+          'Question polling timed out after 30 minutes',
+        )
       } catch (error) {
         if (error instanceof McpError) throw error
         logger.error('Failed to process question', error)
