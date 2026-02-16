@@ -33,6 +33,10 @@ func parseEventTypes(types []string) []bus.EventType {
 			eventTypes = append(eventTypes, bus.EventConversationUpdated)
 		case "session_settings_changed":
 			eventTypes = append(eventTypes, bus.EventSessionSettingsChanged)
+		case "new_question":
+			eventTypes = append(eventTypes, bus.EventNewQuestion)
+		case "question_answered":
+			eventTypes = append(eventTypes, bus.EventQuestionAnswered)
 		}
 		// Ignore unknown event types
 	}

@@ -215,7 +215,7 @@ func TestMigration18Healing(t *testing.T) {
 				var version int
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 				require.NoError(t, err)
-				assert.Equal(t, 22, version, "Database should be at version 22")
+				assert.Equal(t, 23, version, "Database should be at version 23")
 
 				t.Logf("After migration - user_settings exists: %d, additional_directories exists: %d, version: %d",
 					userSettingsExists, additionalDirsExists, version)
@@ -236,7 +236,7 @@ func TestMigration18Idempotency(t *testing.T) {
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 22, version, "Should be at version 22")
+	assert.Equal(t, 23, version, "Should be at version 23")
 
 	// Try to manually run migration 18 logic again (simulating idempotency)
 	// This would happen if someone ran the migration twice
@@ -518,7 +518,7 @@ func TestAllMigrationStates(t *testing.T) {
 				// Check final version is 22
 				err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&currentVersion)
 				require.NoError(t, err)
-				assert.Equal(t, 22, currentVersion, "Should be at version 22 after all migrations")
+				assert.Equal(t, 23, currentVersion, "Should be at version 23 after all migrations")
 
 				// Verify both critical components exist
 				var userSettingsExists int
@@ -564,7 +564,7 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 	var version int
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	require.Equal(t, 22, version, "Fresh database should be at version 22")
+	require.Equal(t, 23, version, "Fresh database should be at version 23")
 
 	// Now simulate the buggy state by:
 	// 1. Remove migration 17 and 18 records
@@ -608,7 +608,7 @@ func TestMigrationFromBuggyState17(t *testing.T) {
 
 	err = db.QueryRow("SELECT MAX(version) FROM schema_version").Scan(&version)
 	require.NoError(t, err)
-	assert.Equal(t, 22, version, "Should be at version 22 after healing")
+	assert.Equal(t, 23, version, "Should be at version 23 after healing")
 
 	// Both components should exist
 	err = db.QueryRow(`

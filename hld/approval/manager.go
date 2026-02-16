@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -322,6 +323,11 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 		// Regular auto-accept edits mode
 		status = store.ApprovalStatusLocalApproved
 		comment = "Auto-accepted (auto-accept mode enabled)"
+	}
+
+	if strings.Contains(toolName, "ask_user_question") {
+		status = store.ApprovalStatusLocalApproved
+		comment = "Auto-accepted (question tool)"
 	}
 
 	// Create approval with tool_use_id

@@ -49,6 +49,12 @@ type ConversationStore interface {
 	GetPendingApprovals(ctx context.Context, sessionID string) ([]*Approval, error)
 	UpdateApprovalResponse(ctx context.Context, id string, status ApprovalStatus, comment string) error
 
+	// Question operations
+	CreateQuestion(ctx context.Context, question *Question) error
+	GetQuestion(ctx context.Context, id string) (*Question, error)
+	GetPendingQuestions(ctx context.Context, sessionID string) ([]*Question, error)
+	AnswerQuestion(ctx context.Context, id string, status QuestionStatus, answersJSON json.RawMessage) error
+
 	// File snapshot operations
 	CreateFileSnapshot(ctx context.Context, snapshot *FileSnapshot) error
 	GetFileSnapshots(ctx context.Context, sessionID string) ([]FileSnapshot, error)
@@ -245,6 +251,28 @@ type Approval struct {
 	ToolName    string          `json:"tool_name"`
 	ToolInput   json.RawMessage `json:"tool_input"`
 	Comment     string          `json:"comment,omitempty"`
+}
+
+// QuestionStatus represents the status of a question
+type QuestionStatus string
+
+const (
+	QuestionStatusPending  QuestionStatus = "pending"
+	QuestionStatusAnswered QuestionStatus = "answered"
+	QuestionStatusDeclined QuestionStatus = "declined"
+)
+
+// Question represents a user question from Claude
+type Question struct {
+	ID            string          `json:"id"`
+	SessionID     string          `json:"session_id"`
+	RunID         string          `json:"run_id"`
+	ToolUseID     *string         `json:"tool_use_id,omitempty"`
+	Status        QuestionStatus  `json:"status"`
+	QuestionsJSON json.RawMessage `json:"questions_json"`
+	AnswersJSON   json.RawMessage `json:"answers_json,omitempty"`
+	CreatedAt     time.Time       `json:"created_at"`
+	AnsweredAt    *time.Time      `json:"answered_at,omitempty"`
 }
 
 // EventType constants

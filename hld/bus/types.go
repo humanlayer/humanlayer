@@ -21,6 +21,10 @@ const (
 	// Data includes: session_id, run_id, changed settings, and optional "reason" field
 	// For dangerous skip permissions expiry: reason="expired", expired_at=timestamp
 	EventSessionSettingsChanged EventType = "session_settings_changed"
+	// EventNewQuestion indicates a new question has been created
+	EventNewQuestion EventType = "new_question"
+	// EventQuestionAnswered indicates a question has been answered or declined
+	EventQuestionAnswered EventType = "question_answered"
 )
 
 // SessionSettingsChangeReason represents reasons for session settings changes
