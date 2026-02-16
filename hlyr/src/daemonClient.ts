@@ -384,6 +384,27 @@ export class DaemonClient extends EventEmitter {
     }
   }
 
+  async createQuestion(
+    sessionId: string,
+    questionsJSON: unknown,
+    toolUseId?: string,
+  ): Promise<{ question_id: string }> {
+    return this.call<{ question_id: string }>('createQuestion', {
+      session_id: sessionId,
+      questions_json: questionsJSON,
+      ...(toolUseId && { tool_use_id: toolUseId }),
+    })
+  }
+
+  async getQuestion(
+    questionId: string,
+  ): Promise<{ question: { id: string; status: string; answers_json?: unknown } }> {
+    return this.call<{ question: { id: string; status: string; answers_json?: unknown } }>(
+      'getQuestion',
+      { question_id: questionId },
+    )
+  }
+
   close() {
     if (this.conn) {
       this.conn.destroy()
