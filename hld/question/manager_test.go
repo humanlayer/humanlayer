@@ -25,7 +25,6 @@ func TestManager_CreateQuestion(t *testing.T) {
 
 	ctx := context.Background()
 	sessionID := "test-session-456"
-	toolUseID := "tool-use-789"
 	questionsJSON := json.RawMessage(`{"questions":[{"question":"Which approach?","header":"Approach","options":[{"label":"A","description":"Option A"}],"multiSelect":false}]}`)
 
 	// Mock getting session
@@ -39,7 +38,6 @@ func TestManager_CreateQuestion(t *testing.T) {
 		assert.Equal(t, sessionID, q.SessionID)
 		assert.Equal(t, "test-run-123", q.RunID)
 		assert.Equal(t, store.QuestionStatusPending, q.Status)
-		assert.Equal(t, &toolUseID, q.ToolUseID)
 		assert.True(t, strings.HasPrefix(q.ID, "question-"))
 		assert.JSONEq(t, string(questionsJSON), string(q.QuestionsJSON))
 		return nil
@@ -58,7 +56,7 @@ func TestManager_CreateQuestion(t *testing.T) {
 		return nil
 	})
 
-	q, err := mgr.CreateQuestion(ctx, sessionID, questionsJSON, toolUseID)
+	q, err := mgr.CreateQuestion(ctx, sessionID, questionsJSON)
 	require.NoError(t, err)
 	assert.NotNil(t, q)
 	assert.True(t, strings.HasPrefix(q.ID, "question-"))
@@ -77,7 +75,7 @@ func TestManager_CreateQuestion_SessionNotFound(t *testing.T) {
 
 	mockStore.EXPECT().GetSession(ctx, "bad-session").Return(nil, nil)
 
-	_, err := mgr.CreateQuestion(ctx, "bad-session", json.RawMessage(`{"questions":[]}`), "tool-1")
+	_, err := mgr.CreateQuestion(ctx, "bad-session", json.RawMessage(`{"questions":[]}`))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "session not found")
 }
@@ -93,7 +91,7 @@ func TestManager_CreateQuestion_InvalidJSON(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := mgr.CreateQuestion(ctx, "session-1", json.RawMessage(`{invalid`), "tool-1")
+	_, err := mgr.CreateQuestion(ctx, "session-1", json.RawMessage(`{invalid`))
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not valid JSON")
 }
@@ -109,7 +107,7 @@ func TestManager_CreateQuestion_EmptyJSON(t *testing.T) {
 
 	ctx := context.Background()
 
-	_, err := mgr.CreateQuestion(ctx, "session-1", nil, "tool-1")
+	_, err := mgr.CreateQuestion(ctx, "session-1", nil)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "questions_json is required")
 }
@@ -127,7 +125,6 @@ func TestManager_AnswerQuestion(t *testing.T) {
 	questionID := "question-123"
 	sessionID := "test-session"
 	answersJSON := json.RawMessage(`{"Approach":"A"}`)
-	toolUseID := "tool-use-1"
 
 	// Mock answering question in store
 	mockStore.EXPECT().AnswerQuestion(ctx, questionID, store.QuestionStatusAnswered, answersJSON).Return(nil)
@@ -137,7 +134,6 @@ func TestManager_AnswerQuestion(t *testing.T) {
 		ID:        questionID,
 		SessionID: sessionID,
 		Status:    store.QuestionStatusAnswered,
-		ToolUseID: &toolUseID,
 	}, nil)
 
 	// Mock event publishing
@@ -146,7 +142,6 @@ func TestManager_AnswerQuestion(t *testing.T) {
 		assert.Equal(t, questionID, event.Data["question_id"])
 		assert.Equal(t, sessionID, event.Data["session_id"])
 		assert.Equal(t, string(store.QuestionStatusAnswered), event.Data["status"])
-		assert.Equal(t, toolUseID, event.Data["tool_use_id"])
 	})
 
 	// Mock session status update to running

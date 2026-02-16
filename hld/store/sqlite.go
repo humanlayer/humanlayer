@@ -2957,24 +2957,23 @@ func (s *SQLiteStore) CreateQuestion(ctx context.Context, question *Question) er
 		return fmt.Errorf("invalid question status: %s", question.Status)
 	}
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO questions (id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, question.ID, question.SessionID, question.RunID, question.ToolUseID, question.Status, string(question.QuestionsJSON), nullableJSON(question.AnswersJSON), question.CreatedAt, question.AnsweredAt)
+		INSERT INTO questions (id, session_id, run_id, status, questions_json, answers_json, created_at, answered_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`, question.ID, question.SessionID, question.RunID, question.Status, string(question.QuestionsJSON), nullableJSON(question.AnswersJSON), question.CreatedAt, question.AnsweredAt)
 	return err
 }
 
 func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at
+		SELECT id, session_id, run_id, status, questions_json, answers_json, created_at, answered_at
 		FROM questions WHERE id = ?
 	`, id)
 
 	var q Question
-	var toolUseID sql.NullString
 	var questionsJSON string
 	var answersJSON sql.NullString
 	var answeredAt sql.NullTime
-	err := row.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt)
+	err := row.Scan(&q.ID, &q.SessionID, &q.RunID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt)
 	if err == sql.ErrNoRows {
 		return nil, &NotFoundError{Type: "question", ID: id}
 	}
@@ -2982,9 +2981,6 @@ func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, er
 		return nil, err
 	}
 	q.QuestionsJSON = json.RawMessage(questionsJSON)
-	if toolUseID.Valid {
-		q.ToolUseID = &toolUseID.String
-	}
 	if answersJSON.Valid {
 		q.AnswersJSON = json.RawMessage(answersJSON.String)
 	}
@@ -2996,7 +2992,7 @@ func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, er
 
 func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string) ([]*Question, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at
+		SELECT id, session_id, run_id, status, questions_json, answers_json, created_at, answered_at
 		FROM questions WHERE session_id = ? AND status = 'pending'
 		ORDER BY created_at ASC
 	`, sessionID)
@@ -3008,17 +3004,13 @@ func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string)
 	var questions []*Question
 	for rows.Next() {
 		var q Question
-		var toolUseID sql.NullString
 		var questionsJSON string
 		var answersJSON sql.NullString
 		var answeredAt sql.NullTime
-		if err := rows.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
+		if err := rows.Scan(&q.ID, &q.SessionID, &q.RunID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
 			return nil, err
 		}
 		q.QuestionsJSON = json.RawMessage(questionsJSON)
-		if toolUseID.Valid {
-			q.ToolUseID = &toolUseID.String
-		}
 		if answersJSON.Valid {
 			q.AnswersJSON = json.RawMessage(answersJSON.String)
 		}

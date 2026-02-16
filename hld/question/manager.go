@@ -24,7 +24,7 @@ func NewManager(store store.ConversationStore, eventBus bus.EventBus) Manager {
 // maxQuestionsJSONSize is the maximum allowed size for questions JSON payload (1MB)
 const maxQuestionsJSONSize = 1 << 20
 
-func (m *manager) CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage, toolUseID string) (*store.Question, error) {
+func (m *manager) CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage) (*store.Question, error) {
 	if len(questionsJSON) == 0 {
 		return nil, fmt.Errorf("questions_json is required")
 	}
@@ -47,7 +47,6 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 		ID:            "question-" + uuid.New().String(),
 		SessionID:     sessionID,
 		RunID:         session.RunID,
-		ToolUseID:     &toolUseID,
 		Status:        store.QuestionStatusPending,
 		QuestionsJSON: questionsJSON,
 		CreatedAt:     time.Now(),
@@ -72,8 +71,7 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 
 	slog.Info("created question",
 		"question_id", q.ID,
-		"session_id", sessionID,
-		"tool_use_id", toolUseID)
+		"session_id", sessionID)
 
 	return q, nil
 }
@@ -147,18 +145,14 @@ func (m *manager) publishNewQuestionEvent(q *store.Question) {
 
 func (m *manager) publishQuestionAnsweredEvent(q *store.Question) {
 	if m.eventBus != nil {
-		data := map[string]interface{}{
-			"question_id": q.ID,
-			"session_id":  q.SessionID,
-			"status":      string(q.Status),
-		}
-		if q.ToolUseID != nil {
-			data["tool_use_id"] = *q.ToolUseID
-		}
 		m.eventBus.Publish(bus.Event{
 			Type:      bus.EventQuestionAnswered,
 			Timestamp: time.Now(),
-			Data:      data,
+			Data: map[string]interface{}{
+				"question_id": q.ID,
+				"session_id":  q.SessionID,
+				"status":      string(q.Status),
+			},
 		})
 	}
 }

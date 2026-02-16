@@ -57,18 +57,18 @@ func (mr *MockManagerMockRecorder) AnswerQuestion(ctx, id, answersJSON any) *gom
 }
 
 // CreateQuestion mocks base method.
-func (m *MockManager) CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage, toolUseID string) (*store.Question, error) {
+func (m *MockManager) CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage) (*store.Question, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateQuestion", ctx, sessionID, questionsJSON, toolUseID)
+	ret := m.ctrl.Call(m, "CreateQuestion", ctx, sessionID, questionsJSON)
 	ret0, _ := ret[0].(*store.Question)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateQuestion indicates an expected call of CreateQuestion.
-func (mr *MockManagerMockRecorder) CreateQuestion(ctx, sessionID, questionsJSON, toolUseID any) *gomock.Call {
+func (mr *MockManagerMockRecorder) CreateQuestion(ctx, sessionID, questionsJSON any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQuestion", reflect.TypeOf((*MockManager)(nil).CreateQuestion), ctx, sessionID, questionsJSON, toolUseID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateQuestion", reflect.TypeOf((*MockManager)(nil).CreateQuestion), ctx, sessionID, questionsJSON)
 }
 
 // DeclineQuestion mocks base method.

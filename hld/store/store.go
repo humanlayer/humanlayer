@@ -267,7 +267,6 @@ type Question struct {
 	ID            string          `json:"id"`
 	SessionID     string          `json:"session_id"`
 	RunID         string          `json:"run_id"`
-	ToolUseID     *string         `json:"tool_use_id,omitempty"`
 	Status        QuestionStatus  `json:"status"`
 	QuestionsJSON json.RawMessage `json:"questions_json"`
 	AnswersJSON   json.RawMessage `json:"answers_json,omitempty"`

@@ -108,9 +108,8 @@ export async function startClaudeApprovalsMCPServer() {
               minItems: 1,
               maxItems: 4,
             },
-            tool_use_id: { type: 'string', description: 'Claude tool use ID for correlation' },
           },
-          required: ['questions', 'tool_use_id'],
+          required: ['questions'],
         },
       },
     ]
@@ -233,7 +232,6 @@ export async function startClaudeApprovalsMCPServer() {
 
     if (request.params.name === 'ask_user_question') {
       const questions = request.params.arguments?.questions
-      const toolUseId: string | undefined = request.params.arguments?.tool_use_id
 
       if (!questions || !Array.isArray(questions) || questions.length === 0) {
         throw new McpError(ErrorCode.InvalidRequest, 'questions array is required')
@@ -250,7 +248,7 @@ export async function startClaudeApprovalsMCPServer() {
         await daemonClient.connect()
 
         // Create question in hld
-        const createResponse = await daemonClient.createQuestion(sessionId, { questions }, toolUseId)
+        const createResponse = await daemonClient.createQuestion(sessionId, { questions })
         const questionId = createResponse.question_id
         logger.info('Created question', { questionId })
 

@@ -35,12 +35,10 @@ func TestQuestionCRUD(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("CreateAndGetQuestion", func(t *testing.T) {
-		toolUseID := "tool-use-123"
 		q := &Question{
 			ID:            "question-1",
 			SessionID:     session.ID,
 			RunID:         session.RunID,
-			ToolUseID:     &toolUseID,
 			Status:        QuestionStatusPending,
 			QuestionsJSON: json.RawMessage(`{"questions":[{"question":"Which approach?","header":"Approach","options":[{"label":"A","description":"Option A"}],"multiSelect":false}]}`),
 			CreatedAt:     time.Now(),
@@ -56,19 +54,16 @@ func TestQuestionCRUD(t *testing.T) {
 		assert.Equal(t, q.SessionID, got.SessionID)
 		assert.Equal(t, q.RunID, got.RunID)
 		assert.Equal(t, QuestionStatusPending, got.Status)
-		assert.NotNil(t, got.ToolUseID)
-		assert.Equal(t, toolUseID, *got.ToolUseID)
 		assert.JSONEq(t, string(q.QuestionsJSON), string(got.QuestionsJSON))
 		assert.Nil(t, got.AnsweredAt)
 		assert.Empty(t, got.AnswersJSON)
 	})
 
-	t.Run("CreateQuestion_NilToolUseID", func(t *testing.T) {
+	t.Run("CreateQuestion_SecondPending", func(t *testing.T) {
 		q := &Question{
 			ID:            "question-nil-tool",
 			SessionID:     session.ID,
 			RunID:         session.RunID,
-			ToolUseID:     nil,
 			Status:        QuestionStatusPending,
 			QuestionsJSON: json.RawMessage(`{"questions":[]}`),
 			CreatedAt:     time.Now(),
@@ -76,10 +71,6 @@ func TestQuestionCRUD(t *testing.T) {
 
 		err := store.CreateQuestion(ctx, q)
 		require.NoError(t, err)
-
-		got, err := store.GetQuestion(ctx, "question-nil-tool")
-		require.NoError(t, err)
-		assert.Nil(t, got.ToolUseID)
 	})
 
 	t.Run("CreateQuestion_InvalidStatus", func(t *testing.T) {

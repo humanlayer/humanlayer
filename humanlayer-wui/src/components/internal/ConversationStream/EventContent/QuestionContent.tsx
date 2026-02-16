@@ -55,17 +55,17 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
   const fetchQuestion = useCallback(async () => {
     try {
       const questions = await daemonClient.listQuestions(sessionId)
-      // Match by tool_use_id for reliable correlation
-      const matched = questions.find(q => q.toolUseId && q.toolUseId === event.toolId)
-      if (matched) {
-        setQuestion(matched)
+      if (questions.length > 0) {
+        // Use the most recent pending question, or fall back to the last one
+        const pending = questions.find(q => q.status === 'pending')
+        setQuestion(pending || questions[questions.length - 1])
       }
     } catch (err) {
       logger.error('Failed to fetch question:', err)
     } finally {
       setLoading(false)
     }
-  }, [sessionId, event.toolId])
+  }, [sessionId])
 
   useEffect(() => {
     fetchQuestion()

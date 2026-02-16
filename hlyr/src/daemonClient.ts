@@ -392,12 +392,10 @@ export class DaemonClient extends EventEmitter {
   async createQuestion(
     sessionId: string,
     questionsJSON: unknown,
-    toolUseId?: string,
   ): Promise<{ question_id: string }> {
     return this.call<{ question_id: string }>('createQuestion', {
       session_id: sessionId,
       questions_json: questionsJSON,
-      ...(toolUseId && { tool_use_id: toolUseId }),
     })
   }
 
@@ -406,7 +404,6 @@ export class DaemonClient extends EventEmitter {
       id: string
       session_id: string
       run_id: string
-      tool_use_id?: string
       status: string
       questions_json?: unknown
       answers_json?: unknown
@@ -419,7 +416,6 @@ export class DaemonClient extends EventEmitter {
         id: string
         session_id: string
         run_id: string
-        tool_use_id?: string
         status: string
         questions_json?: unknown
         answers_json?: unknown

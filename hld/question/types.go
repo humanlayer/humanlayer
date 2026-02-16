@@ -9,7 +9,7 @@ import (
 
 // Manager defines the interface for managing questions
 type Manager interface {
-	CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage, toolUseID string) (*store.Question, error)
+	CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage) (*store.Question, error)
 	GetQuestion(ctx context.Context, id string) (*store.Question, error)
 	GetPendingQuestions(ctx context.Context, sessionID string) ([]*store.Question, error)
 	AnswerQuestion(ctx context.Context, id string, answersJSON json.RawMessage) error
