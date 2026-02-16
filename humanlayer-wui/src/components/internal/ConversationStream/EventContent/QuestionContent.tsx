@@ -11,18 +11,8 @@ import { logger } from '@/lib/logging'
 import type { Question } from '@/lib/daemon/types'
 import type { ConversationEvent } from '@humanlayer/hld-sdk'
 import { Check, X } from 'lucide-react'
-
-interface QuestionOption {
-  label: string
-  description: string
-}
-
-interface QuestionItem {
-  question: string
-  header: string
-  options: QuestionOption[]
-  multiSelect: boolean
-}
+import { canSubmitQuestions, buildAnswersJson } from './questionUtils'
+import type { QuestionItem } from './questionUtils'
 
 interface QuestionContentProps {
   event: ConversationEvent
@@ -119,16 +109,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
 
     try {
       setError(null)
-      // Build the answers object in Claude's expected format
-      const answersJson: Record<string, unknown> = {}
-      questionsInput.forEach((q, idx) => {
-        if (otherSelected[idx] && otherTexts[idx]) {
-          answersJson[q.header || `question_${idx}`] = otherTexts[idx]
-        } else {
-          answersJson[q.header || `question_${idx}`] = answers[idx]
-        }
-      })
-
+      const answersJson = buildAnswersJson(questionsInput, answers, otherSelected, otherTexts)
       await daemonClient.answerQuestion(question.id, answersJson)
       // Fetch the specific question by ID to get the updated status
       const updated = await daemonClient.getQuestion(question.id)
@@ -158,16 +139,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     }
   }
 
-  const canSubmit = questionsInput.every((q, idx) => {
-    if (otherSelected[idx]) {
-      return !!otherTexts[idx]?.trim()
-    }
-    const answer = answers[idx]
-    if (q.multiSelect) {
-      return Array.isArray(answer) && answer.length > 0
-    }
-    return !!answer
-  })
+  const canSubmit = canSubmitQuestions(questionsInput, answers, otherSelected, otherTexts)
 
   // Answered state
   if (question?.status === 'answered') {

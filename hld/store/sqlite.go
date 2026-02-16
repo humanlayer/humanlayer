@@ -2498,7 +2498,7 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 	query := `
 		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
 			role, content,
-			tool_id, tool_name, tool_input_json,
+			tool_id, tool_name, tool_input_json, parent_tool_use_id,
 			tool_result_for_id, tool_result_content,
 			is_completed, approval_status, approval_id
 		FROM conversation_events
@@ -2521,7 +2521,7 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 			&event.ID, &event.SessionID, &event.ClaudeSessionID,
 			&event.Sequence, &event.EventType, &event.CreatedAt,
 			&event.Role, &event.Content,
-			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON, &event.ParentToolUseID,
 			&event.ToolResultForID, &event.ToolResultContent,
 			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
 		)
@@ -2531,7 +2531,7 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 		events = append(events, event)
 	}
 
-	return events, nil
+	return events, rows.Err()
 }
 
 // GetToolCallByID retrieves a specific tool call by its ID

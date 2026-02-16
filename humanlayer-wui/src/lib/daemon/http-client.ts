@@ -598,12 +598,8 @@ export class HTTPDaemonClient implements IDaemonClient {
     declined?: boolean,
   ): Promise<{ success: boolean; error?: string }> {
     await this.ensureConnected()
-    try {
-      await this.client!.answerQuestion(id, answersJson, declined)
-      return { success: true }
-    } catch (error: any) {
-      return { success: false, error: error.message || 'Failed to answer question' }
-    }
+    await this.client!.answerQuestion(id, answersJson, declined)
+    return { success: true }
   }
 
   // Convenience wrappers for backwards compatibility

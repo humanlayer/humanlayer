@@ -616,6 +616,22 @@ function ConversationEventRowInner({
       // Custom rendering for ask_user_question
       if (sessionId) {
         messageContent = <QuestionContent event={event} sessionId={sessionId} />
+      } else {
+        // Fallback when session context not available
+        const toolInput = parseToolInput<Record<string, any>>(event.toolInputJson)
+        if (toolInput) {
+          messageContent = (
+            <MCPToolCallContent
+              toolName={event.toolName}
+              toolInput={toolInput}
+              approvalStatus={event.approvalStatus}
+              isCompleted={event.isCompleted}
+              toolResultContent={toolResult?.toolResultContent}
+              isFocused={isFocused}
+              isGroupItem={isGroupItem}
+            />
+          )
+        }
       }
     } else if (event.toolName?.startsWith('mcp__')) {
       // Handle MCP tools generically

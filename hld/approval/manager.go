@@ -325,7 +325,7 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 		comment = "Auto-accepted (auto-accept mode enabled)"
 	}
 
-	if strings.Contains(toolName, "ask_user_question") {
+	if toolName == "ask_user_question" || strings.HasSuffix(toolName, "__ask_user_question") {
 		status = store.ApprovalStatusLocalApproved
 		comment = "Auto-accepted (question tool)"
 	}
