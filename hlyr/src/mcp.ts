@@ -301,10 +301,7 @@ export async function startClaudeApprovalsMCPServer() {
         }
 
         logger.warn('Question polling timed out', { questionId })
-        throw new McpError(
-          ErrorCode.InternalError,
-          'Question polling timed out after 30 minutes',
-        )
+        throw new McpError(ErrorCode.InternalError, 'Question polling timed out after 30 minutes')
       } catch (error) {
         if (error instanceof McpError) throw error
         logger.error('Failed to process question', error)

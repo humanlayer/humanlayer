@@ -401,9 +401,7 @@ export class DaemonClient extends EventEmitter {
     })
   }
 
-  async getQuestion(
-    questionId: string,
-  ): Promise<{
+  async getQuestion(questionId: string): Promise<{
     question: {
       id: string
       session_id: string
