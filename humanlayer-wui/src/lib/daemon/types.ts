@@ -18,7 +18,7 @@ export type { Event, EventType }
 export type RecentPath = SDKRecentPath
 
 // Export SDK types directly
-export type { Approval, Agent } from '@humanlayer/hld-sdk'
+export type { Approval, Agent, Question } from '@humanlayer/hld-sdk'
 
 // Extend SDK Session type with WUI-specific properties
 export interface Session extends SDKSession {
@@ -157,6 +157,15 @@ export interface DaemonClient {
     comment?: string,
   ): Promise<{ success: boolean; error?: string }>
   denyFunctionCall(approvalId: string, comment?: string): Promise<{ success: boolean; error?: string }>
+
+  // Question methods
+  listQuestions(sessionId: string): Promise<import('@humanlayer/hld-sdk').Question[]>
+  getQuestion(id: string): Promise<import('@humanlayer/hld-sdk').Question>
+  answerQuestion(
+    id: string,
+    answersJson?: Record<string, unknown>,
+    declined?: boolean,
+  ): Promise<{ success: boolean; error?: string }>
 
   // Event subscription
   subscribeToEvents(options: SubscribeOptions): SubscriptionHandle

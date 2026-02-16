@@ -49,6 +49,7 @@ import {
   WebFetchToolCallContent,
   ApprovalWrapper,
   MCPToolCallContent,
+  QuestionContent,
   UnknownToolCallContent,
 } from './EventContent'
 import { BashToolInput, parseToolInput, ToolName } from './EventContent/types'
@@ -344,6 +345,7 @@ export interface ConversationEventRowProps extends React.HTMLAttributes<HTMLDivE
   denyingApprovalId?: string | null
   setDenyingApprovalId?: (approvalId: string | null) => void
   onCancelDeny?: () => void
+  sessionId?: string
 }
 
 function ConversationEventRowInner({
@@ -366,6 +368,7 @@ function ConversationEventRowInner({
   denyingApprovalId,
   setDenyingApprovalId,
   onCancelDeny,
+  sessionId,
 }: ConversationEventRowProps) {
   const isThinking = Boolean(
     event.eventType === ConversationEventType.Thinking ||
@@ -608,6 +611,11 @@ function ConversationEventRowInner({
             isGroupItem={isGroupItem}
           />
         )
+      }
+    } else if (event.toolName === 'mcp__codelayer__ask_user_question') {
+      // Custom rendering for ask_user_question
+      if (sessionId) {
+        messageContent = <QuestionContent event={event} sessionId={sessionId} />
       }
     } else if (event.toolName?.startsWith('mcp__')) {
       // Handle MCP tools generically

@@ -9,11 +9,25 @@ import type {
   SessionSettingsChangedEventData,
 } from '@/lib/daemon/types'
 
+export interface NewQuestionEventData {
+  question_id: string
+  session_id: string
+}
+
+export interface QuestionAnsweredEventData {
+  question_id: string
+  session_id: string
+  status: string
+  tool_use_id?: string
+}
+
 export interface SessionSubscriptionHandlers {
   onSessionStatusChanged?: (data: SessionStatusChangedEventData, timestamp: string) => void
   onNewApproval?: (data: NewApprovalEventData) => void
   onApprovalResolved?: (data: ApprovalResolvedEventData) => void
   onSessionSettingsChanged?: (data: SessionSettingsChangedEventData) => void
+  onNewQuestion?: (data: NewQuestionEventData) => void
+  onQuestionAnswered?: (data: QuestionAnsweredEventData) => void
 }
 
 export function useSessionSubscriptions(
@@ -68,6 +82,8 @@ export function useSessionSubscriptions(
             'new_approval',
             'approval_resolved',
             'session_settings_changed',
+            'new_question',
+            'question_answered',
           ],
           onEvent: (event: Event) => {
             if (!isActive) return
@@ -99,6 +115,16 @@ export function useSessionSubscriptions(
 
                 // Call handler if provided
                 handlersRef.current.onSessionSettingsChanged?.(data)
+                break
+              }
+              case 'new_question': {
+                const data = event.data as NewQuestionEventData
+                handlersRef.current.onNewQuestion?.(data)
+                break
+              }
+              case 'question_answered': {
+                const data = event.data as QuestionAnsweredEventData
+                handlersRef.current.onQuestionAnswered?.(data)
                 break
               }
             }
