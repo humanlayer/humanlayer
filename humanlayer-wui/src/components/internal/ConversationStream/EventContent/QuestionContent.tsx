@@ -55,7 +55,10 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     try {
       const questions = await daemonClient.listQuestions(sessionId)
       // Match by tool_use_id if available
-      const matched = questions.find(q => q.toolUseId === event.toolId)
+      // Match by tool_use_id first, fall back to first pending question for the session
+      const matched =
+        questions.find(q => q.toolUseId && q.toolUseId === event.toolId) ||
+        questions.find(q => q.status === 'pending')
       if (matched) {
         setQuestion(matched)
       }
@@ -120,7 +123,9 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
       })
 
       await daemonClient.answerQuestion(question.id, answersJson)
-      await fetchQuestion()
+      // Fetch the specific question by ID to get the updated status
+      const updated = await daemonClient.getQuestion(question.id)
+      setQuestion(updated)
     } catch (err) {
       logger.error('Failed to answer question:', err)
     } finally {
@@ -134,7 +139,8 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
 
     try {
       await daemonClient.answerQuestion(question.id, undefined, true)
-      await fetchQuestion()
+      const updated = await daemonClient.getQuestion(question.id)
+      setQuestion(updated)
     } catch (err) {
       logger.error('Failed to decline question:', err)
     } finally {
@@ -217,7 +223,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
 
   // Pending state - interactive form
   return (
-    <div>
+    <div onClick={e => e.stopPropagation()}>
       <ToolHeader name="Ask User Question" />
       <div className="mt-3 space-y-4">
         {questionsInput.map((q, idx) => (
@@ -239,7 +245,10 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
                         handleMultiSelect(idx, opt.label, !!checked)
                       }
                     />
-                    <Label htmlFor={`q${idx}-opt${optIdx}`} className="flex flex-col gap-0.5">
+                    <Label
+                      htmlFor={`q${idx}-opt${optIdx}`}
+                      className="flex flex-col items-start gap-0.5"
+                    >
                       <span className="text-sm">{opt.label}</span>
                       {opt.description && (
                         <span className="text-xs text-muted-foreground">{opt.description}</span>
@@ -254,7 +263,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
                     checked={!!otherSelected[idx]}
                     onCheckedChange={() => handleOtherToggle(idx, true)}
                   />
-                  <Label htmlFor={`q${idx}-other`} className="flex flex-col gap-0.5">
+                  <Label htmlFor={`q${idx}-other`} className="flex flex-col items-start gap-0.5">
                     <span className="text-sm">Other</span>
                   </Label>
                 </div>
@@ -277,7 +286,10 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
                 {q.options.map((opt, optIdx) => (
                   <div key={optIdx} className="flex items-start gap-2">
                     <RadioGroupItem value={opt.label} id={`q${idx}-opt${optIdx}`} />
-                    <Label htmlFor={`q${idx}-opt${optIdx}`} className="flex flex-col gap-0.5">
+                    <Label
+                      htmlFor={`q${idx}-opt${optIdx}`}
+                      className="flex flex-col items-start gap-0.5"
+                    >
                       <span className="text-sm">{opt.label}</span>
                       {opt.description && (
                         <span className="text-xs text-muted-foreground">{opt.description}</span>
@@ -293,7 +305,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
                     checked={!!otherSelected[idx]}
                     onClick={() => handleOtherToggle(idx, false)}
                   />
-                  <Label htmlFor={`q${idx}-other`} className="flex flex-col gap-0.5">
+                  <Label htmlFor={`q${idx}-other`} className="flex flex-col items-start gap-0.5">
                     <span className="text-sm">Other</span>
                   </Label>
                 </div>
