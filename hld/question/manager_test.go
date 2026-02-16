@@ -33,11 +33,19 @@ func TestManager_CreateQuestion(t *testing.T) {
 		RunID: "test-run-123",
 	}, nil)
 
+	// Mock looking up pending tool calls — matched by ToolInputJSON content
+	mockStore.EXPECT().GetPendingToolCalls(ctx, sessionID).Return([]*store.ConversationEvent{
+		{ToolID: "toolu_other", ToolName: "mcp__codelayer__ask_user_question", ToolInputJSON: `{"questions":[]}`},
+		{ToolID: "toolu_test123", ToolName: "mcp__codelayer__ask_user_question", ToolInputJSON: string(questionsJSON)},
+	}, nil)
+
 	// Mock creating question
 	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
 		assert.Equal(t, sessionID, q.SessionID)
 		assert.Equal(t, "test-run-123", q.RunID)
 		assert.Equal(t, store.QuestionStatusPending, q.Status)
+		assert.NotNil(t, q.ToolUseID)
+		assert.Equal(t, "toolu_test123", *q.ToolUseID)
 		assert.True(t, strings.HasPrefix(q.ID, "question-"))
 		assert.JSONEq(t, string(questionsJSON), string(q.QuestionsJSON))
 		return nil
@@ -60,6 +68,74 @@ func TestManager_CreateQuestion(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, q)
 	assert.True(t, strings.HasPrefix(q.ID, "question-"))
+	assert.NotNil(t, q.ToolUseID)
+	assert.Equal(t, "toolu_test123", *q.ToolUseID)
+}
+
+func TestManager_CreateQuestion_NoPendingToolCall(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+
+	ctx := context.Background()
+	sessionID := "test-session-789"
+
+	mockStore.EXPECT().GetSession(ctx, sessionID).Return(&store.Session{
+		ID:    sessionID,
+		RunID: "test-run-456",
+	}, nil)
+
+	// No matching tool call found — no ToolInputJSON match
+	mockStore.EXPECT().GetPendingToolCalls(ctx, sessionID).Return([]*store.ConversationEvent{}, nil)
+
+	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
+		assert.Nil(t, q.ToolUseID)
+		return nil
+	})
+
+	mockEventBus.EXPECT().Publish(gomock.Any())
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
+
+	q, err := mgr.CreateQuestion(ctx, sessionID, json.RawMessage(`{"questions":[]}`))
+	require.NoError(t, err)
+	assert.Nil(t, q.ToolUseID)
+}
+
+func TestManager_CreateQuestion_ToolCallLookupError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+
+	ctx := context.Background()
+	sessionID := "test-session-err"
+
+	mockStore.EXPECT().GetSession(ctx, sessionID).Return(&store.Session{
+		ID:    sessionID,
+		RunID: "test-run-err",
+	}, nil)
+
+	// Tool call lookup fails — should not block question creation
+	mockStore.EXPECT().GetPendingToolCalls(ctx, sessionID).Return(nil, fmt.Errorf("db error"))
+
+	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
+		assert.Nil(t, q.ToolUseID)
+		return nil
+	})
+
+	mockEventBus.EXPECT().Publish(gomock.Any())
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
+
+	q, err := mgr.CreateQuestion(ctx, sessionID, json.RawMessage(`{"questions":[]}`))
+	require.NoError(t, err)
+	assert.Nil(t, q.ToolUseID)
 }
 
 func TestManager_CreateQuestion_SessionNotFound(t *testing.T) {

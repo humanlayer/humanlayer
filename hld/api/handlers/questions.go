@@ -163,7 +163,7 @@ func storeQuestionToAPI(q *store.Question) api.Question {
 		RunId:     q.RunID,
 		Status:    api.QuestionStatus(q.Status),
 		CreatedAt: q.CreatedAt,
-		ToolUseId: nil,
+		ToolUseId: q.ToolUseID,
 	}
 
 	// Convert QuestionsJSON (json.RawMessage) to map

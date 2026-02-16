@@ -43,10 +43,32 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 		return nil, fmt.Errorf("session not found: %s", sessionID)
 	}
 
+	// Look up the pending tool call to get the tool_use_id for correlation.
+	// We match by ToolInputJSON content to handle parallel tool calls correctly —
+	// each tool call has unique content, so this gives us an exact match.
+	var toolUseID *string
+	pendingToolCalls, lookupErr := m.store.GetPendingToolCalls(ctx, sessionID)
+	if lookupErr != nil {
+		slog.Warn("failed to look up pending tool calls for question correlation",
+			"error", lookupErr,
+			"session_id", sessionID)
+	} else {
+		for _, tc := range pendingToolCalls {
+			if !isAskUserQuestionTool(tc.ToolName) {
+				continue
+			}
+			if tc.ToolInputJSON == string(questionsJSON) && tc.ToolID != "" {
+				toolUseID = &tc.ToolID
+				break
+			}
+		}
+	}
+
 	q := &store.Question{
 		ID:            "question-" + uuid.New().String(),
 		SessionID:     sessionID,
 		RunID:         session.RunID,
+		ToolUseID:     toolUseID,
 		Status:        store.QuestionStatusPending,
 		QuestionsJSON: questionsJSON,
 		CreatedAt:     time.Now(),
@@ -71,7 +93,8 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 
 	slog.Info("created question",
 		"question_id", q.ID,
-		"session_id", sessionID)
+		"session_id", sessionID,
+		"tool_use_id", toolUseID)
 
 	return q, nil
 }
@@ -128,6 +151,10 @@ func (m *manager) updateSessionStatusToRunning(ctx context.Context, sessionID st
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		slog.Warn("failed to update session status", "error", err, "session_id", sessionID)
 	}
+}
+
+func isAskUserQuestionTool(toolName string) bool {
+	return toolName == "mcp__codelayer__ask_user_question" || toolName == "AskUserQuestion"
 }
 
 func (m *manager) publishNewQuestionEvent(q *store.Question) {

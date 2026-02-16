@@ -35,10 +35,12 @@ func TestQuestionCRUD(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("CreateAndGetQuestion", func(t *testing.T) {
+		toolUseID := "toolu_01ABC123"
 		q := &Question{
 			ID:            "question-1",
 			SessionID:     session.ID,
 			RunID:         session.RunID,
+			ToolUseID:     &toolUseID,
 			Status:        QuestionStatusPending,
 			QuestionsJSON: json.RawMessage(`{"questions":[{"question":"Which approach?","header":"Approach","options":[{"label":"A","description":"Option A"}],"multiSelect":false}]}`),
 			CreatedAt:     time.Now(),
@@ -54,6 +56,8 @@ func TestQuestionCRUD(t *testing.T) {
 		assert.Equal(t, q.SessionID, got.SessionID)
 		assert.Equal(t, q.RunID, got.RunID)
 		assert.Equal(t, QuestionStatusPending, got.Status)
+		assert.NotNil(t, got.ToolUseID)
+		assert.Equal(t, toolUseID, *got.ToolUseID)
 		assert.JSONEq(t, string(q.QuestionsJSON), string(got.QuestionsJSON))
 		assert.Nil(t, got.AnsweredAt)
 		assert.Empty(t, got.AnswersJSON)
