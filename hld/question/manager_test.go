@@ -39,6 +39,9 @@ func TestManager_CreateQuestion(t *testing.T) {
 		{ToolID: "toolu_test123", ToolName: "mcp__codelayer__ask_user_question", ToolInputJSON: string(questionsJSON)},
 	}, nil)
 
+	// Mock getting pending questions (none yet, so no claimed tool IDs)
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return([]*store.Question{}, nil)
+
 	// Mock creating question
 	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
 		assert.Equal(t, sessionID, q.SessionID)
@@ -91,6 +94,9 @@ func TestManager_CreateQuestion_NoPendingToolCall(t *testing.T) {
 
 	// No matching tool call found — no ToolInputJSON match
 	mockStore.EXPECT().GetPendingToolCalls(ctx, sessionID).Return([]*store.ConversationEvent{}, nil)
+
+	// No pending questions either
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return([]*store.Question{}, nil)
 
 	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
 		assert.Nil(t, q.ToolUseID)
@@ -328,6 +334,92 @@ func TestManager_GetQuestion(t *testing.T) {
 	got, err := mgr.GetQuestion(ctx, "question-1")
 	require.NoError(t, err)
 	assert.Equal(t, expected, got)
+}
+
+func TestManager_CreateQuestion_DuplicateContentSkipsClaimedToolID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+
+	ctx := context.Background()
+	sessionID := "test-session-dup"
+	questionsJSON := json.RawMessage(`{"questions":[{"question":"Pick one","header":"Choice","options":[{"label":"A","description":"A"}],"multiSelect":false}]}`)
+
+	mockStore.EXPECT().GetSession(ctx, sessionID).Return(&store.Session{
+		ID:    sessionID,
+		RunID: "test-run-dup",
+	}, nil)
+
+	// Two pending tool calls with identical content but different tool IDs
+	mockStore.EXPECT().GetPendingToolCalls(ctx, sessionID).Return([]*store.ConversationEvent{
+		{ToolID: "toolu_first", ToolName: "mcp__codelayer__ask_user_question", ToolInputJSON: string(questionsJSON)},
+		{ToolID: "toolu_second", ToolName: "mcp__codelayer__ask_user_question", ToolInputJSON: string(questionsJSON)},
+	}, nil)
+
+	// First tool ID is already claimed by an existing pending question
+	firstToolID := "toolu_first"
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return([]*store.Question{
+		{ID: "question-existing", ToolUseID: &firstToolID, Status: store.QuestionStatusPending},
+	}, nil)
+
+	// The new question should get the second tool ID (not the first, which is claimed)
+	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
+		assert.NotNil(t, q.ToolUseID)
+		assert.Equal(t, "toolu_second", *q.ToolUseID)
+		return nil
+	})
+
+	mockEventBus.EXPECT().Publish(gomock.Any())
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
+
+	q, err := mgr.CreateQuestion(ctx, sessionID, questionsJSON)
+	require.NoError(t, err)
+	assert.NotNil(t, q.ToolUseID)
+	assert.Equal(t, "toolu_second", *q.ToolUseID)
+}
+
+func TestManager_CreateQuestion_PendingQuestionsLookupError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+
+	ctx := context.Background()
+	sessionID := "test-session-qerr"
+	questionsJSON := json.RawMessage(`{"questions":[]}`)
+
+	mockStore.EXPECT().GetSession(ctx, sessionID).Return(&store.Session{
+		ID:    sessionID,
+		RunID: "test-run-qerr",
+	}, nil)
+
+	mockStore.EXPECT().GetPendingToolCalls(ctx, sessionID).Return([]*store.ConversationEvent{
+		{ToolID: "toolu_abc", ToolName: "mcp__codelayer__ask_user_question", ToolInputJSON: string(questionsJSON)},
+	}, nil)
+
+	// GetPendingQuestions fails — should still proceed with matching (no dedup)
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return(nil, fmt.Errorf("db error"))
+
+	// Should still match the tool call (claimedToolIDs is empty due to error)
+	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
+		assert.NotNil(t, q.ToolUseID)
+		assert.Equal(t, "toolu_abc", *q.ToolUseID)
+		return nil
+	})
+
+	mockEventBus.EXPECT().Publish(gomock.Any())
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
+
+	q, err := mgr.CreateQuestion(ctx, sessionID, questionsJSON)
+	require.NoError(t, err)
+	assert.NotNil(t, q.ToolUseID)
 }
 
 func TestManager_GetPendingQuestions(t *testing.T) {

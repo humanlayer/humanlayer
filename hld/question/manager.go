@@ -49,6 +49,10 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 	// each tool call has unique content, so this gives us an exact match.
 	// We use semantic JSON comparison (not string comparison) because different
 	// serializers may produce different key orderings for the same object.
+	//
+	// To handle the edge case where two identical AskUserQuestion calls arrive
+	// with the same content, we exclude tool IDs that are already claimed by
+	// existing pending questions so the second call matches a different tool call.
 	var toolUseID *string
 	pendingToolCalls, lookupErr := m.store.GetPendingToolCalls(ctx, sessionID)
 	if lookupErr != nil {
@@ -56,11 +60,26 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 			"error", lookupErr,
 			"session_id", sessionID)
 	} else {
+		// Build set of tool_use_ids already claimed by pending questions
+		claimedToolIDs := make(map[string]bool)
+		pendingQuestions, qErr := m.store.GetPendingQuestions(ctx, sessionID)
+		if qErr != nil {
+			slog.Warn("failed to look up pending questions for dedup",
+				"error", qErr,
+				"session_id", sessionID)
+		} else {
+			for _, pq := range pendingQuestions {
+				if pq.ToolUseID != nil {
+					claimedToolIDs[*pq.ToolUseID] = true
+				}
+			}
+		}
+
 		for _, tc := range pendingToolCalls {
 			if !isAskUserQuestionTool(tc.ToolName) {
 				continue
 			}
-			if tc.ToolID != "" && jsonEqual([]byte(tc.ToolInputJSON), questionsJSON) {
+			if tc.ToolID != "" && !claimedToolIDs[tc.ToolID] && jsonEqual([]byte(tc.ToolInputJSON), questionsJSON) {
 				toolUseID = &tc.ToolID
 				break
 			}

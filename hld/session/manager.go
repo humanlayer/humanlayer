@@ -37,6 +37,12 @@ type Manager struct {
 // Compile-time check that Manager implements SessionManager
 var _ SessionManager = (*Manager)(nil)
 
+// disableBuiltInAskUserQuestion appends "AskUserQuestion" to the DisallowedTools
+// slice so the built-in tool is replaced by our MCP-based implementation.
+func disableBuiltInAskUserQuestion(config *claudecode.SessionConfig) {
+	config.DisallowedTools = append(config.DisallowedTools, "AskUserQuestion")
+}
+
 // NewManager creates a new session manager with required store
 func NewManager(eventBus bus.EventBus, store store.ConversationStore, socketPath string) (*Manager, error) {
 	if store == nil {
@@ -451,7 +457,7 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 		"mcp_servers_detail", mcpServersDetail)
 
 	// Disable built-in AskUserQuestion - we replace it with our MCP tool
-	claudeConfig.DisallowedTools = append(claudeConfig.DisallowedTools, "AskUserQuestion")
+	disableBuiltInAskUserQuestion(&claudeConfig)
 
 	// Launch Claude session (without daemon-level settings)
 	claudeSession, err := client.Launch(claudeConfig)
@@ -1787,7 +1793,7 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		"proxy_model", dbSession.ProxyModelOverride)
 
 	// Disable built-in AskUserQuestion - we replace it with our MCP tool
-	config.DisallowedTools = append(config.DisallowedTools, "AskUserQuestion")
+	disableBuiltInAskUserQuestion(&config)
 
 	claudeSession, err := client.Launch(config)
 	if err != nil {
@@ -2201,7 +2207,7 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 		}
 	}
 	// Disable built-in AskUserQuestion - we replace it with our MCP tool
-	claudeConfig.DisallowedTools = append(claudeConfig.DisallowedTools, "AskUserQuestion")
+	disableBuiltInAskUserQuestion(&claudeConfig)
 	if sess.AdditionalDirectories != "" {
 		var additionalDirs []string
 		if err := json.Unmarshal([]byte(sess.AdditionalDirectories), &additionalDirs); err == nil {
