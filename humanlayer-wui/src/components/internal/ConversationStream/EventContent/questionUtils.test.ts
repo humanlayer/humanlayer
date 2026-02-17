@@ -211,6 +211,39 @@ describe('buildAnswersJson', () => {
     expect(result).toEqual({ Features: ['Auth', 'DB'] })
   })
 
+  it('merges multi-select selections with "Other" text', () => {
+    const questions = [multiSelectQuestion]
+    const result = buildAnswersJson(
+      questions,
+      { 0: ['Auth', 'DB'] },
+      { 0: true },
+      { 0: 'Custom feature' },
+    )
+    expect(result).toEqual({ Features: ['Auth', 'DB', 'Custom feature'] })
+  })
+
+  it('uses only "Other" text for multi-select when no regular options selected', () => {
+    const questions = [multiSelectQuestion]
+    const result = buildAnswersJson(
+      questions,
+      { 0: [] },
+      { 0: true },
+      { 0: 'Custom feature' },
+    )
+    expect(result).toEqual({ Features: ['Custom feature'] })
+  })
+
+  it('ignores "Other" with whitespace-only text in multi-select', () => {
+    const questions = [multiSelectQuestion]
+    const result = buildAnswersJson(
+      questions,
+      { 0: ['Auth'] },
+      { 0: true },
+      { 0: '   ' },
+    )
+    expect(result).toEqual({ Features: ['Auth'] })
+  })
+
   it('builds answers for multiple questions', () => {
     const questions = [singleSelectQuestion, multiSelectQuestion]
     const result = buildAnswersJson(

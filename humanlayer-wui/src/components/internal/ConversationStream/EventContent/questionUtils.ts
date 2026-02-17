@@ -56,10 +56,19 @@ export function buildAnswersJson(
   const answersJson: Record<string, unknown> = {}
   questions.forEach((q, idx) => {
     const key = q.header || `question_${idx}`
-    if (otherSelected[idx] && otherTexts[idx]) {
-      answersJson[key] = otherTexts[idx]
+    if (q.multiSelect) {
+      const selected = (answers[idx] as string[]) || []
+      if (otherSelected[idx] && otherTexts[idx]?.trim()) {
+        answersJson[key] = [...selected, otherTexts[idx]]
+      } else {
+        answersJson[key] = selected
+      }
     } else {
-      answersJson[key] = answers[idx]
+      if (otherSelected[idx] && otherTexts[idx]) {
+        answersJson[key] = otherTexts[idx]
+      } else {
+        answersJson[key] = answers[idx]
+      }
     }
   })
   return answersJson
