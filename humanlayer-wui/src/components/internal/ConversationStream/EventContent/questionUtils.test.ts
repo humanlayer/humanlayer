@@ -44,9 +44,7 @@ describe('canSubmitQuestions', () => {
     })
 
     it('returns true when "Other" is selected with text', () => {
-      expect(
-        canSubmitQuestions(questions, {}, { 0: true }, { 0: 'Custom answer' }),
-      ).toBe(true)
+      expect(canSubmitQuestions(questions, {}, { 0: true }, { 0: 'Custom answer' })).toBe(true)
     })
 
     it('returns false when "Other" is selected without text', () => {
@@ -58,9 +56,7 @@ describe('canSubmitQuestions', () => {
     })
 
     it('returns false when "Other" is selected with whitespace-only text', () => {
-      expect(
-        canSubmitQuestions(questions, {}, { 0: true }, { 0: '   ' }),
-      ).toBe(false)
+      expect(canSubmitQuestions(questions, {}, { 0: true }, { 0: '   ' })).toBe(false)
     })
   })
 
@@ -80,27 +76,19 @@ describe('canSubmitQuestions', () => {
     })
 
     it('returns true when multiple options are selected', () => {
-      expect(
-        canSubmitQuestions(questions, { 0: ['Auth', 'DB'] }, {}, {}),
-      ).toBe(true)
+      expect(canSubmitQuestions(questions, { 0: ['Auth', 'DB'] }, {}, {})).toBe(true)
     })
 
     it('returns true when "Other" is checked with text and no regular selections', () => {
-      expect(
-        canSubmitQuestions(questions, { 0: [] }, { 0: true }, { 0: 'Custom' }),
-      ).toBe(true)
+      expect(canSubmitQuestions(questions, { 0: [] }, { 0: true }, { 0: 'Custom' })).toBe(true)
     })
 
     it('returns true when "Other" is checked without text but regular options are selected', () => {
-      expect(
-        canSubmitQuestions(questions, { 0: ['Auth'] }, { 0: true }, {}),
-      ).toBe(true)
+      expect(canSubmitQuestions(questions, { 0: ['Auth'] }, { 0: true }, {})).toBe(true)
     })
 
     it('returns true when "Other" is checked with whitespace-only text but regular options are selected', () => {
-      expect(
-        canSubmitQuestions(questions, { 0: ['Auth'] }, { 0: true }, { 0: '   ' }),
-      ).toBe(true)
+      expect(canSubmitQuestions(questions, { 0: ['Auth'] }, { 0: true }, { 0: '   ' })).toBe(true)
     })
 
     it('returns false when "Other" is checked without text and no regular selections', () => {
@@ -108,9 +96,7 @@ describe('canSubmitQuestions', () => {
     })
 
     it('returns false when "Other" is checked with whitespace-only text and no regular selections', () => {
-      expect(
-        canSubmitQuestions(questions, { 0: [] }, { 0: true }, { 0: '  \t  ' }),
-      ).toBe(false)
+      expect(canSubmitQuestions(questions, { 0: [] }, { 0: true }, { 0: '  \t  ' })).toBe(false)
     })
   })
 
@@ -118,21 +104,15 @@ describe('canSubmitQuestions', () => {
     const questions = [singleSelectQuestion, multiSelectQuestion]
 
     it('returns true when all questions have valid answers', () => {
-      expect(
-        canSubmitQuestions(questions, { 0: 'React', 1: ['Auth'] }, {}, {}),
-      ).toBe(true)
+      expect(canSubmitQuestions(questions, { 0: 'React', 1: ['Auth'] }, {}, {})).toBe(true)
     })
 
     it('returns false when first question is unanswered', () => {
-      expect(
-        canSubmitQuestions(questions, { 1: ['Auth'] }, {}, {}),
-      ).toBe(false)
+      expect(canSubmitQuestions(questions, { 1: ['Auth'] }, {}, {})).toBe(false)
     })
 
     it('returns false when second question is unanswered', () => {
-      expect(
-        canSubmitQuestions(questions, { 0: 'React' }, {}, {}),
-      ).toBe(false)
+      expect(canSubmitQuestions(questions, { 0: 'React' }, {}, {})).toBe(false)
     })
 
     it('returns false when both questions are unanswered', () => {
@@ -141,12 +121,7 @@ describe('canSubmitQuestions', () => {
 
     it('returns true with mixed regular and "Other" answers across questions', () => {
       expect(
-        canSubmitQuestions(
-          questions,
-          { 1: ['Auth', 'DB'] },
-          { 0: true },
-          { 0: 'Custom framework' },
-        ),
+        canSubmitQuestions(questions, { 1: ['Auth', 'DB'] }, { 0: true }, { 0: 'Custom framework' }),
       ).toBe(true)
     })
   })
@@ -157,9 +132,7 @@ describe('canSubmitQuestions', () => {
     })
 
     it('handles undefined answer entries gracefully', () => {
-      expect(
-        canSubmitQuestions([singleSelectQuestion], { 0: undefined as any }, {}, {}),
-      ).toBe(false)
+      expect(canSubmitQuestions([singleSelectQuestion], { 0: undefined as any }, {}, {})).toBe(false)
     })
   })
 })
@@ -184,23 +157,13 @@ describe('buildAnswersJson', () => {
 
   it('uses "Other" text when "Other" is selected with text', () => {
     const questions = [singleSelectQuestion]
-    const result = buildAnswersJson(
-      questions,
-      { 0: '' },
-      { 0: true },
-      { 0: 'My custom answer' },
-    )
+    const result = buildAnswersJson(questions, { 0: '' }, { 0: true }, { 0: 'My custom answer' })
     expect(result).toEqual({ Library: 'My custom answer' })
   })
 
   it('uses regular answer when "Other" is selected but text is empty', () => {
     const questions = [singleSelectQuestion]
-    const result = buildAnswersJson(
-      questions,
-      { 0: 'React' },
-      { 0: true },
-      { 0: '' },
-    )
+    const result = buildAnswersJson(questions, { 0: 'React' }, { 0: true }, { 0: '' })
     // otherTexts[0] is empty string (falsy), so falls through to answers[0]
     expect(result).toEqual({ Library: 'React' })
   })
@@ -224,34 +187,19 @@ describe('buildAnswersJson', () => {
 
   it('uses only "Other" text for multi-select when no regular options selected', () => {
     const questions = [multiSelectQuestion]
-    const result = buildAnswersJson(
-      questions,
-      { 0: [] },
-      { 0: true },
-      { 0: 'Custom feature' },
-    )
+    const result = buildAnswersJson(questions, { 0: [] }, { 0: true }, { 0: 'Custom feature' })
     expect(result).toEqual({ Features: ['Custom feature'] })
   })
 
   it('ignores "Other" with whitespace-only text in multi-select', () => {
     const questions = [multiSelectQuestion]
-    const result = buildAnswersJson(
-      questions,
-      { 0: ['Auth'] },
-      { 0: true },
-      { 0: '   ' },
-    )
+    const result = buildAnswersJson(questions, { 0: ['Auth'] }, { 0: true }, { 0: '   ' })
     expect(result).toEqual({ Features: ['Auth'] })
   })
 
   it('builds answers for multiple questions', () => {
     const questions = [singleSelectQuestion, multiSelectQuestion]
-    const result = buildAnswersJson(
-      questions,
-      { 0: 'Vue', 1: ['API'] },
-      {},
-      {},
-    )
+    const result = buildAnswersJson(questions, { 0: 'Vue', 1: ['API'] }, {}, {})
     expect(result).toEqual({
       Library: 'Vue',
       Features: ['API'],

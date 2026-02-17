@@ -275,9 +275,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
               // Single-select with radio buttons
               <RadioGroup
                 className="pl-1"
-                value={
-                  otherSelected[idx] ? RADIO_OTHER_VALUE : (answers[idx] as string) || ''
-                }
+                value={otherSelected[idx] ? RADIO_OTHER_VALUE : (answers[idx] as string) || ''}
                 onValueChange={value => handleSingleSelect(idx, value)}
               >
                 {q.options.map((opt, optIdx) => (
@@ -296,10 +294,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
                 ))}
                 {/* Other option */}
                 <div className="flex items-start gap-2">
-                  <RadioGroupItem
-                    value={RADIO_OTHER_VALUE}
-                    id={`q${idx}-other`}
-                  />
+                  <RadioGroupItem value={RADIO_OTHER_VALUE} id={`q${idx}-other`} />
                   <Label htmlFor={`q${idx}-other`} className="flex flex-col items-start gap-0.5">
                     <span className="text-sm">Other</span>
                   </Label>
