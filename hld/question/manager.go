@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -193,7 +194,9 @@ func jsonEqual(a, b []byte) bool {
 }
 
 func isAskUserQuestionTool(toolName string) bool {
-	return toolName == "mcp__codelayer__ask_user_question" || toolName == "AskUserQuestion"
+	return toolName == "ask_user_question" ||
+		toolName == "AskUserQuestion" ||
+		strings.HasSuffix(toolName, "__ask_user_question")
 }
 
 func (m *manager) publishNewQuestionEvent(q *store.Question) {
