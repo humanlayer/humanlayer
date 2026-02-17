@@ -315,10 +315,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     const hasPendingApprovals = events.some(e => e.approvalStatus === ApprovalStatus.Pending)
     if (hasPendingApprovals) return 'approval' as const
     const hasPendingQuestions = events.some(
-      e =>
-        e.eventType === 'tool_call' &&
-        e.toolName === MCP_ASK_USER_QUESTION &&
-        !e.isCompleted,
+      e => e.eventType === 'tool_call' && e.toolName === MCP_ASK_USER_QUESTION && !e.isCompleted,
     )
     if (hasPendingQuestions) return 'question' as const
     return 'approval' as const

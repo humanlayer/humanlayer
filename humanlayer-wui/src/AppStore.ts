@@ -955,8 +955,7 @@ export const useStore = create<StoreState>((set, get) => {
         newSet.delete(sessionId)
         return { sessionsAwaitingAnswer: newSet }
       }),
-    setSessionsAwaitingAnswer: (sessionIds: Set<string>) =>
-      set({ sessionsAwaitingAnswer: sessionIds }),
+    setSessionsAwaitingAnswer: (sessionIds: Set<string>) => set({ sessionsAwaitingAnswer: sessionIds }),
 
     // Navigation tracking
     recentNavigations: new Map(),

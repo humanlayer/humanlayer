@@ -100,21 +100,6 @@ func (mr *MockManagerMockRecorder) GetPendingQuestions(ctx, sessionID any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPendingQuestions", reflect.TypeOf((*MockManager)(nil).GetPendingQuestions), ctx, sessionID)
 }
 
-// GetQuestionsBySession mocks base method.
-func (m *MockManager) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*store.Question, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetQuestionsBySession", ctx, sessionID)
-	ret0, _ := ret[0].([]*store.Question)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetQuestionsBySession indicates an expected call of GetQuestionsBySession.
-func (mr *MockManagerMockRecorder) GetQuestionsBySession(ctx, sessionID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuestionsBySession", reflect.TypeOf((*MockManager)(nil).GetQuestionsBySession), ctx, sessionID)
-}
-
 // GetQuestion mocks base method.
 func (m *MockManager) GetQuestion(ctx context.Context, id string) (*store.Question, error) {
 	m.ctrl.T.Helper()
@@ -128,4 +113,19 @@ func (m *MockManager) GetQuestion(ctx context.Context, id string) (*store.Questi
 func (mr *MockManagerMockRecorder) GetQuestion(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuestion", reflect.TypeOf((*MockManager)(nil).GetQuestion), ctx, id)
+}
+
+// GetQuestionsBySession mocks base method.
+func (m *MockManager) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*store.Question, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetQuestionsBySession", ctx, sessionID)
+	ret0, _ := ret[0].([]*store.Question)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetQuestionsBySession indicates an expected call of GetQuestionsBySession.
+func (mr *MockManagerMockRecorder) GetQuestionsBySession(ctx, sessionID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuestionsBySession", reflect.TypeOf((*MockManager)(nil).GetQuestionsBySession), ctx, sessionID)
 }

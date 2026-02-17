@@ -927,9 +927,7 @@ export function Layout() {
 
       // Initialize pending questions state for waiting_input sessions
       const sessions = useStore.getState().sessions
-      const waitingInputSessions = sessions.filter(
-        s => s.status === SessionStatus.WaitingInput,
-      )
+      const waitingInputSessions = sessions.filter(s => s.status === SessionStatus.WaitingInput)
 
       if (waitingInputSessions.length > 0) {
         const awaitingAnswerSessionIds = new Set<string>()
@@ -938,14 +936,10 @@ export function Layout() {
           waitingInputSessions.map(async session => {
             try {
               const events = await daemonClient.getConversation({ session_id: session.id })
-              const hasPendingApprovals = events.some(
-                e => e.approvalStatus === ApprovalStatus.Pending,
-              )
+              const hasPendingApprovals = events.some(e => e.approvalStatus === ApprovalStatus.Pending)
               const hasPendingQuestions = events.some(
                 e =>
-                  e.eventType === 'tool_call' &&
-                  e.toolName === MCP_ASK_USER_QUESTION &&
-                  !e.isCompleted,
+                  e.eventType === 'tool_call' && e.toolName === MCP_ASK_USER_QUESTION && !e.isCompleted,
               )
               if (hasPendingQuestions && !hasPendingApprovals) {
                 awaitingAnswerSessionIds.add(session.id)

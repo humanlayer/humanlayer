@@ -24,15 +24,15 @@ describe('renderSessionStatus', () => {
   })
 
   test('returns "needs_approval" for waiting_input with waitingReason=approval', () => {
-    expect(
-      renderSessionStatus({ status: 'waiting_input' }, { waitingReason: 'approval' }),
-    ).toBe('needs_approval')
+    expect(renderSessionStatus({ status: 'waiting_input' }, { waitingReason: 'approval' })).toBe(
+      'needs_approval',
+    )
   })
 
   test('returns "awaiting_answer" for waiting_input with waitingReason=question', () => {
-    expect(
-      renderSessionStatus({ status: 'waiting_input' }, { waitingReason: 'question' }),
-    ).toBe('awaiting_answer')
+    expect(renderSessionStatus({ status: 'waiting_input' }, { waitingReason: 'question' })).toBe(
+      'awaiting_answer',
+    )
   })
 
   test('returns status as-is for unknown statuses', () => {
@@ -41,11 +41,7 @@ describe('renderSessionStatus', () => {
   })
 
   test('ignores context for non-waiting_input statuses', () => {
-    expect(
-      renderSessionStatus({ status: 'running' }, { waitingReason: 'question' }),
-    ).toBe('running')
-    expect(
-      renderSessionStatus({ status: 'draft' }, { waitingReason: 'question' }),
-    ).toBe('draft')
+    expect(renderSessionStatus({ status: 'running' }, { waitingReason: 'question' })).toBe('running')
+    expect(renderSessionStatus({ status: 'draft' }, { waitingReason: 'question' })).toBe('draft')
   })
 })

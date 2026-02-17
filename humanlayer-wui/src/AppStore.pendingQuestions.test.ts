@@ -31,8 +31,7 @@ const createTestStore = () =>
         newSet.delete(sessionId)
         return { sessionsAwaitingAnswer: newSet }
       }),
-    setSessionsAwaitingAnswer: (sessionIds: Set<string>) =>
-      set({ sessionsAwaitingAnswer: sessionIds }),
+    setSessionsAwaitingAnswer: (sessionIds: Set<string>) => set({ sessionsAwaitingAnswer: sessionIds }),
   }))
 
 describe('AppStore - Sessions Awaiting Answer Tracking', () => {
