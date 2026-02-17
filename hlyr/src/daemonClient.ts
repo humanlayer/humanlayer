@@ -210,8 +210,8 @@ export class DaemonClient extends EventEmitter {
                 subscriptionEmitter.emit('event', notification.event)
               }
             }
-          } catch {
-            // Ignore parse errors
+          } catch (err) {
+            console.error('[DaemonClient] subscribe: failed to parse daemon response:', err, 'raw:', line)
           }
         }
       }
@@ -313,8 +313,8 @@ export class DaemonClient extends EventEmitter {
                 }
                 return
               }
-            } catch {
-              // Ignore parse errors
+            } catch (err) {
+              console.error('[DaemonClient] call: failed to parse daemon response:', err, 'method:', method, 'raw:', line)
             }
           }
         }

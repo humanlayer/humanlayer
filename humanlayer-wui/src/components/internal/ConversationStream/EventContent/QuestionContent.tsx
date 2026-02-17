@@ -11,7 +11,12 @@ import { logger } from '@/lib/logging'
 import type { Question } from '@/lib/daemon/types'
 import type { ConversationEvent } from '@humanlayer/hld-sdk'
 import { Check, X } from 'lucide-react'
-import { canSubmitQuestions, buildAnswersJson, filterOtherOptions } from './questionUtils'
+import {
+  canSubmitQuestions,
+  buildAnswersJson,
+  filterOtherOptions,
+  getQuestionKey,
+} from './questionUtils'
 import type { QuestionItem } from './questionUtils'
 
 interface QuestionContentProps {
@@ -184,7 +189,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
                 <Check className="size-3.5" />
                 <span>
                   {(() => {
-                    const answer = question.answersJson?.[q.header || `question_${idx}`]
+                    const answer = question.answersJson?.[getQuestionKey(q, idx)]
                     if (answer == null) return 'Answered'
                     if (Array.isArray(answer)) return answer.join(', ')
                     return String(answer)

@@ -53,6 +53,14 @@ export function canSubmitQuestions(
 }
 
 /**
+ * Derives the answer key for a question item at the given index.
+ * Must be used consistently in both answer building and answer display.
+ */
+export function getQuestionKey(q: QuestionItem, idx: number): string {
+  return q.header || `question_${idx}`
+}
+
+/**
  * Builds the answers object in the format expected by Claude's AskUserQuestion tool.
  * Keys are the question header (or `question_{idx}` as fallback).
  * Values are the selected option label(s), or the "Other" text if "Other" was chosen.
@@ -65,17 +73,17 @@ export function buildAnswersJson(
 ): Record<string, unknown> {
   const answersJson: Record<string, unknown> = {}
   questions.forEach((q, idx) => {
-    const key = q.header || `question_${idx}`
+    const key = getQuestionKey(q, idx)
     if (q.multiSelect) {
       const selected = (answers[idx] as string[]) || []
       if (otherSelected[idx] && otherTexts[idx]?.trim()) {
-        answersJson[key] = [...selected, otherTexts[idx]]
+        answersJson[key] = [...selected, otherTexts[idx].trim()]
       } else {
         answersJson[key] = selected
       }
     } else {
-      if (otherSelected[idx] && otherTexts[idx]) {
-        answersJson[key] = otherTexts[idx]
+      if (otherSelected[idx] && otherTexts[idx]?.trim()) {
+        answersJson[key] = otherTexts[idx].trim()
       } else {
         answersJson[key] = answers[idx]
       }

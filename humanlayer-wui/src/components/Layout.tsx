@@ -640,7 +640,21 @@ export function Layout() {
         const questionTexts =
           questionsJson?.questions?.map(q => q.question).filter((q): q is string => Boolean(q)) || []
 
-        await notificationService.notifyQuestionRequired(sessionId, questionId, questionTexts)
+        // Fetch session state for title (matching onNewApproval pattern)
+        let sessionTitle: string | undefined
+        try {
+          const sessionState = await daemonClient.getSessionState(sessionId)
+          sessionTitle = sessionState.session?.title || sessionState.session?.summary
+        } catch (err) {
+          logger.error(`Failed to get session state for question notification:`, err)
+        }
+
+        await notificationService.notifyQuestionRequired(
+          sessionId,
+          questionId,
+          questionTexts,
+          sessionTitle,
+        )
         addNotifiedItem(notificationId)
       } catch (error) {
         logger.error(`Failed to get question details for ${questionId}:`, error)

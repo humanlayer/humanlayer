@@ -484,11 +484,17 @@ class NotificationService {
     sessionId: string,
     questionId: string,
     questionTexts: string[],
+    sessionTitle?: string,
     returnToastConfig?: boolean,
   ) {
     const toastId = `question_required:${questionId}`
 
-    const subtitle = `Session ${sessionId.slice(0, 8)}`
+    // Use session title with truncation, matching approval notification pattern
+    const truncatedTitle = sessionTitle
+      ? sessionTitle.length > 50
+        ? sessionTitle.substring(0, 47) + '...'
+        : sessionTitle
+      : `Session ${sessionId.slice(0, 8)}`
 
     const fallbackText = 'A session is waiting for your answer'
     const bodyText = questionTexts.length > 0 ? questionTexts.join('\n') : fallbackText
@@ -497,7 +503,7 @@ class NotificationService {
     const titleElement = (
       <div className="flex flex-col gap-0.5">
         <span className="font-bold text-[var(--terminal-warning)]">awaiting_answer</span>
-        <span className="text-xs text-muted-foreground">{subtitle}</span>
+        <span className="text-xs text-muted-foreground">{truncatedTitle}</span>
       </div>
     )
 
@@ -518,7 +524,7 @@ class NotificationService {
       type: 'question_required',
       title: titleElement,
       body: bodyElement,
-      osTitle: `awaiting_answer - ${subtitle}`,
+      osTitle: `awaiting_answer - ${truncatedTitle}`,
       osBody: truncatedBody,
       metadata: {
         sessionId,
