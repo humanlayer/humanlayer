@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test'
-import { canSubmitQuestions, buildAnswersJson } from './questionUtils'
+import { canSubmitQuestions, buildAnswersJson, filterOtherOptions } from './questionUtils'
 import type { QuestionItem } from './questionUtils'
 
 // --- Test fixtures ---
@@ -204,5 +204,125 @@ describe('buildAnswersJson', () => {
       Library: 'Vue',
       Features: ['API'],
     })
+  })
+})
+
+// --- filterOtherOptions tests ---
+
+describe('filterOtherOptions', () => {
+  it('removes an option with label "Other"', () => {
+    const questions: QuestionItem[] = [
+      {
+        question: 'Which framework?',
+        header: 'Framework',
+        options: [
+          { label: 'React', description: 'A UI library' },
+          { label: 'Other', description: 'A different framework' },
+        ],
+        multiSelect: false,
+      },
+    ]
+    const result = filterOtherOptions(questions)
+    expect(result).toHaveLength(1)
+    expect(result[0].options).toEqual([{ label: 'React', description: 'A UI library' }])
+  })
+
+  it('is case-insensitive', () => {
+    const questions: QuestionItem[] = [
+      {
+        question: 'Pick one',
+        header: 'Choice',
+        options: [
+          { label: 'A', description: 'Option A' },
+          { label: 'OTHER', description: 'Uppercase other' },
+          { label: 'other', description: 'Lowercase other' },
+          { label: 'oThEr', description: 'Mixed case other' },
+        ],
+        multiSelect: false,
+      },
+    ]
+    const result = filterOtherOptions(questions)
+    expect(result[0].options).toEqual([{ label: 'A', description: 'Option A' }])
+  })
+
+  it('trims whitespace from labels before comparing', () => {
+    const questions: QuestionItem[] = [
+      {
+        question: 'Pick one',
+        header: 'Choice',
+        options: [
+          { label: 'A', description: 'Option A' },
+          { label: ' Other ', description: 'Padded other' },
+        ],
+        multiSelect: false,
+      },
+    ]
+    const result = filterOtherOptions(questions)
+    expect(result[0].options).toEqual([{ label: 'A', description: 'Option A' }])
+  })
+
+  it('does not filter options that merely contain "other"', () => {
+    const questions: QuestionItem[] = [
+      {
+        question: 'Pick one',
+        header: 'Choice',
+        options: [
+          { label: 'Another option', description: 'Contains other' },
+          { label: 'Other tools', description: 'Starts with other' },
+        ],
+        multiSelect: false,
+      },
+    ]
+    const result = filterOtherOptions(questions)
+    expect(result[0].options).toHaveLength(2)
+  })
+
+  it('preserves questions with no "Other" option unchanged', () => {
+    const questions: QuestionItem[] = [
+      {
+        question: 'Which library?',
+        header: 'Library',
+        options: [
+          { label: 'React', description: 'A UI library' },
+          { label: 'Vue', description: 'Another UI library' },
+        ],
+        multiSelect: false,
+      },
+    ]
+    const result = filterOtherOptions(questions)
+    expect(result).toEqual(questions)
+  })
+
+  it('handles multiple questions independently', () => {
+    const questions: QuestionItem[] = [
+      {
+        question: 'Q1',
+        header: 'H1',
+        options: [
+          { label: 'A', description: 'a' },
+          { label: 'Other', description: 'other' },
+        ],
+        multiSelect: false,
+      },
+      {
+        question: 'Q2',
+        header: 'H2',
+        options: [
+          { label: 'B', description: 'b' },
+          { label: 'C', description: 'c' },
+        ],
+        multiSelect: true,
+      },
+    ]
+    const result = filterOtherOptions(questions)
+    expect(result[0].options).toEqual([{ label: 'A', description: 'a' }])
+    expect(result[1].options).toEqual([
+      { label: 'B', description: 'b' },
+      { label: 'C', description: 'c' },
+    ])
+  })
+
+  it('returns empty array for empty input', () => {
+    expect(filterOtherOptions([])).toEqual([])
   })
 })

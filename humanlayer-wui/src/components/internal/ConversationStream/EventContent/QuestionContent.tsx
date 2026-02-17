@@ -11,7 +11,7 @@ import { logger } from '@/lib/logging'
 import type { Question } from '@/lib/daemon/types'
 import type { ConversationEvent } from '@humanlayer/hld-sdk'
 import { Check, X } from 'lucide-react'
-import { canSubmitQuestions, buildAnswersJson } from './questionUtils'
+import { canSubmitQuestions, buildAnswersJson, filterOtherOptions } from './questionUtils'
 import type { QuestionItem } from './questionUtils'
 
 interface QuestionContentProps {
@@ -35,7 +35,9 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
   const questionsInput: QuestionItem[] = React.useMemo(() => {
     try {
       const toolInput = event.toolInputJson ? JSON.parse(event.toolInputJson) : null
-      return toolInput?.questions || []
+      const questions = toolInput?.questions || []
+      // Filter out any "Other" options from LLM since the UI adds its own
+      return filterOtherOptions(questions)
     } catch {
       return []
     }

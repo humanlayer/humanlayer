@@ -82,7 +82,8 @@ export async function startClaudeApprovalsMCPServer() {
                   },
                   options: {
                     type: 'array',
-                    description: 'Available choices (2-4 options)',
+                    description:
+                      'Available choices (2-4 options). Do not include an "Other" option - it is automatically added by the UI.',
                     items: {
                       type: 'object',
                       properties: {

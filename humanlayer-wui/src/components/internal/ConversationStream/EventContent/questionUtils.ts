@@ -11,6 +11,16 @@ export interface QuestionItem {
 }
 
 /**
+ * Filters out any "Other" option from LLM-provided questions since the UI adds its own.
+ */
+export function filterOtherOptions(questions: QuestionItem[]): QuestionItem[] {
+  return questions.map(q => ({
+    ...q,
+    options: q.options.filter(opt => opt.label.trim().toLowerCase() !== 'other'),
+  }))
+}
+
+/**
  * Determines whether all questions have valid answers and the form can be submitted.
  *
  * Rules:
