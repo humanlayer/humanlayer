@@ -122,8 +122,11 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     try {
       setError(null)
       const answersJson = buildAnswersJson(questionsInput, answers, otherSelected, otherTexts)
-      await daemonClient.answerQuestion(question.id, answersJson)
-      // Fetch the specific question by ID to get the updated status
+      const result = await daemonClient.answerQuestion(question.id, answersJson)
+      if (!result.success) {
+        setError(result.error || 'Failed to submit answer. Please try again.')
+        return
+      }
       const updated = await daemonClient.getQuestion(question.id)
       setQuestion(updated)
     } catch (err) {
@@ -140,7 +143,11 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
 
     try {
       setError(null)
-      await daemonClient.answerQuestion(question.id, undefined, true)
+      const result = await daemonClient.answerQuestion(question.id, undefined, true)
+      if (!result.success) {
+        setError(result.error || 'Failed to decline question. Please try again.')
+        return
+      }
       const updated = await daemonClient.getQuestion(question.id)
       setQuestion(updated)
     } catch (err) {

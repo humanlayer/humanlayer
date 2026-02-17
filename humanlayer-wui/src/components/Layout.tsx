@@ -27,11 +27,8 @@ import { SessionLauncher } from '@/components/SessionLauncher'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
-import {
-  useSessionSubscriptions,
-  type NewQuestionEventData,
-  type QuestionAnsweredEventData,
-} from '@/hooks/useSubscriptions'
+import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
+import type { NewQuestionEventData, QuestionAnsweredEventData } from '@/lib/daemon/types'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
