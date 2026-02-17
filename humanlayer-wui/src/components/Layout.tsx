@@ -467,9 +467,10 @@ export function Layout() {
         return
       }
 
-      // Clear notifications if session is no longer waiting_input
+      // Clear notifications and awaiting answer state if session is no longer waiting_input
       if (nextStatus !== undefined && nextStatus !== SessionStatus.WaitingInput) {
         clearNotificationsForSession(session_id)
+        removeSessionAwaitingAnswer(session_id)
       }
 
       // Completed or Failed, but not in series
@@ -624,7 +625,10 @@ export function Layout() {
     },
     onQuestionAnswered: async (data: QuestionAnsweredEventData) => {
       logger.log('useSessionSubscriptions.onQuestionAnswered', Date.now(), data)
-      removeSessionAwaitingAnswer(data.session_id)
+      // Don't remove from sessionsAwaitingAnswer here — the session status is
+      // still waiting_input until onSessionStatusChanged fires, so removing
+      // now would briefly show "needs_approval". Cleanup happens in
+      // onSessionStatusChanged when the status leaves waiting_input.
       await refreshActiveSessionConversation(data.session_id)
     },
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
