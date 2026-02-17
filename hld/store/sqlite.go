@@ -1158,6 +1158,29 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 23 applied successfully")
 	}
 
+	// Migration 24: Add index on questions.tool_use_id
+	if currentVersion < 24 {
+		slog.Info("Applying migration 24: Add index on questions.tool_use_id")
+
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_questions_tool_use_id
+			ON questions (tool_use_id)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create questions tool_use_id index: %w", err)
+		}
+
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (24, 'Add index on questions.tool_use_id')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 24: %w", err)
+		}
+
+		slog.Info("Migration 24 applied successfully")
+	}
+
 	return nil
 }
 
@@ -2952,6 +2975,33 @@ func nullableJSON(data json.RawMessage) interface{} {
 	return string(data)
 }
 
+// scanner is satisfied by both *sql.Row and *sql.Rows
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanQuestion(s scanner) (*Question, error) {
+	var q Question
+	var toolUseID sql.NullString
+	var questionsJSON string
+	var answersJSON sql.NullString
+	var answeredAt sql.NullTime
+	if err := s.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
+		return nil, err
+	}
+	q.QuestionsJSON = json.RawMessage(questionsJSON)
+	if toolUseID.Valid {
+		q.ToolUseID = &toolUseID.String
+	}
+	if answersJSON.Valid {
+		q.AnswersJSON = json.RawMessage(answersJSON.String)
+	}
+	if answeredAt.Valid {
+		q.AnsweredAt = &answeredAt.Time
+	}
+	return &q, nil
+}
+
 func (s *SQLiteStore) CreateQuestion(ctx context.Context, question *Question) error {
 	if question.Status != QuestionStatusPending && question.Status != QuestionStatusAnswered && question.Status != QuestionStatusDeclined {
 		return fmt.Errorf("invalid question status: %s", question.Status)
@@ -2969,29 +3019,14 @@ func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, er
 		FROM questions WHERE id = ?
 	`, id)
 
-	var q Question
-	var toolUseID sql.NullString
-	var questionsJSON string
-	var answersJSON sql.NullString
-	var answeredAt sql.NullTime
-	err := row.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt)
+	q, err := scanQuestion(row)
 	if err == sql.ErrNoRows {
 		return nil, &NotFoundError{Type: "question", ID: id}
 	}
 	if err != nil {
 		return nil, err
 	}
-	q.QuestionsJSON = json.RawMessage(questionsJSON)
-	if toolUseID.Valid {
-		q.ToolUseID = &toolUseID.String
-	}
-	if answersJSON.Valid {
-		q.AnswersJSON = json.RawMessage(answersJSON.String)
-	}
-	if answeredAt.Valid {
-		q.AnsweredAt = &answeredAt.Time
-	}
-	return &q, nil
+	return q, nil
 }
 
 func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string) ([]*Question, error) {
@@ -3007,25 +3042,11 @@ func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string)
 
 	var questions []*Question
 	for rows.Next() {
-		var q Question
-		var toolUseID sql.NullString
-		var questionsJSON string
-		var answersJSON sql.NullString
-		var answeredAt sql.NullTime
-		if err := rows.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
+		q, err := scanQuestion(rows)
+		if err != nil {
 			return nil, err
 		}
-		q.QuestionsJSON = json.RawMessage(questionsJSON)
-		if toolUseID.Valid {
-			q.ToolUseID = &toolUseID.String
-		}
-		if answersJSON.Valid {
-			q.AnswersJSON = json.RawMessage(answersJSON.String)
-		}
-		if answeredAt.Valid {
-			q.AnsweredAt = &answeredAt.Time
-		}
-		questions = append(questions, &q)
+		questions = append(questions, q)
 	}
 	return questions, rows.Err()
 }
@@ -3043,25 +3064,11 @@ func (s *SQLiteStore) GetQuestionsBySession(ctx context.Context, sessionID strin
 
 	var questions []*Question
 	for rows.Next() {
-		var q Question
-		var toolUseID sql.NullString
-		var questionsJSON string
-		var answersJSON sql.NullString
-		var answeredAt sql.NullTime
-		if err := rows.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
+		q, err := scanQuestion(rows)
+		if err != nil {
 			return nil, err
 		}
-		q.QuestionsJSON = json.RawMessage(questionsJSON)
-		if toolUseID.Valid {
-			q.ToolUseID = &toolUseID.String
-		}
-		if answersJSON.Valid {
-			q.AnswersJSON = json.RawMessage(answersJSON.String)
-		}
-		if answeredAt.Valid {
-			q.AnsweredAt = &answeredAt.Time
-		}
-		questions = append(questions, &q)
+		questions = append(questions, q)
 	}
 	return questions, rows.Err()
 }

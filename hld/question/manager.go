@@ -6,17 +6,19 @@ import (
 	"fmt"
 	"log/slog"
 	"reflect"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	"github.com/humanlayer/humanlayer/hld/internal/toolutil"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 type manager struct {
 	store    store.ConversationStore
 	eventBus bus.EventBus
+	mu       sync.Mutex // protects CreateQuestion's read-match-insert sequence
 }
 
 func NewManager(store store.ConversationStore, eventBus bus.EventBus) Manager {
@@ -44,6 +46,9 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 	if session == nil {
 		return nil, fmt.Errorf("session not found: %s", sessionID)
 	}
+
+	// Lock to prevent concurrent CreateQuestion calls from claiming the same tool_use_id
+	m.mu.Lock()
 
 	// Look up the pending tool call to get the tool_use_id for correlation.
 	// We match by ToolInputJSON content to handle parallel tool calls correctly —
@@ -76,11 +81,17 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 			}
 		}
 
+		// Pre-unmarshal questionsJSON once for comparison
+		var questionsValue interface{}
+		if err := json.Unmarshal(questionsJSON, &questionsValue); err != nil {
+			slog.Warn("failed to unmarshal questionsJSON for comparison", "error", err)
+		}
+
 		for _, tc := range pendingToolCalls {
-			if !isAskUserQuestionTool(tc.ToolName) {
+			if !toolutil.IsAskUserQuestionTool(tc.ToolName) {
 				continue
 			}
-			if tc.ToolID != "" && !claimedToolIDs[tc.ToolID] && jsonEqual([]byte(tc.ToolInputJSON), questionsJSON) {
+			if tc.ToolID != "" && !claimedToolIDs[tc.ToolID] && jsonMatchesParsed([]byte(tc.ToolInputJSON), questionsValue) {
 				toolUseID = &tc.ToolID
 				break
 			}
@@ -98,8 +109,10 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 	}
 
 	if err := m.store.CreateQuestion(ctx, q); err != nil {
+		m.mu.Unlock()
 		return nil, fmt.Errorf("failed to store question: %w", err)
 	}
+	m.mu.Unlock()
 
 	m.publishNewQuestionEvent(q)
 
@@ -169,6 +182,30 @@ func (m *manager) DeclineQuestion(ctx context.Context, id string) error {
 }
 
 func (m *manager) updateSessionStatusToRunning(ctx context.Context, sessionID string) {
+	// Check if there are other pending questions or approvals before
+	// transitioning to running — another pending item should keep the
+	// session in waiting_input.
+	pendingQuestions, qErr := m.store.GetPendingQuestions(ctx, sessionID)
+	if qErr != nil {
+		slog.Warn("failed to check pending questions", "error", qErr, "session_id", sessionID)
+	}
+	pendingApprovals, aErr := m.store.GetPendingApprovals(ctx, sessionID)
+	if aErr != nil {
+		slog.Warn("failed to check pending approvals", "error", aErr, "session_id", sessionID)
+	}
+
+	if len(pendingQuestions) > 0 || len(pendingApprovals) > 0 {
+		// Other items still pending — keep status as waiting_input, just update activity
+		now := time.Now()
+		updates := store.SessionUpdate{
+			LastActivityAt: &now,
+		}
+		if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
+			slog.Warn("failed to update session activity", "error", err, "session_id", sessionID)
+		}
+		return
+	}
+
 	status := store.SessionStatusRunning
 	now := time.Now()
 	updates := store.SessionUpdate{
@@ -180,23 +217,16 @@ func (m *manager) updateSessionStatusToRunning(ctx context.Context, sessionID st
 	}
 }
 
-// jsonEqual compares two JSON byte slices for semantic equality,
-// ignoring differences in key ordering or whitespace.
-func jsonEqual(a, b []byte) bool {
-	var va, vb interface{}
-	if err := json.Unmarshal(a, &va); err != nil {
+// jsonMatchesParsed compares a JSON byte slice against a pre-parsed value.
+func jsonMatchesParsed(raw []byte, parsed interface{}) bool {
+	if parsed == nil {
 		return false
 	}
-	if err := json.Unmarshal(b, &vb); err != nil {
+	var v interface{}
+	if err := json.Unmarshal(raw, &v); err != nil {
 		return false
 	}
-	return reflect.DeepEqual(va, vb)
-}
-
-func isAskUserQuestionTool(toolName string) bool {
-	return toolName == "ask_user_question" ||
-		toolName == "AskUserQuestion" ||
-		strings.HasSuffix(toolName, "__ask_user_question")
+	return reflect.DeepEqual(v, parsed)
 }
 
 func (m *manager) publishNewQuestionEvent(q *store.Question) {

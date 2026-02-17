@@ -285,6 +285,10 @@ func TestManager_AnswerQuestion(t *testing.T) {
 		assert.Equal(t, string(store.QuestionStatusAnswered), event.Data["status"])
 	})
 
+	// No pending items
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return(nil, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, sessionID).Return(nil, nil)
+
 	// Mock session status update to running
 	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).DoAndReturn(func(_ context.Context, id string, updates store.SessionUpdate) error {
 		assert.NotNil(t, updates.Status)
@@ -365,6 +369,10 @@ func TestManager_DeclineQuestion(t *testing.T) {
 		assert.Equal(t, bus.EventQuestionAnswered, event.Type)
 		assert.Equal(t, string(store.QuestionStatusDeclined), event.Data["status"])
 	})
+
+	// No pending items
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return(nil, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, sessionID).Return(nil, nil)
 
 	// Mock session status update to running
 	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
@@ -481,29 +489,6 @@ func TestManager_CreateQuestion_PendingQuestionsLookupError(t *testing.T) {
 	assert.NotNil(t, q.ToolUseID)
 }
 
-func TestIsAskUserQuestionTool(t *testing.T) {
-	tests := []struct {
-		name     string
-		toolName string
-		expected bool
-	}{
-		{"exact short name", "ask_user_question", true},
-		{"built-in tool name", "AskUserQuestion", true},
-		{"MCP codelayer namespaced", "mcp__codelayer__ask_user_question", true},
-		{"MCP other namespace", "mcp__custom__ask_user_question", true},
-		{"unrelated tool", "Bash", false},
-		{"partial match", "ask_user", false},
-		{"suffix without separator", "notask_user_question", false},
-		{"empty string", "", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, isAskUserQuestionTool(tt.toolName))
-		})
-	}
-}
-
 func TestManager_GetPendingQuestions(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
@@ -524,4 +509,120 @@ func TestManager_GetPendingQuestions(t *testing.T) {
 	got, err := mgr.GetPendingQuestions(ctx, "session-1")
 	require.NoError(t, err)
 	assert.Equal(t, expected, got)
+}
+
+func TestAnswerQuestion_WithOtherPendingQuestions(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+	ctx := context.Background()
+
+	answeredQ := &store.Question{
+		ID:        "q-1",
+		SessionID: "session-1",
+		Status:    store.QuestionStatusAnswered,
+	}
+
+	// Answer the question
+	mockStore.EXPECT().AnswerQuestion(ctx, "q-1", store.QuestionStatusAnswered, gomock.Any()).Return(nil)
+	mockStore.EXPECT().GetQuestion(ctx, "q-1").Return(answeredQ, nil)
+	mockEventBus.EXPECT().Publish(gomock.Any())
+
+	// When checking pending items, another question is still pending
+	mockStore.EXPECT().GetPendingQuestions(ctx, "session-1").Return([]*store.Question{
+		{ID: "q-2", SessionID: "session-1", Status: store.QuestionStatusPending},
+	}, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, "session-1").Return(nil, nil)
+
+	// Should NOT set status to running — only update LastActivityAt
+	mockStore.EXPECT().UpdateSession(ctx, "session-1", gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, updates store.SessionUpdate) error {
+			assert.Nil(t, updates.Status, "should not update status when other questions are pending")
+			assert.NotNil(t, updates.LastActivityAt)
+			return nil
+		},
+	)
+
+	err := mgr.AnswerQuestion(ctx, "q-1", json.RawMessage(`{"q": "a"}`))
+	assert.NoError(t, err)
+}
+
+func TestAnswerQuestion_WithPendingApprovals(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+	ctx := context.Background()
+
+	answeredQ := &store.Question{
+		ID:        "q-1",
+		SessionID: "session-1",
+		Status:    store.QuestionStatusAnswered,
+	}
+
+	mockStore.EXPECT().AnswerQuestion(ctx, "q-1", store.QuestionStatusAnswered, gomock.Any()).Return(nil)
+	mockStore.EXPECT().GetQuestion(ctx, "q-1").Return(answeredQ, nil)
+	mockEventBus.EXPECT().Publish(gomock.Any())
+
+	// No pending questions, but pending approvals exist
+	mockStore.EXPECT().GetPendingQuestions(ctx, "session-1").Return(nil, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, "session-1").Return([]*store.Approval{
+		{ID: "a-1", SessionID: "session-1", Status: store.ApprovalStatusLocalPending},
+	}, nil)
+
+	// Should NOT set status to running — only update LastActivityAt
+	mockStore.EXPECT().UpdateSession(ctx, "session-1", gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, updates store.SessionUpdate) error {
+			assert.Nil(t, updates.Status, "should not update status when approvals are pending")
+			assert.NotNil(t, updates.LastActivityAt)
+			return nil
+		},
+	)
+
+	err := mgr.AnswerQuestion(ctx, "q-1", json.RawMessage(`{"q": "a"}`))
+	assert.NoError(t, err)
+}
+
+func TestAnswerQuestion_NoPendingItems_SetsRunning(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+	ctx := context.Background()
+
+	answeredQ := &store.Question{
+		ID:        "q-1",
+		SessionID: "session-1",
+		Status:    store.QuestionStatusAnswered,
+	}
+
+	mockStore.EXPECT().AnswerQuestion(ctx, "q-1", store.QuestionStatusAnswered, gomock.Any()).Return(nil)
+	mockStore.EXPECT().GetQuestion(ctx, "q-1").Return(answeredQ, nil)
+	mockEventBus.EXPECT().Publish(gomock.Any())
+
+	// No pending items
+	mockStore.EXPECT().GetPendingQuestions(ctx, "session-1").Return(nil, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, "session-1").Return(nil, nil)
+
+	// Should set status to running
+	mockStore.EXPECT().UpdateSession(ctx, "session-1", gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, updates store.SessionUpdate) error {
+			assert.NotNil(t, updates.Status)
+			assert.Equal(t, store.SessionStatusRunning, *updates.Status)
+			return nil
+		},
+	)
+
+	err := mgr.AnswerQuestion(ctx, "q-1", json.RawMessage(`{"q": "a"}`))
+	assert.NoError(t, err)
 }

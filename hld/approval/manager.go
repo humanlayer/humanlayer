@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/humanlayer/humanlayer/hld/bus"
+	"github.com/humanlayer/humanlayer/hld/internal/toolutil"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
@@ -325,7 +325,7 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 		comment = "Auto-accepted (auto-accept mode enabled)"
 	}
 
-	if isAskUserQuestionTool(toolName) {
+	if toolutil.IsAskUserQuestionTool(toolName) {
 		status = store.ApprovalStatusLocalApproved
 		comment = "Auto-accepted (question tool)"
 	}
@@ -398,12 +398,4 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 // isEditTool checks if a tool name is one of the edit tools
 func isEditTool(toolName string) bool {
 	return toolName == "Edit" || toolName == "Write" || toolName == "MultiEdit"
-}
-
-// isAskUserQuestionTool checks if a tool name is the AskUserQuestion tool
-// (built-in or MCP-namespaced variant).
-func isAskUserQuestionTool(toolName string) bool {
-	return toolName == "ask_user_question" ||
-		toolName == "AskUserQuestion" ||
-		strings.HasSuffix(toolName, "__ask_user_question")
 }
