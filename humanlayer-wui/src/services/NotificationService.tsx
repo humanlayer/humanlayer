@@ -31,6 +31,8 @@ export interface NotificationOptions {
   type: NotificationType
   title: string | React.ReactNode
   body: string | React.ReactNode
+  osTitle?: string // Plain string for OS notifications (avoids React node conversion loss)
+  osBody?: string // Plain string for OS notifications
   metadata: {
     sessionId?: string
     approvalId?: string
@@ -352,9 +354,10 @@ class NotificationService {
       }
 
       // Send the notification
-      // Convert React nodes to strings for OS notifications
-      const titleString = typeof options.title === 'string' ? options.title : 'Notification'
-      const bodyString = typeof options.body === 'string' ? options.body : ''
+      // Prefer explicit osTitle/osBody strings, then fall back to converting React nodes
+      const titleString =
+        options.osTitle || (typeof options.title === 'string' ? options.title : 'Notification')
+      const bodyString = options.osBody || (typeof options.body === 'string' ? options.body : '')
 
       await sendNotification({
         title: titleString,
@@ -480,35 +483,43 @@ class NotificationService {
   async notifyQuestionRequired(
     sessionId: string,
     questionId: string,
-    questionText: string,
-    sessionTitle?: string,
+    questionTexts: string[],
     returnToastConfig?: boolean,
   ) {
     const toastId = `question_required:${questionId}`
 
-    const truncatedTitle = sessionTitle
-      ? sessionTitle.length > 50
-        ? sessionTitle.substring(0, 47) + '...'
-        : sessionTitle
-      : `Session ${sessionId.slice(0, 8)}`
+    const subtitle = `Session ${sessionId.slice(0, 8)}`
+
+    const fallbackText = 'A session is waiting for your answer'
+    const bodyText = questionTexts.length > 0 ? questionTexts.join('\n') : fallbackText
+    const truncatedBody = bodyText.length > 120 ? bodyText.substring(0, 117) + '...' : bodyText
 
     const titleElement = (
       <div className="flex flex-col gap-0.5">
         <span className="font-bold text-[var(--terminal-warning)]">awaiting_answer</span>
-        <span className="text-xs text-muted-foreground">{truncatedTitle}</span>
+        <span className="text-xs text-muted-foreground">{subtitle}</span>
       </div>
     )
 
     const bodyElement = (
-      <span className="text-sm">
-        {questionText.length > 80 ? questionText.substring(0, 77) + '...' : questionText}
-      </span>
+      <div className="flex flex-col gap-1 text-sm">
+        {questionTexts.length > 0 ? (
+          questionTexts.map((q, i) => {
+            const truncated = q.length > 80 ? q.substring(0, 77) + '...' : q
+            return <span key={i}>{truncated}</span>
+          })
+        ) : (
+          <span>{fallbackText}</span>
+        )}
+      </div>
     )
 
     return this.notify({
       type: 'question_required',
       title: titleElement,
       body: bodyElement,
+      osTitle: `awaiting_answer - ${subtitle}`,
+      osBody: truncatedBody,
       metadata: {
         sessionId,
         questionId,

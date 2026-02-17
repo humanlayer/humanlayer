@@ -637,27 +637,14 @@ export function Layout() {
         const questionsJson = questionData.questionsJson as
           | { questions?: Array<{ question?: string }> }
           | undefined
-        const questionText =
-          questionsJson?.questions?.[0]?.question || 'A session is waiting for your answer'
+        const questionTexts =
+          questionsJson?.questions?.map(q => q.question).filter((q): q is string => Boolean(q)) || []
 
-        const sessionState = await daemonClient.getSessionState(sessionId)
-        const sessionTitle = sessionState.session?.title || sessionState.session?.summary
-
-        await notificationService.notifyQuestionRequired(
-          sessionId,
-          questionId,
-          questionText,
-          sessionTitle,
-        )
+        await notificationService.notifyQuestionRequired(sessionId, questionId, questionTexts)
         addNotifiedItem(notificationId)
       } catch (error) {
         logger.error(`Failed to get question details for ${questionId}:`, error)
-        await notificationService.notifyQuestionRequired(
-          sessionId,
-          questionId,
-          'A session is waiting for your answer',
-          undefined,
-        )
+        await notificationService.notifyQuestionRequired(sessionId, questionId, [])
         addNotifiedItem(notificationId)
       }
     },
