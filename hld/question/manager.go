@@ -176,19 +176,6 @@ func (m *manager) updateSessionStatusToRunning(ctx context.Context, sessionID st
 	}
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		slog.Warn("failed to update session status", "error", err, "session_id", sessionID)
-		return
-	}
-
-	if m.eventBus != nil {
-		m.eventBus.Publish(bus.Event{
-			Type:      bus.EventSessionStatusChanged,
-			Timestamp: now,
-			Data: map[string]interface{}{
-				"session_id": sessionID,
-				"old_status": string(store.SessionStatusWaitingInput),
-				"new_status": string(store.SessionStatusRunning),
-			},
-		})
 	}
 }
 
