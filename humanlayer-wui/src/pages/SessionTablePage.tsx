@@ -37,7 +37,7 @@ export function SessionTablePage() {
 
   const viewMode = getViewMode()
   const refreshSessions = useStore(state => state.refreshSessions)
-  const sessionsWithPendingQuestions = useStore(state => state.sessionsWithPendingQuestions)
+  const sessionsAwaitingAnswer = useStore(state => state.sessionsAwaitingAnswer)
 
   // Refresh sessions when view mode changes to drafts
   useEffect(() => {
@@ -395,7 +395,7 @@ export function SessionTablePage() {
           isDraftsView={viewMode === ViewMode.Drafts}
           onNavigateToSessions={() => setViewMode(ViewMode.Normal)}
           onBypassPermissions={handleBypassPermissions}
-          sessionsWithPendingQuestions={sessionsWithPendingQuestions}
+          sessionsAwaitingAnswer={sessionsAwaitingAnswer}
         />
       </div>
       <HotkeyScopeBoundary

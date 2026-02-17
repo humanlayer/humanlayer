@@ -309,17 +309,19 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
 
-  // Determine if session is waiting only for question answers (not approvals)
-  const hasOnlyPendingQuestions = useMemo(() => {
-    if (session.status !== SessionStatus.WaitingInput) return false
+  // Determine why the session is waiting for input
+  const waitingReason = useMemo(() => {
+    if (session.status !== SessionStatus.WaitingInput) return undefined
     const hasPendingApprovals = events.some(e => e.approvalStatus === ApprovalStatus.Pending)
+    if (hasPendingApprovals) return 'approval' as const
     const hasPendingQuestions = events.some(
       e =>
         e.eventType === 'tool_call' &&
         e.toolName === MCP_ASK_USER_QUESTION &&
         !e.isCompleted,
     )
-    return hasPendingQuestions && !hasPendingApprovals
+    if (hasPendingQuestions) return 'question' as const
+    return 'approval' as const
   }, [session.status, events])
 
   const lastTodo = events
@@ -989,7 +991,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
           autoAcceptEnabled={autoAcceptEdits}
           isArchived={session.archived || false}
           onToggleArchive={handleToggleArchive}
-          hasOnlyPendingQuestions={hasOnlyPendingQuestions}
+          waitingReason={waitingReason}
         />
 
         {/* Session mode indicator */}

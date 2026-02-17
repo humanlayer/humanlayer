@@ -438,9 +438,9 @@ export function Layout() {
   const isRecentResolvedApproval = useStore(state => state.isRecentResolvedApproval)
   const setActiveSessionDetail = useStore(state => state.setActiveSessionDetail)
   const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
-  const addPendingQuestionSession = useStore(state => state.addPendingQuestionSession)
-  const removePendingQuestionSession = useStore(state => state.removePendingQuestionSession)
-  const setPendingQuestionSessions = useStore(state => state.setPendingQuestionSessions)
+  const addSessionAwaitingAnswer = useStore(state => state.addSessionAwaitingAnswer)
+  const removeSessionAwaitingAnswer = useStore(state => state.removeSessionAwaitingAnswer)
+  const setSessionsAwaitingAnswer = useStore(state => state.setSessionsAwaitingAnswer)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
@@ -539,6 +539,9 @@ export function Layout() {
         return
       }
 
+      // Session now has a pending approval, so it's no longer question-only
+      removeSessionAwaitingAnswer(sessionId)
+
       // Track approval received event
       // Extract generic tool type from tool name (e.g., "bash", "edit", "write")
       const toolType = toolName?.split('_')[0] || 'unknown'
@@ -615,13 +618,13 @@ export function Layout() {
     },
     onNewQuestion: async (data: NewQuestionEventData) => {
       logger.log('useSessionSubscriptions.onNewQuestion', Date.now(), data)
-      addPendingQuestionSession(data.session_id)
+      addSessionAwaitingAnswer(data.session_id)
       updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
       await refreshActiveSessionConversation(data.session_id)
     },
     onQuestionAnswered: async (data: QuestionAnsweredEventData) => {
       logger.log('useSessionSubscriptions.onQuestionAnswered', Date.now(), data)
-      removePendingQuestionSession(data.session_id)
+      removeSessionAwaitingAnswer(data.session_id)
       await refreshActiveSessionConversation(data.session_id)
     },
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
@@ -925,7 +928,7 @@ export function Layout() {
       )
 
       if (waitingInputSessions.length > 0) {
-        const pendingQuestionSessionIds = new Set<string>()
+        const awaitingAnswerSessionIds = new Set<string>()
 
         await Promise.all(
           waitingInputSessions.map(async session => {
@@ -941,7 +944,7 @@ export function Layout() {
                   !e.isCompleted,
               )
               if (hasPendingQuestions && !hasPendingApprovals) {
-                pendingQuestionSessionIds.add(session.id)
+                awaitingAnswerSessionIds.add(session.id)
               }
             } catch (error) {
               logger.error(`Failed to check questions for session ${session.id}:`, error)
@@ -949,7 +952,7 @@ export function Layout() {
           }),
         )
 
-        setPendingQuestionSessions(pendingQuestionSessionIds)
+        setSessionsAwaitingAnswer(awaitingAnswerSessionIds)
       }
     } catch (error) {
       logger.error('Failed to load sessions:', error)

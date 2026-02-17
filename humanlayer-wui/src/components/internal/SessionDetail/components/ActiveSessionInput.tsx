@@ -44,7 +44,7 @@ interface ActiveSessionInputProps {
   autoAcceptEnabled?: boolean
   isArchived?: boolean
   onToggleArchive?: () => void
-  hasOnlyPendingQuestions?: boolean
+  waitingReason?: 'approval' | 'question'
 }
 
 /**
@@ -81,7 +81,7 @@ export const ActiveSessionInput = forwardRef<
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
-      hasOnlyPendingQuestions = false,
+      waitingReason,
     },
     ref,
   ) => {
@@ -558,7 +558,7 @@ export const ActiveSessionInput = forwardRef<
         }
       }
 
-      if (hasOnlyPendingQuestions) {
+      if (waitingReason === 'question') {
         return {
           text: 'AWAITING_ANSWER',
           className: 'font-bold text-[var(--terminal-warning)]',

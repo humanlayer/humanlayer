@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'bun:test'
 import { renderSessionStatus } from './sessionStatus'
+import type { WaitingInputReason } from './sessionStatus'
 
 describe('renderSessionStatus', () => {
   test('returns "draft" for draft sessions', () => {
@@ -22,15 +23,15 @@ describe('renderSessionStatus', () => {
     expect(renderSessionStatus({ status: 'waiting_input' })).toBe('needs_approval')
   })
 
-  test('returns "needs_approval" for waiting_input with hasOnlyPendingQuestions=false', () => {
+  test('returns "needs_approval" for waiting_input with waitingReason=approval', () => {
     expect(
-      renderSessionStatus({ status: 'waiting_input' }, { hasOnlyPendingQuestions: false }),
+      renderSessionStatus({ status: 'waiting_input' }, { waitingReason: 'approval' }),
     ).toBe('needs_approval')
   })
 
-  test('returns "awaiting_answer" for waiting_input with hasOnlyPendingQuestions=true', () => {
+  test('returns "awaiting_answer" for waiting_input with waitingReason=question', () => {
     expect(
-      renderSessionStatus({ status: 'waiting_input' }, { hasOnlyPendingQuestions: true }),
+      renderSessionStatus({ status: 'waiting_input' }, { waitingReason: 'question' }),
     ).toBe('awaiting_answer')
   })
 
@@ -41,10 +42,10 @@ describe('renderSessionStatus', () => {
 
   test('ignores context for non-waiting_input statuses', () => {
     expect(
-      renderSessionStatus({ status: 'running' }, { hasOnlyPendingQuestions: true }),
+      renderSessionStatus({ status: 'running' }, { waitingReason: 'question' }),
     ).toBe('running')
     expect(
-      renderSessionStatus({ status: 'draft' }, { hasOnlyPendingQuestions: true }),
+      renderSessionStatus({ status: 'draft' }, { waitingReason: 'question' }),
     ).toBe('draft')
   })
 })

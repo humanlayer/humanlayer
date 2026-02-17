@@ -87,11 +87,11 @@ interface StoreState {
   addRecentResolvedApprovalToCache: (approvalId: string) => void
   isRecentResolvedApproval: (approvalId: string) => boolean
 
-  /* Pending Questions tracking */
-  sessionsWithPendingQuestions: Set<string>
-  addPendingQuestionSession: (sessionId: string) => void
-  removePendingQuestionSession: (sessionId: string) => void
-  setPendingQuestionSessions: (sessionIds: Set<string>) => void
+  /* Waiting reason tracking for session table */
+  sessionsAwaitingAnswer: Set<string>
+  addSessionAwaitingAnswer: (sessionId: string) => void
+  removeSessionAwaitingAnswer: (sessionId: string) => void
+  setSessionsAwaitingAnswer: (sessionIds: Set<string>) => void
 
   /* Navigation tracking */
   recentNavigations: Map<string, number> // sessionId -> timestamp
@@ -943,20 +943,20 @@ export const useStore = create<StoreState>((set, get) => {
       return get().recentResolvedApprovalsCache.has(approvalId)
     },
 
-    // Pending Questions tracking
-    sessionsWithPendingQuestions: new Set<string>(),
-    addPendingQuestionSession: (sessionId: string) =>
+    // Waiting reason tracking for session table
+    sessionsAwaitingAnswer: new Set<string>(),
+    addSessionAwaitingAnswer: (sessionId: string) =>
       set(state => ({
-        sessionsWithPendingQuestions: new Set(state.sessionsWithPendingQuestions).add(sessionId),
+        sessionsAwaitingAnswer: new Set(state.sessionsAwaitingAnswer).add(sessionId),
       })),
-    removePendingQuestionSession: (sessionId: string) =>
+    removeSessionAwaitingAnswer: (sessionId: string) =>
       set(state => {
-        const newSet = new Set(state.sessionsWithPendingQuestions)
+        const newSet = new Set(state.sessionsAwaitingAnswer)
         newSet.delete(sessionId)
-        return { sessionsWithPendingQuestions: newSet }
+        return { sessionsAwaitingAnswer: newSet }
       }),
-    setPendingQuestionSessions: (sessionIds: Set<string>) =>
-      set({ sessionsWithPendingQuestions: sessionIds }),
+    setSessionsAwaitingAnswer: (sessionIds: Set<string>) =>
+      set({ sessionsAwaitingAnswer: sessionIds }),
 
     // Navigation tracking
     recentNavigations: new Map(),
