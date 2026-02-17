@@ -25,7 +25,7 @@ func (h *QuestionHandlers) ListQuestions(ctx context.Context, req api.ListQuesti
 	var err error
 
 	if req.Params.SessionId != nil {
-		questions, err = h.questionManager.GetPendingQuestions(ctx, *req.Params.SessionId)
+		questions, err = h.questionManager.GetQuestionsBySession(ctx, *req.Params.SessionId)
 	} else {
 		slog.Warn("ListQuestions called without sessionId, returning empty list", "operation", "ListQuestions")
 		questions = []*store.Question{}

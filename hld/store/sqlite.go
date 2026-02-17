@@ -3030,6 +3030,42 @@ func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string)
 	return questions, rows.Err()
 }
 
+func (s *SQLiteStore) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*Question, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at
+		FROM questions WHERE session_id = ?
+		ORDER BY created_at ASC
+	`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var questions []*Question
+	for rows.Next() {
+		var q Question
+		var toolUseID sql.NullString
+		var questionsJSON string
+		var answersJSON sql.NullString
+		var answeredAt sql.NullTime
+		if err := rows.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
+			return nil, err
+		}
+		q.QuestionsJSON = json.RawMessage(questionsJSON)
+		if toolUseID.Valid {
+			q.ToolUseID = &toolUseID.String
+		}
+		if answersJSON.Valid {
+			q.AnswersJSON = json.RawMessage(answersJSON.String)
+		}
+		if answeredAt.Valid {
+			q.AnsweredAt = &answeredAt.Time
+		}
+		questions = append(questions, &q)
+	}
+	return questions, rows.Err()
+}
+
 func (s *SQLiteStore) AnswerQuestion(ctx context.Context, id string, status QuestionStatus, answersJSON json.RawMessage) error {
 	if status != QuestionStatusAnswered && status != QuestionStatusDeclined {
 		return fmt.Errorf("invalid answer status: %s", status)

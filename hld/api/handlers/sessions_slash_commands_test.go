@@ -216,6 +216,11 @@ func (m *MockStore) GetPendingQuestions(ctx context.Context, sessionID string) (
 	return args.Get(0).([]*store.Question), args.Error(1)
 }
 
+func (m *MockStore) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*store.Question, error) {
+	args := m.Called(ctx, sessionID)
+	return args.Get(0).([]*store.Question), args.Error(1)
+}
+
 func (m *MockStore) AnswerQuestion(ctx context.Context, id string, status store.QuestionStatus, answersJSON json.RawMessage) error {
 	args := m.Called(ctx, id, status, answersJSON)
 	return args.Error(0)

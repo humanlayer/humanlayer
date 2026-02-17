@@ -53,6 +53,7 @@ type ConversationStore interface {
 	CreateQuestion(ctx context.Context, question *Question) error
 	GetQuestion(ctx context.Context, id string) (*Question, error)
 	GetPendingQuestions(ctx context.Context, sessionID string) ([]*Question, error)
+	GetQuestionsBySession(ctx context.Context, sessionID string) ([]*Question, error)
 	AnswerQuestion(ctx context.Context, id string, status QuestionStatus, answersJSON json.RawMessage) error
 
 	// File snapshot operations

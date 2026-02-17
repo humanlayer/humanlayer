@@ -174,4 +174,51 @@ func TestQuestionCRUD(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, pending)
 	})
+
+	t.Run("GetQuestionsBySession_ReturnsAllStatuses", func(t *testing.T) {
+		// Both questions are decided (one answered, one declined)
+		// but GetQuestionsBySession should still return them
+		all, err := store.GetQuestionsBySession(ctx, session.ID)
+		require.NoError(t, err)
+		assert.Len(t, all, 2)
+
+		statusSet := map[QuestionStatus]bool{}
+		for _, q := range all {
+			statusSet[q.Status] = true
+		}
+		assert.True(t, statusSet[QuestionStatusAnswered], "should include answered questions")
+		assert.True(t, statusSet[QuestionStatusDeclined], "should include declined questions")
+	})
+
+	t.Run("GetQuestionsBySession_EmptySession", func(t *testing.T) {
+		all, err := store.GetQuestionsBySession(ctx, "non-existent-session")
+		require.NoError(t, err)
+		assert.Empty(t, all)
+	})
+
+	t.Run("GetQuestionsBySession_IncludesPending", func(t *testing.T) {
+		// Create a new pending question
+		q := &Question{
+			ID:            "question-pending-new",
+			SessionID:     session.ID,
+			RunID:         session.RunID,
+			Status:        QuestionStatusPending,
+			QuestionsJSON: json.RawMessage(`{"questions":[]}`),
+			CreatedAt:     time.Now(),
+		}
+		err := store.CreateQuestion(ctx, q)
+		require.NoError(t, err)
+
+		all, err := store.GetQuestionsBySession(ctx, session.ID)
+		require.NoError(t, err)
+		assert.Len(t, all, 3, "should return all 3 questions (answered + declined + pending)")
+
+		statusCounts := map[QuestionStatus]int{}
+		for _, q := range all {
+			statusCounts[q.Status]++
+		}
+		assert.Equal(t, 1, statusCounts[QuestionStatusAnswered])
+		assert.Equal(t, 1, statusCounts[QuestionStatusDeclined])
+		assert.Equal(t, 1, statusCounts[QuestionStatusPending])
+	})
 }

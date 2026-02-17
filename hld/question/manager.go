@@ -129,6 +129,10 @@ func (m *manager) GetPendingQuestions(ctx context.Context, sessionID string) ([]
 	return m.store.GetPendingQuestions(ctx, sessionID)
 }
 
+func (m *manager) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*store.Question, error) {
+	return m.store.GetQuestionsBySession(ctx, sessionID)
+}
+
 func (m *manager) AnswerQuestion(ctx context.Context, id string, answersJSON json.RawMessage) error {
 	if err := m.store.AnswerQuestion(ctx, id, store.QuestionStatusAnswered, answersJSON); err != nil {
 		return fmt.Errorf("failed to answer question: %w", err)
