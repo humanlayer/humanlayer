@@ -87,6 +87,12 @@ interface StoreState {
   addRecentResolvedApprovalToCache: (approvalId: string) => void
   isRecentResolvedApproval: (approvalId: string) => boolean
 
+  /* Pending Questions tracking */
+  sessionsWithPendingQuestions: Set<string>
+  addPendingQuestionSession: (sessionId: string) => void
+  removePendingQuestionSession: (sessionId: string) => void
+  setPendingQuestionSessions: (sessionIds: Set<string>) => void
+
   /* Navigation tracking */
   recentNavigations: Map<string, number> // sessionId -> timestamp
   trackNavigationFrom: (sessionId: string) => void
@@ -936,6 +942,21 @@ export const useStore = create<StoreState>((set, get) => {
     isRecentResolvedApproval: (approvalId: string) => {
       return get().recentResolvedApprovalsCache.has(approvalId)
     },
+
+    // Pending Questions tracking
+    sessionsWithPendingQuestions: new Set<string>(),
+    addPendingQuestionSession: (sessionId: string) =>
+      set(state => ({
+        sessionsWithPendingQuestions: new Set(state.sessionsWithPendingQuestions).add(sessionId),
+      })),
+    removePendingQuestionSession: (sessionId: string) =>
+      set(state => {
+        const newSet = new Set(state.sessionsWithPendingQuestions)
+        newSet.delete(sessionId)
+        return { sessionsWithPendingQuestions: newSet }
+      }),
+    setPendingQuestionSessions: (sessionIds: Set<string>) =>
+      set({ sessionsWithPendingQuestions: sessionIds }),
 
     // Navigation tracking
     recentNavigations: new Map(),

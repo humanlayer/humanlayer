@@ -15,6 +15,7 @@ import { showUndoToast } from '@/utils/undoToast'
 import { TOAST_IDS } from '@/constants/toastIds'
 
 // Import extracted components
+import { MCP_ASK_USER_QUESTION } from '../../ConversationStream/EventContent/types'
 import { ConversationStream } from '../../ConversationStream/ConversationStream'
 import { ToolResultModal } from './ToolResultModal'
 import { TodoWidget } from './TodoWidget'
@@ -307,6 +308,19 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   // Check if there are pending approvals out of view
   const [hasPendingApprovalsOutOfView, setHasPendingApprovalsOutOfView] = useState(false)
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+
+  // Determine if session is waiting only for question answers (not approvals)
+  const hasOnlyPendingQuestions = useMemo(() => {
+    if (session.status !== SessionStatus.WaitingInput) return false
+    const hasPendingApprovals = events.some(e => e.approvalStatus === ApprovalStatus.Pending)
+    const hasPendingQuestions = events.some(
+      e =>
+        e.eventType === 'tool_call' &&
+        e.toolName === MCP_ASK_USER_QUESTION &&
+        !e.isCompleted,
+    )
+    return hasPendingQuestions && !hasPendingApprovals
+  }, [session.status, events])
 
   const lastTodo = events
     ?.toReversed()
@@ -975,6 +989,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
           autoAcceptEnabled={autoAcceptEdits}
           isArchived={session.archived || false}
           onToggleArchive={handleToggleArchive}
+          hasOnlyPendingQuestions={hasOnlyPendingQuestions}
         />
 
         {/* Session mode indicator */}

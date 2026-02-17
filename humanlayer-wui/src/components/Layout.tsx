@@ -27,7 +27,11 @@ import { SessionLauncher } from '@/components/SessionLauncher'
 import { useSessionLauncher, useSessionLauncherHotkeys } from '@/hooks/useSessionLauncher'
 import { useDaemonConnection } from '@/hooks/useDaemonConnection'
 import { useStore } from '@/AppStore'
-import { useSessionSubscriptions } from '@/hooks/useSubscriptions'
+import {
+  useSessionSubscriptions,
+  type NewQuestionEventData,
+  type QuestionAnsweredEventData,
+} from '@/hooks/useSubscriptions'
 import { notificationService, type NotificationOptions } from '@/services/NotificationService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { formatMcpToolName, getSessionNotificationText } from '@/utils/formatting'
@@ -41,6 +45,7 @@ import { logger } from '@/lib/logging'
 import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
+import { MCP_ASK_USER_QUESTION } from '@/components/internal/ConversationStream/EventContent/types'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 import { useDebugStore } from '@/stores/useDebugStore'
@@ -433,6 +438,9 @@ export function Layout() {
   const isRecentResolvedApproval = useStore(state => state.isRecentResolvedApproval)
   const setActiveSessionDetail = useStore(state => state.setActiveSessionDetail)
   const updateActiveSessionDetail = useStore(state => state.updateActiveSessionDetail)
+  const addPendingQuestionSession = useStore(state => state.addPendingQuestionSession)
+  const removePendingQuestionSession = useStore(state => state.removePendingQuestionSession)
+  const setPendingQuestionSessions = useStore(state => state.setPendingQuestionSessions)
 
   // Set up single SSE subscription for all events
   useSessionSubscriptions(connected, {
@@ -604,6 +612,17 @@ export function Layout() {
       updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
       notificationService.clearNotificationByApprovalId(data.approval_id)
+    },
+    onNewQuestion: async (data: NewQuestionEventData) => {
+      logger.log('useSessionSubscriptions.onNewQuestion', Date.now(), data)
+      addPendingQuestionSession(data.session_id)
+      updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
+      await refreshActiveSessionConversation(data.session_id)
+    },
+    onQuestionAnswered: async (data: QuestionAnsweredEventData) => {
+      logger.log('useSessionSubscriptions.onQuestionAnswered', Date.now(), data)
+      removePendingQuestionSession(data.session_id)
+      await refreshActiveSessionConversation(data.session_id)
     },
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
     onSessionSettingsChanged: async (data: SessionSettingsChangedEventData) => {
@@ -898,6 +917,40 @@ export function Layout() {
   const loadSessions = async () => {
     try {
       await useStore.getState().refreshSessions()
+
+      // Initialize pending questions state for waiting_input sessions
+      const sessions = useStore.getState().sessions
+      const waitingInputSessions = sessions.filter(
+        s => s.status === SessionStatus.WaitingInput,
+      )
+
+      if (waitingInputSessions.length > 0) {
+        const pendingQuestionSessionIds = new Set<string>()
+
+        await Promise.all(
+          waitingInputSessions.map(async session => {
+            try {
+              const events = await daemonClient.getConversation({ session_id: session.id })
+              const hasPendingApprovals = events.some(
+                e => e.approvalStatus === ApprovalStatus.Pending,
+              )
+              const hasPendingQuestions = events.some(
+                e =>
+                  e.eventType === 'tool_call' &&
+                  e.toolName === MCP_ASK_USER_QUESTION &&
+                  !e.isCompleted,
+              )
+              if (hasPendingQuestions && !hasPendingApprovals) {
+                pendingQuestionSessionIds.add(session.id)
+              }
+            } catch (error) {
+              logger.error(`Failed to check questions for session ${session.id}:`, error)
+            }
+          }),
+        )
+
+        setPendingQuestionSessions(pendingQuestionSessionIds)
+      }
     } catch (error) {
       logger.error('Failed to load sessions:', error)
     }

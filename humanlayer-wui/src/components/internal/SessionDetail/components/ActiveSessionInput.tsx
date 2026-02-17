@@ -44,6 +44,7 @@ interface ActiveSessionInputProps {
   autoAcceptEnabled?: boolean
   isArchived?: boolean
   onToggleArchive?: () => void
+  hasOnlyPendingQuestions?: boolean
 }
 
 /**
@@ -80,6 +81,7 @@ export const ActiveSessionInput = forwardRef<
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
+      hasOnlyPendingQuestions = false,
     },
     ref,
   ) => {
@@ -553,6 +555,13 @@ export const ActiveSessionInput = forwardRef<
           text: 'FAILED',
           className: 'text-destructive',
           icon: <AlertCircle className="h-3 w-3" />,
+        }
+      }
+
+      if (hasOnlyPendingQuestions) {
+        return {
+          text: 'AWAITING_ANSWER',
+          className: 'font-bold text-[var(--terminal-warning)]',
         }
       }
 

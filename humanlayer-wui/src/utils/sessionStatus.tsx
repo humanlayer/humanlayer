@@ -1,4 +1,7 @@
-export const renderSessionStatus = (session: { status: string; archived?: boolean }): string => {
+export const renderSessionStatus = (
+  session: { status: string; archived?: boolean },
+  context?: { hasOnlyPendingQuestions?: boolean },
+): string => {
   // Show draft status as-is
   if (session.status === 'draft') {
     return 'draft'
@@ -14,8 +17,11 @@ export const renderSessionStatus = (session: { status: string; archived?: boolea
     return 'ready_for_input'
   }
 
-  // If session is waiting_input, show "needs_approval"
+  // If session is waiting_input, show context-appropriate label
   if (session.status === 'waiting_input') {
+    if (context?.hasOnlyPendingQuestions) {
+      return 'awaiting_answer'
+    }
     return 'needs_approval'
   }
 
