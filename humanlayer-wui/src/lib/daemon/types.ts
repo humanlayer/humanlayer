@@ -317,7 +317,6 @@ export interface QuestionAnsweredEventData {
   question_id: string
   session_id: string
   status: string
-  tool_use_id?: string
 }
 
 // Constants for session settings change reasons

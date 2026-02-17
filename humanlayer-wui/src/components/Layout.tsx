@@ -616,15 +616,56 @@ export function Layout() {
     },
     onNewQuestion: async (data: NewQuestionEventData) => {
       logger.log('useSessionSubscriptions.onNewQuestion', Date.now(), data)
-      addSessionAwaitingAnswer(data.session_id)
-      updateSessionStatus(data.session_id, SessionStatus.WaitingInput)
-      await refreshActiveSessionConversation(data.session_id)
+      const { question_id: questionId, session_id: sessionId } = data
+
+      if (!questionId || !sessionId) {
+        logger.error('Invalid question event data:', data)
+        return
+      }
+
+      addSessionAwaitingAnswer(sessionId)
+      updateSessionStatus(sessionId, SessionStatus.WaitingInput)
+      await refreshActiveSessionConversation(sessionId)
+
+      const notificationId = `question_required:${sessionId}:${questionId}`
+      if (isItemNotified(notificationId)) {
+        return
+      }
+
+      try {
+        const questionData = await daemonClient.getQuestion(questionId)
+        const questionsJson = questionData.questionsJson as
+          | { questions?: Array<{ question?: string }> }
+          | undefined
+        const questionText =
+          questionsJson?.questions?.[0]?.question || 'A session is waiting for your answer'
+
+        const sessionState = await daemonClient.getSessionState(sessionId)
+        const sessionTitle = sessionState.session?.title || sessionState.session?.summary
+
+        await notificationService.notifyQuestionRequired(
+          sessionId,
+          questionId,
+          questionText,
+          sessionTitle,
+        )
+        addNotifiedItem(notificationId)
+      } catch (error) {
+        logger.error(`Failed to get question details for ${questionId}:`, error)
+        await notificationService.notifyQuestionRequired(
+          sessionId,
+          questionId,
+          'A session is waiting for your answer',
+          undefined,
+        )
+        addNotifiedItem(notificationId)
+      }
     },
     onQuestionAnswered: async (data: QuestionAnsweredEventData) => {
       logger.log('useSessionSubscriptions.onQuestionAnswered', Date.now(), data)
       removeSessionAwaitingAnswer(data.session_id)
-      updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
+      notificationService.clearNotificationByQuestionId(data.question_id)
     },
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
     onSessionSettingsChanged: async (data: SessionSettingsChangedEventData) => {

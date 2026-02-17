@@ -14,6 +14,7 @@ import { useStore } from '@/AppStore'
 // Types for generic notification system
 export type NotificationType =
   | 'approval_required'
+  | 'question_required'
   | 'session_completed'
   | 'session_failed'
   | 'session_started'
@@ -260,9 +261,11 @@ class NotificationService {
       position: 'top-right', // Position toast at top right corner
     }
 
-    // control notification id when showing an approval (may expand later)
+    // Control notification id for approvals and questions
     if (options.type === 'approval_required') {
       toastOptions.id = `${options.type}:${options.metadata.approvalId}`
+    } else if (options.type === 'question_required') {
+      toastOptions.id = `${options.type}:${options.metadata.questionId}`
     }
 
     // Add primary action if provided using CodeLayerToastButtons
@@ -472,6 +475,67 @@ class NotificationService {
   }
 
   /**
+   * Convenience method for question required notifications
+   */
+  async notifyQuestionRequired(
+    sessionId: string,
+    questionId: string,
+    questionText: string,
+    sessionTitle?: string,
+    returnToastConfig?: boolean,
+  ) {
+    const toastId = `question_required:${questionId}`
+
+    const truncatedTitle = sessionTitle
+      ? sessionTitle.length > 50
+        ? sessionTitle.substring(0, 47) + '...'
+        : sessionTitle
+      : `Session ${sessionId.slice(0, 8)}`
+
+    const titleElement = (
+      <div className="flex flex-col gap-0.5">
+        <span className="font-bold text-[var(--terminal-warning)]">awaiting_answer</span>
+        <span className="text-xs text-muted-foreground">{truncatedTitle}</span>
+      </div>
+    )
+
+    const bodyElement = (
+      <span className="text-sm">
+        {questionText.length > 80 ? questionText.substring(0, 77) + '...' : questionText}
+      </span>
+    )
+
+    return this.notify({
+      type: 'question_required',
+      title: titleElement,
+      body: bodyElement,
+      metadata: {
+        sessionId,
+        questionId,
+      },
+      duration: Infinity,
+      actions: [
+        {
+          label: (
+            <span className="flex items-center gap-1">
+              Jump to Session
+              <kbd className="ml-1 px-1.5 py-0.5 text-sm font-medium bg-background/50 rounded border border-border">
+                {this.getModifierKey()}⇧J
+              </kbd>
+            </span>
+          ),
+          onClick: () => {
+            useStore.getState().clearActiveSessionDetail()
+            window.location.hash = `/sessions/${sessionId}`
+            toast.dismiss(toastId)
+          },
+        },
+      ],
+      returnToastConfig,
+    })
+  }
+
+  /**
    * Get current focus state
    */
   isAppFocused(): boolean {
@@ -481,13 +545,22 @@ class NotificationService {
   /**
    * Clear notification by approvalId
    */
-
   clearNotificationByApprovalId(approvalId: string) {
     const matchingToasts = toast
       .getToasts()
       .filter(toast => toast.id === `approval_required:${approvalId}`)
 
     logger.log('clearNotificationByApprovalId', matchingToasts)
+    matchingToasts.forEach(toDismiss => toast.dismiss(toDismiss.id))
+  }
+
+  /**
+   * Clear notification by questionId
+   */
+  clearNotificationByQuestionId(questionId: string) {
+    const matchingToasts = toast.getToasts().filter(t => t.id === `question_required:${questionId}`)
+
+    logger.log('clearNotificationByQuestionId', matchingToasts)
     matchingToasts.forEach(toDismiss => toast.dismiss(toDismiss.id))
   }
 }

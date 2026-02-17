@@ -46,42 +46,40 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
 
   const MAX_RETRIES = 10
 
-  // Fetch the question entity from hld
-  const fetchQuestion = useCallback(async () => {
+  // Fetch the question entity from hld.
+  // Returns true if a matching question was found.
+  const fetchQuestion = useCallback(async (): Promise<boolean> => {
     try {
       const questions = await daemonClient.listQuestions(sessionId)
-      if (questions.length > 0) {
-        const matched = questions.find(q => q.toolUseId && q.toolUseId === event.toolId)
-        if (matched) {
-          setQuestion(matched)
-          return
-        }
-      }
-      if (!loading) {
-        setRetryCount(prev => prev + 1)
+      const matched = questions.find(q => q.toolUseId && q.toolUseId === event.toolId)
+      if (matched) {
+        setQuestion(matched)
+        return true
       }
     } catch (err) {
       logger.error('Failed to fetch question:', err)
-      if (!loading) {
-        setRetryCount(prev => prev + 1)
-      }
     } finally {
       setLoading(false)
     }
-  }, [sessionId, event.toolId, loading])
+    return false
+  }, [sessionId, event.toolId])
 
+  // Initial fetch
   useEffect(() => {
     fetchQuestion()
   }, [fetchQuestion])
 
-  // Retry fetching if no question was found (handles parallel tool calls where
-  // the question entity may not exist yet when the component first mounts)
+  // Retry with setTimeout (not setInterval) to avoid overlapping calls.
+  // Handles parallel tool calls where the question entity may not exist yet.
   useEffect(() => {
     if (loading || question || retryCount >= MAX_RETRIES) return
-    const interval = setInterval(() => {
-      fetchQuestion()
+    const timer = setTimeout(async () => {
+      const found = await fetchQuestion()
+      if (!found) {
+        setRetryCount(prev => prev + 1)
+      }
     }, 1000)
-    return () => clearInterval(interval)
+    return () => clearTimeout(timer)
   }, [loading, question, retryCount, fetchQuestion])
 
   // Refresh when conversation updates (question may have been answered)

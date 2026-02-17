@@ -11,8 +11,6 @@ import type {
   QuestionAnsweredEventData,
 } from '@/lib/daemon/types'
 
-export type { NewQuestionEventData, QuestionAnsweredEventData }
-
 export interface SessionSubscriptionHandlers {
   onSessionStatusChanged?: (data: SessionStatusChangedEventData, timestamp: string) => void
   onNewApproval?: (data: NewApprovalEventData) => void
