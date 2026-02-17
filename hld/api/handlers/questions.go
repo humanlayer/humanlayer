@@ -20,6 +20,8 @@ func NewQuestionHandlers(questionManager question.Manager) *QuestionHandlers {
 	return &QuestionHandlers{questionManager: questionManager}
 }
 
+// ListQuestions returns questions filtered by session ID.
+// Returns an empty list when no sessionId is provided.
 func (h *QuestionHandlers) ListQuestions(ctx context.Context, req api.ListQuestionsRequestObject) (api.ListQuestionsResponseObject, error) {
 	var questions []*store.Question
 	var err error
@@ -57,6 +59,8 @@ func (h *QuestionHandlers) ListQuestions(ctx context.Context, req api.ListQuesti
 	}), nil
 }
 
+// GetQuestion returns a single question by ID.
+// Returns 404 if the question is not found.
 func (h *QuestionHandlers) GetQuestion(ctx context.Context, req api.GetQuestionRequestObject) (api.GetQuestionResponseObject, error) {
 	q, err := h.questionManager.GetQuestion(ctx, string(req.Id))
 	if err != nil {
@@ -90,6 +94,9 @@ func (h *QuestionHandlers) GetQuestion(ctx context.Context, req api.GetQuestionR
 	}), nil
 }
 
+// AnswerQuestion records an answer or decline for a question.
+// Returns 400 if answers_json is missing when not declining,
+// or if the question has already been answered.
 func (h *QuestionHandlers) AnswerQuestion(ctx context.Context, req api.AnswerQuestionRequestObject) (api.AnswerQuestionResponseObject, error) {
 	declined := req.Body.Declined != nil && *req.Body.Declined
 

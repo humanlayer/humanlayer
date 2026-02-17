@@ -194,6 +194,65 @@ func TestManager_CreateQuestion_EmptyJSON(t *testing.T) {
 	assert.Contains(t, err.Error(), "questions_json is required")
 }
 
+func TestManager_CreateQuestion_ExceedsMaxSize(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+
+	// Create a payload that exceeds 1MB
+	largeJSON := json.RawMessage(`{"data":"` + strings.Repeat("x", maxQuestionsJSONSize) + `"}`)
+
+	_, err := mgr.CreateQuestion(context.Background(), "session-1", largeJSON)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "exceeds maximum size")
+}
+
+func TestManager_CreateQuestion_AskUserQuestionToolName(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockEventBus := bus.NewMockEventBus(ctrl)
+
+	mgr := NewManager(mockStore, mockEventBus)
+
+	ctx := context.Background()
+	sessionID := "test-session-alt"
+	questionsJSON := json.RawMessage(`{"questions":[{"question":"Which?","header":"Pick","options":[{"label":"A","description":"A"}],"multiSelect":false}]}`)
+
+	// Mock getting session
+	mockStore.EXPECT().GetSession(ctx, sessionID).Return(&store.Session{
+		ID:    sessionID,
+		RunID: "test-run-alt",
+	}, nil)
+
+	// Pending tool calls use the "AskUserQuestion" alternate name
+	mockStore.EXPECT().GetPendingToolCalls(ctx, sessionID).Return([]*store.ConversationEvent{
+		{ToolID: "toolu_alt123", ToolName: "AskUserQuestion", ToolInputJSON: string(questionsJSON)},
+	}, nil)
+
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return([]*store.Question{}, nil)
+
+	// Verify the tool call is matched despite alternate name
+	mockStore.EXPECT().CreateQuestion(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, q *store.Question) error {
+		assert.NotNil(t, q.ToolUseID)
+		assert.Equal(t, "toolu_alt123", *q.ToolUseID)
+		return nil
+	})
+
+	mockEventBus.EXPECT().Publish(gomock.Any())
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
+
+	q, err := mgr.CreateQuestion(ctx, sessionID, questionsJSON)
+	require.NoError(t, err)
+	assert.NotNil(t, q.ToolUseID)
+	assert.Equal(t, "toolu_alt123", *q.ToolUseID)
+}
+
 func TestManager_AnswerQuestion(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()

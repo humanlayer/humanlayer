@@ -14,7 +14,7 @@ import (
 )
 
 // setupTestRouter creates a test Gin router with the given handlers
-func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, approvalHandlers *handlers.ApprovalHandlers, sseHandler *handlers.SSEHandler) *gin.Engine {
+func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, approvalHandlers *handlers.ApprovalHandlers, questionHandlers *handlers.QuestionHandlers, sseHandler *handlers.SSEHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 
 	router := gin.New()
@@ -24,7 +24,7 @@ func setupTestRouter(t *testing.T, sessionHandlers *handlers.SessionHandlers, ap
 	fileHandlers := handlers.NewFileHandlers()
 
 	// Create server implementation (pass nil for AgentHandlers)
-	serverImpl := handlers.NewServerImpl(sessionHandlers, approvalHandlers, nil, fileHandlers, sseHandler, settingsHandlers, nil)
+	serverImpl := handlers.NewServerImpl(sessionHandlers, approvalHandlers, questionHandlers, fileHandlers, sseHandler, settingsHandlers, nil)
 
 	// Create strict handler
 	strictHandler := api.NewStrictHandler(serverImpl, nil)

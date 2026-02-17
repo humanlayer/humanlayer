@@ -27,7 +27,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 	mockApprovalManager := approval.NewMockManager(ctrl)
 
 	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
-	router := setupTestRouter(t, handlers, nil, nil)
+	router := setupTestRouter(t, handlers, nil, nil, nil)
 
 	tests := []struct {
 		name           string
@@ -153,7 +153,7 @@ func TestSessionHandlers_ListSessions(t *testing.T) {
 	mockApprovalManager := approval.NewMockManager(ctrl)
 
 	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
-	router := setupTestRouter(t, handlers, nil, nil)
+	router := setupTestRouter(t, handlers, nil, nil, nil)
 
 	// Test data - using session.Info which is what ListSessions returns
 	sessionInfos := []session.Info{
@@ -270,7 +270,7 @@ func TestSessionHandlers_GetSession(t *testing.T) {
 	mockApprovalManager := approval.NewMockManager(ctrl)
 
 	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
-	router := setupTestRouter(t, handlers, nil, nil)
+	router := setupTestRouter(t, handlers, nil, nil, nil)
 
 	t.Run("get existing session", func(t *testing.T) {
 		completedAt := time.Now().Add(-30 * time.Minute)
@@ -335,7 +335,7 @@ func TestSessionHandlers_UpdateSession(t *testing.T) {
 	mockApprovalManager := approval.NewMockManager(ctrl)
 
 	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
-	router := setupTestRouter(t, handlers, nil, nil)
+	router := setupTestRouter(t, handlers, nil, nil, nil)
 
 	t.Run("update auto-accept edits", func(t *testing.T) {
 		mockManager.EXPECT().
@@ -652,7 +652,7 @@ func TestSessionHandlers_GetHealth(t *testing.T) {
 	mockApprovalManager := approval.NewMockManager(ctrl)
 
 	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
-	router := setupTestRouter(t, handlers, nil, nil)
+	router := setupTestRouter(t, handlers, nil, nil, nil)
 
 	t.Run("health check returns ok", func(t *testing.T) {
 		// Expect the new method calls
@@ -706,7 +706,7 @@ func TestSessionHandlers_LaunchDraftSession_BypassPermissionsTimerRecalculation(
 	mockApprovalManager := approval.NewMockManager(ctrl)
 
 	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
-	router := setupTestRouter(t, handlers, nil, nil)
+	router := setupTestRouter(t, handlers, nil, nil, nil)
 
 	t.Run("recalculates bypass permissions timer on draft launch", func(t *testing.T) {
 		sessionID := "sess-draft-123"
@@ -916,7 +916,7 @@ func TestSessionHandlers_BulkRestoreDrafts(t *testing.T) {
 	mockApprovalManager := approval.NewMockManager(ctrl)
 
 	handlers := handlers.NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
-	router := setupTestRouter(t, handlers, nil, nil)
+	router := setupTestRouter(t, handlers, nil, nil, nil)
 
 	t.Run("restores multiple discarded drafts", func(t *testing.T) {
 		// Setup test with discarded drafts
