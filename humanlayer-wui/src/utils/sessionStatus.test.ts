@@ -1,6 +1,5 @@
 import { describe, test, expect } from 'bun:test'
 import { renderSessionStatus } from './sessionStatus'
-import type { WaitingInputReason } from './sessionStatus'
 
 describe('renderSessionStatus', () => {
   test('returns "draft" for draft sessions', () => {
