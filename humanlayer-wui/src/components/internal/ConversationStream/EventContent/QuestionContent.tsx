@@ -24,6 +24,7 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
   // Answers: keyed by question index, value is label or array of labels
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({})
   // "Other" text inputs keyed by question index
@@ -43,6 +44,8 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     }
   }, [event.toolInputJson])
 
+  const MAX_RETRIES = 10
+
   // Fetch the question entity from hld
   const fetchQuestion = useCallback(async () => {
     try {
@@ -51,14 +54,21 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
         const matched = questions.find(q => q.toolUseId && q.toolUseId === event.toolId)
         if (matched) {
           setQuestion(matched)
+          return
         }
+      }
+      if (!loading) {
+        setRetryCount(prev => prev + 1)
       }
     } catch (err) {
       logger.error('Failed to fetch question:', err)
+      if (!loading) {
+        setRetryCount(prev => prev + 1)
+      }
     } finally {
       setLoading(false)
     }
-  }, [sessionId, event.toolId])
+  }, [sessionId, event.toolId, loading])
 
   useEffect(() => {
     fetchQuestion()
@@ -67,12 +77,12 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
   // Retry fetching if no question was found (handles parallel tool calls where
   // the question entity may not exist yet when the component first mounts)
   useEffect(() => {
-    if (loading || question) return
+    if (loading || question || retryCount >= MAX_RETRIES) return
     const interval = setInterval(() => {
       fetchQuestion()
     }, 1000)
     return () => clearInterval(interval)
-  }, [loading, question, fetchQuestion])
+  }, [loading, question, retryCount, fetchQuestion])
 
   // Refresh when conversation updates (question may have been answered)
   useEffect(() => {
@@ -219,7 +229,11 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
       <div>
         <ToolHeader name="Ask User Question" />
         <div className="mt-2 text-sm text-muted-foreground">
-          {loading ? 'Loading question...' : 'Waiting for question...'}
+          {loading
+            ? 'Loading question...'
+            : retryCount >= MAX_RETRIES
+              ? 'Failed to load question data. The question may not have been created.'
+              : 'Waiting for question...'}
         </div>
       </div>
     )
