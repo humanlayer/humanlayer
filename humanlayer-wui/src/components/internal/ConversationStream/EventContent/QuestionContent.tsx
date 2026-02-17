@@ -62,6 +62,16 @@ export function QuestionContent({ event, sessionId }: QuestionContentProps) {
     fetchQuestion()
   }, [fetchQuestion])
 
+  // Retry fetching if no question was found (handles parallel tool calls where
+  // the question entity may not exist yet when the component first mounts)
+  useEffect(() => {
+    if (loading || question) return
+    const interval = setInterval(() => {
+      fetchQuestion()
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [loading, question, fetchQuestion])
+
   // Refresh when conversation updates (question may have been answered)
   useEffect(() => {
     if (event.isCompleted && question?.status === 'pending') {

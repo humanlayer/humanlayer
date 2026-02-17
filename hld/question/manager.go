@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,6 +47,8 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 	// Look up the pending tool call to get the tool_use_id for correlation.
 	// We match by ToolInputJSON content to handle parallel tool calls correctly —
 	// each tool call has unique content, so this gives us an exact match.
+	// We use semantic JSON comparison (not string comparison) because different
+	// serializers may produce different key orderings for the same object.
 	var toolUseID *string
 	pendingToolCalls, lookupErr := m.store.GetPendingToolCalls(ctx, sessionID)
 	if lookupErr != nil {
@@ -57,7 +60,7 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 			if !isAskUserQuestionTool(tc.ToolName) {
 				continue
 			}
-			if tc.ToolInputJSON == string(questionsJSON) && tc.ToolID != "" {
+			if tc.ToolID != "" && jsonEqual([]byte(tc.ToolInputJSON), questionsJSON) {
 				toolUseID = &tc.ToolID
 				break
 			}
@@ -151,6 +154,19 @@ func (m *manager) updateSessionStatusToRunning(ctx context.Context, sessionID st
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		slog.Warn("failed to update session status", "error", err, "session_id", sessionID)
 	}
+}
+
+// jsonEqual compares two JSON byte slices for semantic equality,
+// ignoring differences in key ordering or whitespace.
+func jsonEqual(a, b []byte) bool {
+	var va, vb interface{}
+	if err := json.Unmarshal(a, &va); err != nil {
+		return false
+	}
+	if err := json.Unmarshal(b, &vb); err != nil {
+		return false
+	}
+	return reflect.DeepEqual(va, vb)
 }
 
 func isAskUserQuestionTool(toolName string) bool {
