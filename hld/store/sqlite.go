@@ -1117,10 +1117,9 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 22 applied successfully")
 	}
 
-	// Migration 24: Add questions table
-	// Note: version 23 was already taken by "global_shortcut_enabled" in a released build
-	if currentVersion < 24 {
-		slog.Info("Applying migration 24: Add questions table")
+	// Migration 23: Add questions table
+	if currentVersion < 23 {
+		slog.Info("Applying migration 23: Add questions table")
 
 		_, err = s.db.Exec(`
 			CREATE TABLE IF NOT EXISTS questions (
@@ -1150,13 +1149,13 @@ func (s *SQLiteStore) applyMigrations() error {
 
 		_, err = s.db.Exec(`
 			INSERT INTO schema_version (version, description)
-			VALUES (24, 'Add questions table for AskUserQuestion support')
+			VALUES (23, 'Add questions table for AskUserQuestion support')
 		`)
 		if err != nil {
-			return fmt.Errorf("failed to record migration 24: %w", err)
+			return fmt.Errorf("failed to record migration 23: %w", err)
 		}
 
-		slog.Info("Migration 24 applied successfully")
+		slog.Info("Migration 23 applied successfully")
 	}
 
 	return nil
