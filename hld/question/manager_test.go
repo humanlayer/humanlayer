@@ -277,8 +277,8 @@ func TestManager_AnswerQuestion(t *testing.T) {
 		Status:    store.QuestionStatusAnswered,
 	}, nil)
 
-	// Mock event publishing
-	mockEventBus.EXPECT().Publish(gomock.Any()).Do(func(event bus.Event) {
+	// Mock event publishing - expect two Publish calls in order
+	firstPublish := mockEventBus.EXPECT().Publish(gomock.Any()).Do(func(event bus.Event) {
 		assert.Equal(t, bus.EventQuestionAnswered, event.Type)
 		assert.Equal(t, questionID, event.Data["question_id"])
 		assert.Equal(t, sessionID, event.Data["session_id"])
@@ -290,6 +290,14 @@ func TestManager_AnswerQuestion(t *testing.T) {
 		assert.NotNil(t, updates.Status)
 		assert.Equal(t, store.SessionStatusRunning, *updates.Status)
 		return nil
+	})
+
+	// Second publish: session_status_changed event (after UpdateSession)
+	mockEventBus.EXPECT().Publish(gomock.Any()).After(firstPublish).Do(func(event bus.Event) {
+		assert.Equal(t, bus.EventSessionStatusChanged, event.Type)
+		assert.Equal(t, sessionID, event.Data["session_id"])
+		assert.Equal(t, string(store.SessionStatusWaitingInput), event.Data["old_status"])
+		assert.Equal(t, string(store.SessionStatusRunning), event.Data["new_status"])
 	})
 
 	err := mgr.AnswerQuestion(ctx, questionID, answersJSON)
@@ -360,14 +368,22 @@ func TestManager_DeclineQuestion(t *testing.T) {
 		Status:    store.QuestionStatusDeclined,
 	}, nil)
 
-	// Mock event publishing
-	mockEventBus.EXPECT().Publish(gomock.Any()).Do(func(event bus.Event) {
+	// Mock event publishing - expect two Publish calls in order
+	firstPublish := mockEventBus.EXPECT().Publish(gomock.Any()).Do(func(event bus.Event) {
 		assert.Equal(t, bus.EventQuestionAnswered, event.Type)
 		assert.Equal(t, string(store.QuestionStatusDeclined), event.Data["status"])
 	})
 
 	// Mock session status update to running
 	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
+
+	// Second publish: session_status_changed event (after UpdateSession)
+	mockEventBus.EXPECT().Publish(gomock.Any()).After(firstPublish).Do(func(event bus.Event) {
+		assert.Equal(t, bus.EventSessionStatusChanged, event.Type)
+		assert.Equal(t, sessionID, event.Data["session_id"])
+		assert.Equal(t, string(store.SessionStatusWaitingInput), event.Data["old_status"])
+		assert.Equal(t, string(store.SessionStatusRunning), event.Data["new_status"])
+	})
 
 	err := mgr.DeclineQuestion(ctx, questionID)
 	require.NoError(t, err)

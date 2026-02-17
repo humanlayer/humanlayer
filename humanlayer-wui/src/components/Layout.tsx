@@ -622,10 +622,8 @@ export function Layout() {
     },
     onQuestionAnswered: async (data: QuestionAnsweredEventData) => {
       logger.log('useSessionSubscriptions.onQuestionAnswered', Date.now(), data)
-      // Don't remove from sessionsAwaitingAnswer here — the session status is
-      // still waiting_input until onSessionStatusChanged fires, so removing
-      // now would briefly show "needs_approval". Cleanup happens in
-      // onSessionStatusChanged when the status leaves waiting_input.
+      removeSessionAwaitingAnswer(data.session_id)
+      updateSessionStatus(data.session_id, SessionStatus.Running)
       await refreshActiveSessionConversation(data.session_id)
     },
     // CODEREVIEW: Why did this previously exist? Sundeep wants to talk about this do not merge.
