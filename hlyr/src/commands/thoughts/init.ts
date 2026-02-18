@@ -19,6 +19,7 @@ import {
   updateSymlinksForNewUsers,
   validateProfile,
   resolveProfileForRepo,
+  getRepoNameFromMapping,
 } from '../../thoughtsConfig.js'
 
 interface InitOptions {
@@ -614,11 +615,18 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
       saveThoughtsConfig(config, options)
     }
 
+    // After ensuring mapping exists, resolve the final repo name (handles string or object mapping)
+    const finalMapping = config.repoMappings[currentRepo]
+    const repoName = getRepoNameFromMapping(finalMapping)
+    if (!repoName) {
+      throw new Error('Could not determine repo name from thoughts mapping')
+    }
+
     // Resolve profile config for directory creation
     const profileConfig = resolveProfileForRepo(config, currentRepo)
 
     // Create directory structure using profile config
-    createThoughtsDirectoryStructure(profileConfig, mappedName, config.user)
+    createThoughtsDirectoryStructure(profileConfig, repoName, config.user)
 
     // Create thoughts directory in current repo
     const thoughtsDir = path.join(currentRepo, 'thoughts')
@@ -642,7 +650,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     fs.mkdirSync(thoughtsDir)
 
     // Create symlinks - flipped structure for easier access
-    const repoTarget = getRepoThoughtsPath(profileConfig, mappedName)
+    const repoTarget = getRepoThoughtsPath(profileConfig, repoName)
     const globalTarget = getGlobalThoughtsPath(profileConfig)
 
     // Direct symlinks to user and shared directories for repo-specific thoughts
@@ -653,7 +661,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     fs.symlinkSync(globalTarget, path.join(thoughtsDir, 'global'), 'dir')
 
     // Check for other users and create symlinks
-    const otherUsers = updateSymlinksForNewUsers(currentRepo, profileConfig, mappedName, config.user)
+    const otherUsers = updateSymlinksForNewUsers(currentRepo, profileConfig, repoName, config.user)
 
     if (otherUsers.length > 0) {
       console.log(chalk.green(`✓ Added symlinks for other users: ${otherUsers.join(', ')}`))
@@ -680,7 +688,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     const claudeMd = generateClaudeMd(
       profileConfig.thoughtsRepo,
       profileConfig.reposDir,
-      mappedName,
+      repoName,
       config.user,
     )
     fs.writeFileSync(path.join(thoughtsDir, 'CLAUDE.md'), claudeMd)
@@ -699,10 +707,10 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
     console.log(`  ${chalk.cyan(currentRepo)}/`)
     console.log(`    └── thoughts/`)
     console.log(
-      `         ├── ${config.user}/     ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.reposDir}/${mappedName}/${config.user}/`)}`,
+      `         ├── ${config.user}/     ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.reposDir}/${repoName}/${config.user}/`)}`,
     )
     console.log(
-      `         ├── shared/      ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.reposDir}/${mappedName}/shared/`)}`,
+      `         ├── shared/      ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.reposDir}/${repoName}/shared/`)}`,
     )
     console.log(
       `         └── global/      ${chalk.gray(`→ ${profileConfig.thoughtsRepo}/${profileConfig.globalDir}/`)}`,
