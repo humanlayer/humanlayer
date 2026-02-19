@@ -59,6 +59,60 @@ export async function startClaudeApprovalsMCPServer() {
           required: ['tool_name', 'input', 'tool_use_id'],
         },
       },
+      {
+        name: 'ask_user_question',
+        description:
+          'Ask the user a question with structured options. Use this when you need to ask the user questions during execution to gather preferences, clarify instructions, get decisions, or offer choices.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            questions: {
+              type: 'array',
+              description: 'Questions to ask the user (1-4 questions)',
+              items: {
+                type: 'object',
+                properties: {
+                  question: {
+                    type: 'string',
+                    description: 'The question to ask',
+                  },
+                  header: {
+                    type: 'string',
+                    description: 'Short label displayed as a chip/tag (max 12 chars)',
+                  },
+                  options: {
+                    type: 'array',
+                    description:
+                      'Available choices (2-4 options). Do not include an "Other" option - it is automatically added by the UI.',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        label: { type: 'string', description: 'Display text for the option' },
+                        description: {
+                          type: 'string',
+                          description: 'Explanation of what this option means',
+                        },
+                      },
+                      required: ['label', 'description'],
+                    },
+                    minItems: 2,
+                    maxItems: 4,
+                  },
+                  multiSelect: {
+                    type: 'boolean',
+                    default: false,
+                    description: 'Allow multiple selections',
+                  },
+                },
+                required: ['question', 'header', 'options', 'multiSelect'],
+              },
+              minItems: 1,
+              maxItems: 4,
+            },
+          },
+          required: ['questions'],
+        },
+      },
     ]
     logger.info('Returning tools', { tools })
     return { tools }
@@ -173,6 +227,88 @@ export async function startClaudeApprovalsMCPServer() {
         )
       } finally {
         logger.debug('Closing daemon connection')
+        daemonClient.close()
+      }
+    }
+
+    if (request.params.name === 'ask_user_question') {
+      const questions = request.params.arguments?.questions
+
+      if (!questions || !Array.isArray(questions) || questions.length === 0) {
+        throw new McpError(ErrorCode.InvalidRequest, 'questions array is required')
+      }
+
+      const sessionId = process.env.HUMANLAYER_SESSION_ID
+      if (!sessionId) {
+        throw new McpError(ErrorCode.InternalError, 'HUMANLAYER_SESSION_ID not set')
+      }
+
+      logger.info('Processing ask_user_question', { sessionId, questionCount: questions.length })
+
+      try {
+        await daemonClient.connect()
+
+        // Create question in hld
+        const createResponse = await daemonClient.createQuestion(sessionId, { questions })
+        const questionId = createResponse.question_id
+        logger.info('Created question', { questionId })
+
+        // Poll for answer (timeout after 30 minutes)
+        const maxPollDurationMs = 30 * 60 * 1000
+        const pollStartTime = Date.now()
+
+        while (Date.now() - pollStartTime < maxPollDurationMs) {
+          try {
+            const resp = await daemonClient.getQuestion(questionId)
+            const q = resp.question
+
+            if (q.status !== 'pending') {
+              if (q.status === 'declined') {
+                logger.info('Question declined', { questionId })
+                return {
+                  content: [
+                    {
+                      type: 'text',
+                      text: JSON.stringify({
+                        status: 'declined',
+                        message: 'User declined to answer the question',
+                      }),
+                    },
+                  ],
+                }
+              }
+
+              logger.info('Question answered', { questionId })
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: JSON.stringify({
+                      status: 'answered',
+                      answers: q.answers_json,
+                    }),
+                  },
+                ],
+              }
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 1000))
+          } catch (error) {
+            logger.error('Failed to get question status', { error, questionId })
+            throw new McpError(ErrorCode.InternalError, 'Failed to get question status')
+          }
+        }
+
+        logger.warn('Question polling timed out', { questionId })
+        throw new McpError(ErrorCode.InternalError, 'Question polling timed out after 30 minutes')
+      } catch (error) {
+        if (error instanceof McpError) throw error
+        logger.error('Failed to process question', error)
+        throw new McpError(
+          ErrorCode.InternalError,
+          `Failed to process question: ${error instanceof Error ? error.message : String(error)}`,
+        )
+      } finally {
         daemonClient.close()
       }
     }

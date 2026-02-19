@@ -1,24 +1,24 @@
-export const renderSessionStatus = (session: { status: string; archived?: boolean }): string => {
-  // Show draft status as-is
-  if (session.status === 'draft') {
-    return 'draft'
-  }
+export type WaitingInputReason = 'approval' | 'question'
 
-  // Always show interrupted status as-is
-  if (session.status === 'interrupted') {
-    return 'interrupted'
-  }
+const waitingInputDisplayStatus: Record<WaitingInputReason, string> = {
+  approval: 'needs_approval',
+  question: 'awaiting_answer',
+}
 
-  // If session is completed but not archived, show "waiting_for_input"
-  if (session.status === 'completed' && !session.archived) {
-    return 'ready_for_input'
+export const renderSessionStatus = (
+  session: { status: string; archived?: boolean },
+  context?: { waitingReason?: WaitingInputReason },
+): string => {
+  switch (session.status) {
+    case 'draft':
+      return 'draft'
+    case 'interrupted':
+      return 'interrupted'
+    case 'completed':
+      return session.archived ? 'completed' : 'ready_for_input'
+    case 'waiting_input':
+      return waitingInputDisplayStatus[context?.waitingReason ?? 'approval']
+    default:
+      return session.status
   }
-
-  // If session is waiting_input, show "needs_approval"
-  if (session.status === 'waiting_input') {
-    return 'needs_approval'
-  }
-
-  // For all other cases, return the status as-is
-  return session.status
 }

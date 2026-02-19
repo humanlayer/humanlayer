@@ -14,6 +14,7 @@ import { useStore } from '@/AppStore'
 // Types for generic notification system
 export type NotificationType =
   | 'approval_required'
+  | 'question_required'
   | 'session_completed'
   | 'session_failed'
   | 'session_started'
@@ -30,6 +31,8 @@ export interface NotificationOptions {
   type: NotificationType
   title: string | React.ReactNode
   body: string | React.ReactNode
+  osTitle?: string // Plain string for OS notifications (avoids React node conversion loss)
+  osBody?: string // Plain string for OS notifications
   metadata: {
     sessionId?: string
     approvalId?: string
@@ -260,9 +263,11 @@ class NotificationService {
       position: 'top-right', // Position toast at top right corner
     }
 
-    // control notification id when showing an approval (may expand later)
+    // Control notification id for approvals and questions
     if (options.type === 'approval_required') {
       toastOptions.id = `${options.type}:${options.metadata.approvalId}`
+    } else if (options.type === 'question_required') {
+      toastOptions.id = `${options.type}:${options.metadata.questionId}`
     }
 
     // Add primary action if provided using CodeLayerToastButtons
@@ -349,9 +354,10 @@ class NotificationService {
       }
 
       // Send the notification
-      // Convert React nodes to strings for OS notifications
-      const titleString = typeof options.title === 'string' ? options.title : 'Notification'
-      const bodyString = typeof options.body === 'string' ? options.body : ''
+      // Prefer explicit osTitle/osBody strings, then fall back to converting React nodes
+      const titleString =
+        options.osTitle || (typeof options.title === 'string' ? options.title : 'Notification')
+      const bodyString = options.osBody || (typeof options.body === 'string' ? options.body : '')
 
       await sendNotification({
         title: titleString,
@@ -472,6 +478,81 @@ class NotificationService {
   }
 
   /**
+   * Convenience method for question required notifications
+   */
+  async notifyQuestionRequired(
+    sessionId: string,
+    questionId: string,
+    questionTexts: string[],
+    sessionTitle?: string,
+    returnToastConfig?: boolean,
+  ) {
+    const toastId = `question_required:${questionId}`
+
+    // Use session title with truncation, matching approval notification pattern
+    const truncatedTitle = sessionTitle
+      ? sessionTitle.length > 50
+        ? sessionTitle.substring(0, 47) + '...'
+        : sessionTitle
+      : `Session ${sessionId.slice(0, 8)}`
+
+    const fallbackText = 'A session is waiting for your answer'
+    const bodyText = questionTexts.length > 0 ? questionTexts.join('\n') : fallbackText
+    const truncatedBody = bodyText.length > 120 ? bodyText.substring(0, 117) + '...' : bodyText
+
+    const titleElement = (
+      <div className="flex flex-col gap-0.5">
+        <span className="font-bold text-[var(--terminal-warning)]">awaiting_answer</span>
+        <span className="text-xs text-muted-foreground">{truncatedTitle}</span>
+      </div>
+    )
+
+    const bodyElement = (
+      <div className="flex flex-col gap-1 text-sm">
+        {questionTexts.length > 0 ? (
+          questionTexts.map((q, i) => {
+            const truncated = q.length > 80 ? q.substring(0, 77) + '...' : q
+            return <span key={i}>{truncated}</span>
+          })
+        ) : (
+          <span>{fallbackText}</span>
+        )}
+      </div>
+    )
+
+    return this.notify({
+      type: 'question_required',
+      title: titleElement,
+      body: bodyElement,
+      osTitle: `awaiting_answer - ${truncatedTitle}`,
+      osBody: truncatedBody,
+      metadata: {
+        sessionId,
+        questionId,
+      },
+      duration: Infinity,
+      actions: [
+        {
+          label: (
+            <span className="flex items-center gap-1">
+              Jump to Session
+              <kbd className="ml-1 px-1.5 py-0.5 text-sm font-medium bg-background/50 rounded border border-border">
+                {this.getModifierKey()}⇧J
+              </kbd>
+            </span>
+          ),
+          onClick: () => {
+            useStore.getState().clearActiveSessionDetail()
+            window.location.hash = `/sessions/${sessionId}`
+            toast.dismiss(toastId)
+          },
+        },
+      ],
+      returnToastConfig,
+    })
+  }
+
+  /**
    * Get current focus state
    */
   isAppFocused(): boolean {
@@ -481,13 +562,22 @@ class NotificationService {
   /**
    * Clear notification by approvalId
    */
-
   clearNotificationByApprovalId(approvalId: string) {
     const matchingToasts = toast
       .getToasts()
       .filter(toast => toast.id === `approval_required:${approvalId}`)
 
     logger.log('clearNotificationByApprovalId', matchingToasts)
+    matchingToasts.forEach(toDismiss => toast.dismiss(toDismiss.id))
+  }
+
+  /**
+   * Clear notification by questionId
+   */
+  clearNotificationByQuestionId(questionId: string) {
+    const matchingToasts = toast.getToasts().filter(t => t.id === `question_required:${questionId}`)
+
+    logger.log('clearNotificationByQuestionId', matchingToasts)
     matchingToasts.forEach(toDismiss => toast.dismiss(toDismiss.id))
   }
 }

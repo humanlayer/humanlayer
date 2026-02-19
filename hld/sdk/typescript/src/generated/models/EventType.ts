@@ -22,7 +22,9 @@ export const EventType = {
     ApprovalResolved: 'approval_resolved',
     SessionStatusChanged: 'session_status_changed',
     ConversationUpdated: 'conversation_updated',
-    SessionSettingsChanged: 'session_settings_changed'
+    SessionSettingsChanged: 'session_settings_changed',
+    NewQuestion: 'new_question',
+    QuestionAnswered: 'question_answered'
 } as const;
 export type EventType = typeof EventType[keyof typeof EventType];
 

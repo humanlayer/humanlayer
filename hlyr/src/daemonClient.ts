@@ -37,7 +37,12 @@ interface SubscribeResponse {
 }
 
 interface Event {
-  type: 'new_approval' | 'approval_resolved' | 'session_status_changed'
+  type:
+    | 'new_approval'
+    | 'approval_resolved'
+    | 'session_status_changed'
+    | 'new_question'
+    | 'question_answered'
   timestamp: string
   data: {
     // Common fields
@@ -205,8 +210,8 @@ export class DaemonClient extends EventEmitter {
                 subscriptionEmitter.emit('event', notification.event)
               }
             }
-          } catch {
-            // Ignore parse errors
+          } catch (err) {
+            console.error('[DaemonClient] subscribe: failed to parse daemon response:', err, 'raw:', line)
           }
         }
       }
@@ -308,8 +313,8 @@ export class DaemonClient extends EventEmitter {
                 }
                 return
               }
-            } catch {
-              // Ignore parse errors
+            } catch (err) {
+              console.error('[DaemonClient] call: failed to parse daemon response:', err, 'method:', method, 'raw:', line)
             }
           }
         }
@@ -382,6 +387,39 @@ export class DaemonClient extends EventEmitter {
     if (!resp.success) {
       throw new Error(`Decision failed: ${resp.error}`)
     }
+  }
+
+  async createQuestion(sessionId: string, questionsJSON: unknown): Promise<{ question_id: string }> {
+    return this.call<{ question_id: string }>('createQuestion', {
+      session_id: sessionId,
+      questions_json: questionsJSON,
+    })
+  }
+
+  async getQuestion(questionId: string): Promise<{
+    question: {
+      id: string
+      session_id: string
+      run_id: string
+      status: string
+      questions_json?: unknown
+      answers_json?: unknown
+      created_at: string
+      answered_at?: string
+    }
+  }> {
+    return this.call<{
+      question: {
+        id: string
+        session_id: string
+        run_id: string
+        status: string
+        questions_json?: unknown
+        answers_json?: unknown
+        created_at: string
+        answered_at?: string
+      }
+    }>('getQuestion', { question_id: questionId })
   }
 
   close() {

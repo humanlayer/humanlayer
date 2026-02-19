@@ -25,7 +25,7 @@ func TestApprovalHandlers_CreateApproval(t *testing.T) {
 	mockSessionManager := session.NewMockSessionManager(ctrl)
 
 	handlers := handlers.NewApprovalHandlers(mockApprovalManager, mockSessionManager)
-	router := setupTestRouter(t, nil, handlers, nil)
+	router := setupTestRouter(t, nil, handlers, nil, nil)
 
 	tests := []struct {
 		name           string
@@ -101,7 +101,7 @@ func TestApprovalHandlers_ListApprovals(t *testing.T) {
 	mockSessionManager := session.NewMockSessionManager(ctrl)
 
 	handlers := handlers.NewApprovalHandlers(mockApprovalManager, mockSessionManager)
-	router := setupTestRouter(t, nil, handlers, nil)
+	router := setupTestRouter(t, nil, handlers, nil, nil)
 
 	approvals := []store.Approval{
 		{
@@ -202,7 +202,7 @@ func TestApprovalHandlers_GetApproval(t *testing.T) {
 	mockSessionManager := session.NewMockSessionManager(ctrl)
 
 	handlers := handlers.NewApprovalHandlers(mockApprovalManager, mockSessionManager)
-	router := setupTestRouter(t, nil, handlers, nil)
+	router := setupTestRouter(t, nil, handlers, nil, nil)
 
 	t.Run("get existing approval", func(t *testing.T) {
 		approval := store.Approval{
@@ -293,7 +293,7 @@ func TestApprovalHandlers_DecideApproval(t *testing.T) {
 	mockSessionManager := session.NewMockSessionManager(ctrl)
 
 	handlers := handlers.NewApprovalHandlers(mockApprovalManager, mockSessionManager)
-	router := setupTestRouter(t, nil, handlers, nil)
+	router := setupTestRouter(t, nil, handlers, nil, nil)
 
 	tests := []struct {
 		name           string
@@ -395,7 +395,7 @@ func TestApprovalHandlers_DecideApproval(t *testing.T) {
 			mockSetup: func() {
 				mockApprovalManager.EXPECT().
 					ApproveToolCall(gomock.Any(), "appr-111", "").
-					Return(&store.AlreadyDecidedError{ID: "appr-111", Status: "approved"})
+					Return(&store.AlreadyDecidedError{Type: "approval", ID: "appr-111", Status: "approved"})
 			},
 			expectedStatus: 400,
 			expectedError: &api.ErrorDetail{
@@ -451,7 +451,7 @@ func TestApprovalHandlers_HTTPSpecificBehavior(t *testing.T) {
 	mockSessionManager := session.NewMockSessionManager(ctrl)
 
 	handlers := handlers.NewApprovalHandlers(mockApprovalManager, mockSessionManager)
-	router := setupTestRouter(t, nil, handlers, nil)
+	router := setupTestRouter(t, nil, handlers, nil, nil)
 
 	t.Run("malformed JSON in create approval", func(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/approvals", bytes.NewReader([]byte(`{bad json`)))

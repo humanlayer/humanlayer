@@ -873,6 +873,83 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
+  /questions:
+    get:
+      operationId: listQuestions
+      summary: List questions
+      description: List questions with optional session filtering
+      tags:
+        - Questions
+      parameters:
+        - name: sessionId
+          in: query
+          description: Filter by session ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of questions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionsResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /questions/{id}:
+    get:
+      operationId: getQuestion
+      summary: Get question details
+      description: Get detailed information about a specific question
+      tags:
+        - Questions
+      parameters:
+        - $ref: '#/components/parameters/questionId'
+      responses:
+        '200':
+          description: Question details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /questions/{id}/answer:
+    post:
+      operationId: answerQuestion
+      summary: Answer a question
+      description: Submit an answer or decline a question
+      tags:
+        - Questions
+      parameters:
+        - $ref: '#/components/parameters/questionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerQuestionRequest'
+      responses:
+        '200':
+          description: Answer recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnswerQuestionResponse'
+        '400':
+          description: Invalid answer or question already answered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
   /stream/events:
     get:
       operationId: streamEvents
@@ -949,6 +1026,15 @@ components:
       schema:
         type: string
       example: appr_xyz789
+
+    questionId:
+      name: id
+      in: path
+      required: true
+      description: Question ID
+      schema:
+        type: string
+      example: question-abc123
 
   schemas:
     # Fuzzy Search Schemas
@@ -2211,6 +2297,8 @@ components:
         - session_status_changed
         - conversation_updated
         - session_settings_changed
+        - new_question
+        - question_answered
       description: Type of system event
 
     Event:
@@ -2230,6 +2318,103 @@ components:
           type: object
           additionalProperties: true
           description: Event-specific data
+
+    # Question Types
+    Question:
+      type: object
+      required:
+        - id
+        - session_id
+        - run_id
+        - status
+        - questions_json
+        - created_at
+      properties:
+        id:
+          type: string
+          description: Unique question identifier
+          example: question-abc123
+        session_id:
+          type: string
+          description: Associated session ID
+        run_id:
+          type: string
+          description: Associated run ID
+        tool_use_id:
+          type: string
+          nullable: true
+          description: Claude tool use ID
+        status:
+          $ref: '#/components/schemas/QuestionStatus'
+        questions_json:
+          type: object
+          description: The AskUserQuestion input schema (questions array with headers, options, etc.)
+          additionalProperties: true
+        answers_json:
+          type: object
+          nullable: true
+          description: User's answers
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        answered_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    QuestionStatus:
+      type: string
+      enum:
+        - pending
+        - answered
+        - declined
+      description: Current status of the question
+
+    QuestionsResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+
+    QuestionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/Question'
+
+    AnswerQuestionRequest:
+      type: object
+      properties:
+        answers_json:
+          type: object
+          description: The user's answers (required unless declining)
+          additionalProperties: true
+        declined:
+          type: boolean
+          description: Set to true to decline the question
+          default: false
+
+    AnswerQuestionResponse:
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          type: object
+          required:
+            - success
+          properties:
+            success:
+              type: boolean
+            error:
+              type: string
 
     # Error Types
     ErrorResponse:

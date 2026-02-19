@@ -14,6 +14,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
+	"github.com/humanlayer/humanlayer/hld/question"
 	"github.com/humanlayer/humanlayer/hld/rpc"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
@@ -58,6 +59,7 @@ type Daemon struct {
 	httpServer        *HTTPServer
 	sessions          session.SessionManager
 	approvals         approval.Manager
+	questions         question.Manager
 	eventBus          bus.EventBus
 	store             store.ConversationStore
 	permissionMonitor *session.PermissionMonitor
@@ -128,15 +130,19 @@ func New() (*Daemon, error) {
 	approvalManager := approval.NewManager(conversationStore, eventBus)
 	slog.Debug("local approval manager created successfully")
 
+	// Create question manager
+	questionManager := question.NewManager(conversationStore, eventBus)
+
 	// Create HTTP server (always enabled, port 0 means dynamic allocation)
 	slog.Info("creating HTTP server", "port", cfg.HTTPPort)
-	httpServer := NewHTTPServer(cfg, sessionManager, approvalManager, conversationStore, eventBus)
+	httpServer := NewHTTPServer(cfg, sessionManager, approvalManager, questionManager, conversationStore, eventBus)
 
 	return &Daemon{
 		config:     cfg,
 		socketPath: socketPath,
 		sessions:   sessionManager,
 		approvals:  approvalManager,
+		questions:  questionManager,
 		eventBus:   eventBus,
 		store:      conversationStore,
 		httpServer: httpServer,
@@ -224,6 +230,10 @@ func (d *Daemon) Run(ctx context.Context) error {
 	// Register local approval handlers
 	approvalHandlers := rpc.NewApprovalHandlers(d.approvals, d.sessions)
 	approvalHandlers.Register(d.rpcServer)
+
+	// Register question handlers
+	questionHandlers := rpc.NewQuestionHandlers(d.questions)
+	questionHandlers.Register(d.rpcServer)
 
 	// Start HTTP server if enabled
 	if d.httpServer != nil {

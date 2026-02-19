@@ -160,6 +160,7 @@ function TaskGroupEventRowInner({
                     setDenyingApprovalId={setDenyingApprovalId}
                     onCancelDeny={onCancelDeny}
                     isGroupItem={true}
+                    sessionId={session.id}
                   />
                 </div>
               )

@@ -45,6 +45,7 @@ interface SessionTableProps {
   isDraftsView?: boolean // Add this to indicate if showing drafts view
   onNavigateToSessions?: () => void // For archived view navigation
   onBypassPermissions?: (sessionIds: string[]) => void
+  sessionsAwaitingAnswer?: Set<string>
 }
 
 function SessionTableInner({
@@ -61,6 +62,7 @@ function SessionTableInner({
   isDraftsView = false,
   onNavigateToSessions,
   onBypassPermissions,
+  sessionsAwaitingAnswer,
 }: SessionTableProps) {
   const isSessionLauncherOpen = useSessionLauncher(state => state.isOpen)
   const tableRef = useRef<HTMLTableElement>(null)
@@ -736,7 +738,9 @@ function SessionTableInner({
                           ) : null}
                         </>
                       )}
-                      {renderSessionStatus(session)}
+                      {renderSessionStatus(session, {
+                        waitingReason: sessionsAwaitingAnswer?.has(session.id) ? 'question' : undefined,
+                      })}
                     </TableCell>
                   )}
                   <TableCell className="max-w-[200px]">

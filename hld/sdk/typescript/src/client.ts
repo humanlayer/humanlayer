@@ -6,10 +6,12 @@ import {
     SettingsApi,
     FilesApi,
     AgentsApi,
+    QuestionsApi,
     CreateSessionRequest,
     Session,
     SessionsResponse,
     Approval,
+    Question,
     CreateSessionResponse,
     CreateSessionResponseData,
     EventFromJSON,
@@ -52,6 +54,7 @@ export class HLDClient {
     private settingsApi: SettingsApi;
     private filesApi: FilesApi;
     private agentsApi: AgentsApi;
+    private questionsApi: QuestionsApi;
     private baseUrl: string;
     private headers?: Record<string, string>;
     private sseConnections: Map<string, EventSourceLike> = new Map();
@@ -85,6 +88,7 @@ export class HLDClient {
         this.settingsApi = new SettingsApi(config);
         this.filesApi = new FilesApi(config);
         this.agentsApi = new AgentsApi(config);
+        this.questionsApi = new QuestionsApi(config);
     }
 
     // Session Management
@@ -332,6 +336,24 @@ export class HLDClient {
             createDirectoryRequest: { path }
         });
         return response;
+    }
+
+    // Questions
+    async listQuestions(sessionId?: string): Promise<Question[]> {
+        const response = await this.questionsApi.listQuestions({ sessionId });
+        return response.data;
+    }
+
+    async getQuestion(id: string): Promise<Question> {
+        const response = await this.questionsApi.getQuestion({ id });
+        return response.data;
+    }
+
+    async answerQuestion(id: string, answersJson?: Record<string, unknown>, declined?: boolean): Promise<void> {
+        await this.questionsApi.answerQuestion({
+            id,
+            answerQuestionRequest: { answersJson, declined }
+        });
     }
 
     // Agents

@@ -1117,6 +1117,70 @@ func (s *SQLiteStore) applyMigrations() error {
 		slog.Info("Migration 22 applied successfully")
 	}
 
+	// Migration 23: Add questions table
+	if currentVersion < 23 {
+		slog.Info("Applying migration 23: Add questions table")
+
+		_, err = s.db.Exec(`
+			CREATE TABLE IF NOT EXISTS questions (
+				id TEXT PRIMARY KEY,
+				session_id TEXT NOT NULL,
+				run_id TEXT NOT NULL,
+				tool_use_id TEXT,
+				status TEXT NOT NULL CHECK (status IN ('pending', 'answered', 'declined')),
+				questions_json TEXT NOT NULL,
+				answers_json TEXT,
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				answered_at DATETIME,
+				FOREIGN KEY (session_id) REFERENCES sessions(id)
+			)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create questions table: %w", err)
+		}
+
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_questions_session_status
+			ON questions (session_id, status)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create questions index: %w", err)
+		}
+
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (23, 'Add questions table for AskUserQuestion support')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 23: %w", err)
+		}
+
+		slog.Info("Migration 23 applied successfully")
+	}
+
+	// Migration 24: Add index on questions.tool_use_id
+	if currentVersion < 24 {
+		slog.Info("Applying migration 24: Add index on questions.tool_use_id")
+
+		_, err = s.db.Exec(`
+			CREATE INDEX IF NOT EXISTS idx_questions_tool_use_id
+			ON questions (tool_use_id)
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to create questions tool_use_id index: %w", err)
+		}
+
+		_, err = s.db.Exec(`
+			INSERT INTO schema_version (version, description)
+			VALUES (24, 'Add index on questions.tool_use_id')
+		`)
+		if err != nil {
+			return fmt.Errorf("failed to record migration 24: %w", err)
+		}
+
+		slog.Info("Migration 24 applied successfully")
+	}
+
 	return nil
 }
 
@@ -2456,7 +2520,7 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 	query := `
 		SELECT id, session_id, claude_session_id, sequence, event_type, created_at,
 			role, content,
-			tool_id, tool_name, tool_input_json,
+			tool_id, tool_name, tool_input_json, parent_tool_use_id,
 			tool_result_for_id, tool_result_content,
 			is_completed, approval_status, approval_id
 		FROM conversation_events
@@ -2479,7 +2543,7 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 			&event.ID, &event.SessionID, &event.ClaudeSessionID,
 			&event.Sequence, &event.EventType, &event.CreatedAt,
 			&event.Role, &event.Content,
-			&event.ToolID, &event.ToolName, &event.ToolInputJSON,
+			&event.ToolID, &event.ToolName, &event.ToolInputJSON, &event.ParentToolUseID,
 			&event.ToolResultForID, &event.ToolResultContent,
 			&event.IsCompleted, &event.ApprovalStatus, &event.ApprovalID,
 		)
@@ -2489,7 +2553,7 @@ func (s *SQLiteStore) GetPendingToolCalls(ctx context.Context, sessionID string)
 		events = append(events, event)
 	}
 
-	return events, nil
+	return events, rows.Err()
 }
 
 // GetToolCallByID retrieves a specific tool call by its ID
@@ -2877,7 +2941,7 @@ func (s *SQLiteStore) UpdateApprovalResponse(ctx context.Context, id string, sta
 
 	// Check if already decided
 	if approval.Status != ApprovalStatusLocalPending {
-		return &AlreadyDecidedError{ID: id, Status: approval.Status.String()}
+		return &AlreadyDecidedError{Type: "approval", ID: id, Status: approval.Status.String()}
 	}
 
 	query := `
@@ -2902,6 +2966,135 @@ func (s *SQLiteStore) UpdateApprovalResponse(ctx context.Context, id string, sta
 	}
 
 	return nil
+}
+
+func nullableJSON(data json.RawMessage) interface{} {
+	if len(data) == 0 {
+		return nil
+	}
+	return string(data)
+}
+
+// scanner is satisfied by both *sql.Row and *sql.Rows
+type scanner interface {
+	Scan(dest ...any) error
+}
+
+func scanQuestion(s scanner) (*Question, error) {
+	var q Question
+	var toolUseID sql.NullString
+	var questionsJSON string
+	var answersJSON sql.NullString
+	var answeredAt sql.NullTime
+	if err := s.Scan(&q.ID, &q.SessionID, &q.RunID, &toolUseID, &q.Status, &questionsJSON, &answersJSON, &q.CreatedAt, &answeredAt); err != nil {
+		return nil, err
+	}
+	q.QuestionsJSON = json.RawMessage(questionsJSON)
+	if toolUseID.Valid {
+		q.ToolUseID = &toolUseID.String
+	}
+	if answersJSON.Valid {
+		q.AnswersJSON = json.RawMessage(answersJSON.String)
+	}
+	if answeredAt.Valid {
+		q.AnsweredAt = &answeredAt.Time
+	}
+	return &q, nil
+}
+
+func (s *SQLiteStore) CreateQuestion(ctx context.Context, question *Question) error {
+	if question.Status != QuestionStatusPending && question.Status != QuestionStatusAnswered && question.Status != QuestionStatusDeclined {
+		return fmt.Errorf("invalid question status: %s", question.Status)
+	}
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO questions (id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, question.ID, question.SessionID, question.RunID, question.ToolUseID, question.Status, string(question.QuestionsJSON), nullableJSON(question.AnswersJSON), question.CreatedAt, question.AnsweredAt)
+	return err
+}
+
+func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at
+		FROM questions WHERE id = ?
+	`, id)
+
+	q, err := scanQuestion(row)
+	if err == sql.ErrNoRows {
+		return nil, &NotFoundError{Type: "question", ID: id}
+	}
+	if err != nil {
+		return nil, err
+	}
+	return q, nil
+}
+
+func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string) ([]*Question, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at
+		FROM questions WHERE session_id = ? AND status = 'pending'
+		ORDER BY created_at ASC
+	`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var questions []*Question
+	for rows.Next() {
+		q, err := scanQuestion(rows)
+		if err != nil {
+			return nil, err
+		}
+		questions = append(questions, q)
+	}
+	return questions, rows.Err()
+}
+
+func (s *SQLiteStore) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*Question, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at
+		FROM questions WHERE session_id = ?
+		ORDER BY created_at ASC
+	`, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var questions []*Question
+	for rows.Next() {
+		q, err := scanQuestion(rows)
+		if err != nil {
+			return nil, err
+		}
+		questions = append(questions, q)
+	}
+	return questions, rows.Err()
+}
+
+func (s *SQLiteStore) AnswerQuestion(ctx context.Context, id string, status QuestionStatus, answersJSON json.RawMessage) error {
+	if status != QuestionStatusAnswered && status != QuestionStatusDeclined {
+		return fmt.Errorf("invalid answer status: %s", status)
+	}
+
+	var currentStatus string
+	err := s.db.QueryRowContext(ctx, `SELECT status FROM questions WHERE id = ?`, id).Scan(&currentStatus)
+	if err == sql.ErrNoRows {
+		return &NotFoundError{Type: "question", ID: id}
+	}
+	if err != nil {
+		return err
+	}
+	if currentStatus != string(QuestionStatusPending) {
+		return &AlreadyDecidedError{Type: "question", ID: id, Status: currentStatus}
+	}
+
+	now := time.Now()
+	_, err = s.db.ExecContext(ctx, `
+		UPDATE questions SET status = ?, answers_json = ?, answered_at = ? WHERE id = ?
+	`, status, nullableJSON(answersJSON), now, id)
+	return err
 }
 
 // Helper function to convert MCP config to store format

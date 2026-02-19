@@ -126,6 +126,7 @@ mocks:
 	mockgen -source=client/types.go -destination=client/mock_client.go -package=client Client,Factory
 	mockgen -source=bus/types.go -destination=bus/mock_bus.go -package=bus EventBus
 	mockgen -source=store/store.go -destination=store/mock_store.go -package=store ConversationStore
+	mockgen -source=question/types.go -destination=question/mock_question.go -package=question Manager
 
 # Generate server code from OpenAPI spec
 generate:

@@ -1,6 +1,9 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './Agent';
+export * from './AnswerQuestionRequest';
+export * from './AnswerQuestionResponse';
+export * from './AnswerQuestionResponseData';
 export * from './Approval';
 export * from './ApprovalResponse';
 export * from './ApprovalStatus';
@@ -48,6 +51,10 @@ export * from './InterruptSessionResponseData';
 export * from './LaunchDraftSessionRequest';
 export * from './MCPConfig';
 export * from './MCPServer';
+export * from './Question';
+export * from './QuestionResponse';
+export * from './QuestionStatus';
+export * from './QuestionsResponse';
 export * from './RecentPath';
 export * from './RecentPathsResponse';
 export * from './SearchMetadata';

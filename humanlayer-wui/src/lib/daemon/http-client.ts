@@ -3,6 +3,7 @@ import {
   HLDClient,
   RecentPath as SDKRecentPath,
   Approval,
+  Question,
   ConversationEvent,
   UserSettingsResponse,
   UpdateUserSettingsRequest,
@@ -575,6 +576,35 @@ export class HTTPDaemonClient implements IDaemonClient {
       return {
         success: false,
         error: error.message || 'Failed to send decision',
+      }
+    }
+  }
+
+  // Question Methods
+
+  async listQuestions(sessionId: string): Promise<Question[]> {
+    await this.ensureConnected()
+    return this.client!.listQuestions(sessionId)
+  }
+
+  async getQuestion(id: string): Promise<Question> {
+    await this.ensureConnected()
+    return this.client!.getQuestion(id)
+  }
+
+  async answerQuestion(
+    id: string,
+    answersJson?: Record<string, unknown>,
+    declined?: boolean,
+  ): Promise<{ success: boolean; error?: string }> {
+    await this.ensureConnected()
+    try {
+      await this.client!.answerQuestion(id, answersJson, declined)
+      return { success: true }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Failed to answer question',
       }
     }
   }

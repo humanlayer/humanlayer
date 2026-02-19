@@ -1,3 +1,6 @@
+// MCP tool names
+export const MCP_ASK_USER_QUESTION = 'mcp__codelayer__ask_user_question'
+
 export enum ToolName {
   Bash = 'Bash',
   BashOutput = 'BashOutput',

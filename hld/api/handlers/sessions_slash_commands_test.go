@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -194,6 +195,34 @@ func (m *MockStore) GetUserSettings(ctx context.Context) (*store.UserSettings, e
 
 func (m *MockStore) UpdateUserSettings(ctx context.Context, settings store.UserSettings) error {
 	args := m.Called(ctx, settings)
+	return args.Error(0)
+}
+
+func (m *MockStore) CreateQuestion(ctx context.Context, question *store.Question) error {
+	args := m.Called(ctx, question)
+	return args.Error(0)
+}
+
+func (m *MockStore) GetQuestion(ctx context.Context, id string) (*store.Question, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*store.Question), args.Error(1)
+}
+
+func (m *MockStore) GetPendingQuestions(ctx context.Context, sessionID string) ([]*store.Question, error) {
+	args := m.Called(ctx, sessionID)
+	return args.Get(0).([]*store.Question), args.Error(1)
+}
+
+func (m *MockStore) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*store.Question, error) {
+	args := m.Called(ctx, sessionID)
+	return args.Get(0).([]*store.Question), args.Error(1)
+}
+
+func (m *MockStore) AnswerQuestion(ctx context.Context, id string, status store.QuestionStatus, answersJSON json.RawMessage) error {
+	args := m.Called(ctx, id, status, answersJSON)
 	return args.Error(0)
 }
 

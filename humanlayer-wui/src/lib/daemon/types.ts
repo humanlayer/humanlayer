@@ -9,6 +9,7 @@ import type {
   Approval,
   ConversationEvent,
   Agent,
+  Question,
   FuzzySearchFilesResponse,
 } from '@humanlayer/hld-sdk'
 
@@ -18,7 +19,7 @@ export type { Event, EventType }
 export type RecentPath = SDKRecentPath
 
 // Export SDK types directly
-export type { Approval, Agent } from '@humanlayer/hld-sdk'
+export type { Approval, Agent, Question }
 
 // Extend SDK Session type with WUI-specific properties
 export interface Session extends SDKSession {
@@ -158,6 +159,15 @@ export interface DaemonClient {
   ): Promise<{ success: boolean; error?: string }>
   denyFunctionCall(approvalId: string, comment?: string): Promise<{ success: boolean; error?: string }>
 
+  // Question methods
+  listQuestions(sessionId: string): Promise<Question[]>
+  getQuestion(id: string): Promise<Question>
+  answerQuestion(
+    id: string,
+    answersJson?: Record<string, unknown>,
+    declined?: boolean,
+  ): Promise<{ success: boolean; error?: string }>
+
   // Event subscription
   subscribeToEvents(options: SubscribeOptions): SubscriptionHandle
 
@@ -296,6 +306,17 @@ export interface SessionStatusChangedEventData {
   session_id: string
   old_status: SessionStatus
   new_status: SessionStatus
+}
+
+export interface NewQuestionEventData {
+  question_id: string
+  session_id: string
+}
+
+export interface QuestionAnsweredEventData {
+  question_id: string
+  session_id: string
+  status: string
 }
 
 // Constants for session settings change reasons

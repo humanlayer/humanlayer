@@ -229,6 +229,7 @@ export function ConversationStream({
               denyingApprovalId={denyingApprovalId}
               setDenyingApprovalId={setDenyingApprovalId}
               onCancelDeny={onCancelDeny}
+              sessionId={session.id}
             />
           )
         }
@@ -252,6 +253,7 @@ export function ConversationStream({
             denyingApprovalId={denyingApprovalId}
             setDenyingApprovalId={setDenyingApprovalId}
             onCancelDeny={onCancelDeny}
+            sessionId={session.id}
           />
         )
       })}

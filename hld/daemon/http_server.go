@@ -18,6 +18,7 @@ import (
 	"github.com/humanlayer/humanlayer/hld/bus"
 	"github.com/humanlayer/humanlayer/hld/config"
 	"github.com/humanlayer/humanlayer/hld/mcp"
+	"github.com/humanlayer/humanlayer/hld/question"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
@@ -43,6 +44,7 @@ type HTTPServer struct {
 	sessionManager   session.SessionManager
 	sessionHandlers  *handlers.SessionHandlers
 	approvalHandlers *handlers.ApprovalHandlers
+	questionHandlers *handlers.QuestionHandlers
 	fileHandlers     *handlers.FileHandlers
 	sseHandler       *handlers.SSEHandler
 	proxyHandler     *handlers.ProxyHandler
@@ -61,6 +63,7 @@ func NewHTTPServer(
 	cfg *config.Config,
 	sessionManager session.SessionManager,
 	approvalManager approval.Manager,
+	questionManager question.Manager,
 	conversationStore store.ConversationStore,
 	eventBus bus.EventBus,
 ) *HTTPServer {
@@ -90,6 +93,7 @@ func NewHTTPServer(
 	// Create handlers
 	sessionHandlers := handlers.NewSessionHandlersWithConfig(sessionManager, conversationStore, approvalManager, cfg)
 	approvalHandlers := handlers.NewApprovalHandlers(approvalManager, sessionManager)
+	questionHandlers := handlers.NewQuestionHandlers(questionManager)
 	fileHandlers := handlers.NewFileHandlers()
 	sseHandler := handlers.NewSSEHandler(eventBus)
 	proxyHandler := handlers.NewProxyHandler(sessionManager, conversationStore)
@@ -103,6 +107,7 @@ func NewHTTPServer(
 		sessionManager:   sessionManager,
 		sessionHandlers:  sessionHandlers,
 		approvalHandlers: approvalHandlers,
+		questionHandlers: questionHandlers,
 		fileHandlers:     fileHandlers,
 		sseHandler:       sseHandler,
 		proxyHandler:     proxyHandler,
@@ -117,7 +122,7 @@ func NewHTTPServer(
 // Start starts the HTTP server
 func (s *HTTPServer) Start(ctx context.Context) error {
 	// Create server implementation combining all handlers
-	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.fileHandlers, s.sseHandler, s.settingsHandlers, s.agentHandlers)
+	serverImpl := handlers.NewServerImpl(s.sessionHandlers, s.approvalHandlers, s.questionHandlers, s.fileHandlers, s.sseHandler, s.settingsHandlers, s.agentHandlers)
 
 	// Create strict handler with middleware
 	strictHandler := api.NewStrictHandler(serverImpl, nil)

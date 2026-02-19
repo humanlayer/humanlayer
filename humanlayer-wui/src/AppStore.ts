@@ -87,6 +87,12 @@ interface StoreState {
   addRecentResolvedApprovalToCache: (approvalId: string) => void
   isRecentResolvedApproval: (approvalId: string) => boolean
 
+  /* Waiting reason tracking for session table */
+  sessionsAwaitingAnswer: Set<string>
+  addSessionAwaitingAnswer: (sessionId: string) => void
+  removeSessionAwaitingAnswer: (sessionId: string) => void
+  setSessionsAwaitingAnswer: (sessionIds: Set<string>) => void
+
   /* Navigation tracking */
   recentNavigations: Map<string, number> // sessionId -> timestamp
   trackNavigationFrom: (sessionId: string) => void
@@ -936,6 +942,20 @@ export const useStore = create<StoreState>((set, get) => {
     isRecentResolvedApproval: (approvalId: string) => {
       return get().recentResolvedApprovalsCache.has(approvalId)
     },
+
+    // Waiting reason tracking for session table
+    sessionsAwaitingAnswer: new Set<string>(),
+    addSessionAwaitingAnswer: (sessionId: string) =>
+      set(state => ({
+        sessionsAwaitingAnswer: new Set(state.sessionsAwaitingAnswer).add(sessionId),
+      })),
+    removeSessionAwaitingAnswer: (sessionId: string) =>
+      set(state => {
+        const newSet = new Set(state.sessionsAwaitingAnswer)
+        newSet.delete(sessionId)
+        return { sessionsAwaitingAnswer: newSet }
+      }),
+    setSessionsAwaitingAnswer: (sessionIds: Set<string>) => set({ sessionsAwaitingAnswer: sessionIds }),
 
     // Navigation tracking
     recentNavigations: new Map(),

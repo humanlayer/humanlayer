@@ -44,6 +44,7 @@ interface ActiveSessionInputProps {
   autoAcceptEnabled?: boolean
   isArchived?: boolean
   onToggleArchive?: () => void
+  waitingReason?: 'approval' | 'question'
 }
 
 /**
@@ -80,6 +81,7 @@ export const ActiveSessionInput = forwardRef<
       autoAcceptEnabled = false,
       isArchived = false,
       onToggleArchive,
+      waitingReason,
     },
     ref,
   ) => {
@@ -553,6 +555,13 @@ export const ActiveSessionInput = forwardRef<
           text: 'FAILED',
           className: 'text-destructive',
           icon: <AlertCircle className="h-3 w-3" />,
+        }
+      }
+
+      if (waitingReason === 'question') {
+        return {
+          text: 'AWAITING_ANSWER',
+          className: 'font-bold text-[var(--terminal-warning)]',
         }
       }
 
