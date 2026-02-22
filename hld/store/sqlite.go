@@ -3003,14 +3003,17 @@ func scanQuestion(s scanner) (*Question, error) {
 }
 
 func (s *SQLiteStore) CreateQuestion(ctx context.Context, question *Question) error {
-	if question.Status != QuestionStatusPending && question.Status != QuestionStatusAnswered && question.Status != QuestionStatusDeclined {
+	if !question.Status.IsValid() {
 		return fmt.Errorf("invalid question status: %s", question.Status)
 	}
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO questions (id, session_id, run_id, tool_use_id, status, questions_json, answers_json, created_at, answered_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`, question.ID, question.SessionID, question.RunID, question.ToolUseID, question.Status, string(question.QuestionsJSON), nullableJSON(question.AnswersJSON), question.CreatedAt, question.AnsweredAt)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create question: %w", err)
+	}
+	return nil
 }
 
 func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, error) {
@@ -3024,7 +3027,7 @@ func (s *SQLiteStore) GetQuestion(ctx context.Context, id string) (*Question, er
 		return nil, &NotFoundError{Type: "question", ID: id}
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get question: %w", err)
 	}
 	return q, nil
 }
@@ -3036,7 +3039,7 @@ func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string)
 		ORDER BY created_at ASC
 	`, sessionID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query pending questions: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -3044,11 +3047,14 @@ func (s *SQLiteStore) GetPendingQuestions(ctx context.Context, sessionID string)
 	for rows.Next() {
 		q, err := scanQuestion(rows)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan pending question: %w", err)
 		}
 		questions = append(questions, q)
 	}
-	return questions, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate pending questions: %w", err)
+	}
+	return questions, nil
 }
 
 func (s *SQLiteStore) GetQuestionsBySession(ctx context.Context, sessionID string) ([]*Question, error) {
@@ -3058,7 +3064,7 @@ func (s *SQLiteStore) GetQuestionsBySession(ctx context.Context, sessionID strin
 		ORDER BY created_at ASC
 	`, sessionID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query questions by session: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -3066,11 +3072,14 @@ func (s *SQLiteStore) GetQuestionsBySession(ctx context.Context, sessionID strin
 	for rows.Next() {
 		q, err := scanQuestion(rows)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan question: %w", err)
 		}
 		questions = append(questions, q)
 	}
-	return questions, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate questions: %w", err)
+	}
+	return questions, nil
 }
 
 func (s *SQLiteStore) AnswerQuestion(ctx context.Context, id string, status QuestionStatus, answersJSON json.RawMessage) error {
@@ -3084,7 +3093,7 @@ func (s *SQLiteStore) AnswerQuestion(ctx context.Context, id string, status Ques
 		return &NotFoundError{Type: "question", ID: id}
 	}
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to answer question: %w", err)
 	}
 	if currentStatus != string(QuestionStatusPending) {
 		return &AlreadyDecidedError{Type: "question", ID: id, Status: currentStatus}
@@ -3094,7 +3103,10 @@ func (s *SQLiteStore) AnswerQuestion(ctx context.Context, id string, status Ques
 	_, err = s.db.ExecContext(ctx, `
 		UPDATE questions SET status = ?, answers_json = ?, answered_at = ? WHERE id = ?
 	`, status, nullableJSON(answersJSON), now, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to answer question: %w", err)
+	}
+	return nil
 }
 
 // Helper function to convert MCP config to store format

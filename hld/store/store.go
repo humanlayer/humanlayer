@@ -263,6 +263,21 @@ const (
 	QuestionStatusDeclined QuestionStatus = "declined"
 )
 
+// String returns the string representation of the status
+func (s QuestionStatus) String() string {
+	return string(s)
+}
+
+// IsValid checks if the status is valid
+func (s QuestionStatus) IsValid() bool {
+	switch s {
+	case QuestionStatusPending, QuestionStatusAnswered, QuestionStatusDeclined:
+		return true
+	default:
+		return false
+	}
+}
+
 // Question represents a user question from Claude
 type Question struct {
 	ID            string          `json:"id"`
