@@ -236,6 +236,29 @@ func (c *Client) buildArgs(config SessionConfig) ([]string, error) {
 		// Note: temp file will be cleaned up when process exits
 	}
 
+	// Settings configuration
+	if config.Settings != nil {
+		settingsJSON, err := json.Marshal(config.Settings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal settings: %w", err)
+		}
+
+		tmpFile, err := os.CreateTemp("", "claude-settings-*.json")
+		if err != nil {
+			return nil, fmt.Errorf("failed to create temp settings file: %w", err)
+		}
+
+		if _, err := tmpFile.Write(settingsJSON); err != nil {
+			_ = tmpFile.Close()
+			return nil, fmt.Errorf("failed to write settings: %w", err)
+		}
+		_ = tmpFile.Close()
+
+		log.Printf("Settings written to: %s", tmpFile.Name())
+
+		args = append(args, "--settings", tmpFile.Name())
+	}
+
 	// Permission prompt tool
 	if config.PermissionPromptTool != "" {
 		args = append(args, "--permission-prompt-tool", config.PermissionPromptTool)

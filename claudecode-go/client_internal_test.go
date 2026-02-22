@@ -1,6 +1,8 @@
 package claudecode
 
 import (
+	"encoding/json"
+	"os"
 	"testing"
 )
 
@@ -195,5 +197,105 @@ func TestBuildArgsWithComplexConfigs(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestBuildArgsWithSettings(t *testing.T) {
+	client := NewClientWithPath("/usr/bin/claude")
+
+	config := SessionConfig{
+		Query: "test query",
+		Settings: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"PreToolUse": []interface{}{
+					map[string]interface{}{
+						"matcher": "AskUserQuestion",
+						"hooks": []interface{}{
+							map[string]interface{}{
+								"type":    "command",
+								"command": "hlyr hook ask-user-question",
+								"timeout": 1800,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	args, err := client.buildArgs(config)
+	if err != nil {
+		t.Fatalf("buildArgs failed: %v", err)
+	}
+
+	// Verify --settings flag is present with a temp file path
+	settingsIdx := -1
+	for i, arg := range args {
+		if arg == "--settings" {
+			settingsIdx = i
+			break
+		}
+	}
+
+	if settingsIdx == -1 {
+		t.Fatal("--settings flag not found in args")
+	}
+	if settingsIdx+1 >= len(args) {
+		t.Fatal("--settings flag has no value")
+	}
+
+	settingsPath := args[settingsIdx+1]
+	if settingsPath == "" {
+		t.Fatal("--settings value is empty")
+	}
+
+	// Verify the temp file contains valid JSON with expected structure
+	data, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatalf("failed to read settings file %s: %v", settingsPath, err)
+	}
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("settings file is not valid JSON: %v", err)
+	}
+
+	if _, ok := parsed["hooks"]; !ok {
+		t.Error("settings file missing 'hooks' key")
+	}
+
+	// Verify --settings comes before --print
+	printIdx := -1
+	for i, arg := range args {
+		if arg == "--print" {
+			printIdx = i
+			break
+		}
+	}
+	if printIdx != -1 && settingsIdx > printIdx {
+		t.Errorf("--settings (at %d) should come before --print (at %d)", settingsIdx, printIdx)
+	}
+
+	// Clean up temp file
+	os.Remove(settingsPath)
+}
+
+func TestBuildArgsWithoutSettings(t *testing.T) {
+	client := NewClientWithPath("/usr/bin/claude")
+
+	config := SessionConfig{
+		Query: "test query",
+		// Settings is nil
+	}
+
+	args, err := client.buildArgs(config)
+	if err != nil {
+		t.Fatalf("buildArgs failed: %v", err)
+	}
+
+	for _, arg := range args {
+		if arg == "--settings" {
+			t.Error("--settings flag should not be present when Settings is nil")
+		}
 	}
 }

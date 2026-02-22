@@ -69,7 +69,8 @@ type SessionConfig struct {
 	AdditionalDirectories []string
 	CustomInstructions    string
 	Verbose               bool
-	Env                   map[string]string // Environment variables to set for the Claude process
+	Env                   map[string]string      // Environment variables to set for the Claude process
+	Settings              map[string]interface{} // Additional settings (passed via --settings flag)
 }
 
 // StreamEvent represents a single event from the streaming JSON output

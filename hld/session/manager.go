@@ -73,142 +73,32 @@ func resolveHlyrPath() string {
 	return cmd
 }
 
-// ensureAskUserQuestionHookConfig ensures the working directory's .claude/settings.json
-// contains the PreToolUse hook for AskUserQuestion. Creates the file/directory if needed,
-// and merges the hook config into existing settings without overwriting other config.
-func ensureAskUserQuestionHookConfig(workingDir string) {
-	settingsDir := filepath.Join(workingDir, ".claude")
-	settingsPath := filepath.Join(settingsDir, "settings.json")
-
+// buildAskUserQuestionHooks returns the hooks config for the AskUserQuestion PreToolUse hook.
+func buildAskUserQuestionHooks() map[string]interface{} {
 	hlyrPath := resolveHlyrPath()
-	hookCommand := hlyrPath + " hook ask-user-question"
-
-	// Read existing settings or start fresh
-	var settings map[string]interface{}
-	data, err := os.ReadFile(settingsPath)
-	if err == nil {
-		if err := json.Unmarshal(data, &settings); err != nil {
-			slog.Warn("failed to parse .claude/settings.json, skipping hook config injection", "error", err, "path", settingsPath)
-			return
-		}
-	} else {
-		settings = make(map[string]interface{})
-	}
-
-	// Check if the hook already exists with the correct command
-	if hasAskUserQuestionHook(settings, hookCommand) {
-		return
-	}
-
-	// Remove any existing AskUserQuestion hook entry (stale path)
-	removeAskUserQuestionHook(settings)
-
-	// Add the hook config
-	hooks, ok := settings["hooks"].(map[string]interface{})
-	if !ok {
-		hooks = make(map[string]interface{})
-	}
-
-	preToolUse, ok := hooks["PreToolUse"].([]interface{})
-	if !ok {
-		preToolUse = []interface{}{}
-	}
-
-	preToolUse = append(preToolUse, map[string]interface{}{
-		"matcher": "AskUserQuestion",
-		"hooks": []interface{}{
+	return map[string]interface{}{
+		"PreToolUse": []interface{}{
 			map[string]interface{}{
-				"type":    "command",
-				"command": hookCommand,
-				"timeout": 1800,
+				"matcher": "AskUserQuestion",
+				"hooks": []interface{}{
+					map[string]interface{}{
+						"type":    "command",
+						"command": hlyrPath + " hook ask-user-question",
+						"timeout": 1800,
+					},
+				},
 			},
 		},
-	})
-
-	hooks["PreToolUse"] = preToolUse
-	settings["hooks"] = hooks
-
-	// Write back
-	if err := os.MkdirAll(settingsDir, 0755); err != nil {
-		slog.Warn("failed to create .claude directory for hook config", "error", err, "path", settingsDir)
-		return
 	}
-
-	out, err := json.MarshalIndent(settings, "", "  ")
-	if err != nil {
-		slog.Warn("failed to marshal settings.json for hook config", "error", err)
-		return
-	}
-
-	if err := os.WriteFile(settingsPath, append(out, '\n'), 0644); err != nil {
-		slog.Warn("failed to write .claude/settings.json for hook config", "error", err, "path", settingsPath)
-		return
-	}
-
-	slog.Info("injected AskUserQuestion hook config into .claude/settings.json", "path", settingsPath, "command", hookCommand)
 }
 
-// hasAskUserQuestionHook checks if the settings already contain an AskUserQuestion PreToolUse hook
-// with the expected command.
-func hasAskUserQuestionHook(settings map[string]interface{}, expectedCommand string) bool {
-	hooks, ok := settings["hooks"].(map[string]interface{})
-	if !ok {
-		return false
+// injectSettings merges the given hooks configuration into the SessionConfig's Settings
+// so it gets passed to Claude Code via the --settings CLI flag.
+func injectSettings(config *claudecode.SessionConfig, hooks map[string]interface{}) {
+	if config.Settings == nil {
+		config.Settings = make(map[string]interface{})
 	}
-	preToolUse, ok := hooks["PreToolUse"].([]interface{})
-	if !ok {
-		return false
-	}
-	for _, entry := range preToolUse {
-		entryMap, ok := entry.(map[string]interface{})
-		if !ok {
-			continue
-		}
-		matcher, ok := entryMap["matcher"].(string)
-		if !ok || matcher != "AskUserQuestion" {
-			continue
-		}
-		// Check if the command matches
-		hooksList, ok := entryMap["hooks"].([]interface{})
-		if !ok {
-			continue
-		}
-		for _, h := range hooksList {
-			hMap, ok := h.(map[string]interface{})
-			if !ok {
-				continue
-			}
-			if cmd, ok := hMap["command"].(string); ok && cmd == expectedCommand {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// removeAskUserQuestionHook removes any existing AskUserQuestion PreToolUse hook entries.
-func removeAskUserQuestionHook(settings map[string]interface{}) {
-	hooks, ok := settings["hooks"].(map[string]interface{})
-	if !ok {
-		return
-	}
-	preToolUse, ok := hooks["PreToolUse"].([]interface{})
-	if !ok {
-		return
-	}
-	filtered := make([]interface{}, 0, len(preToolUse))
-	for _, entry := range preToolUse {
-		entryMap, ok := entry.(map[string]interface{})
-		if !ok {
-			filtered = append(filtered, entry)
-			continue
-		}
-		if matcher, ok := entryMap["matcher"].(string); ok && matcher == "AskUserQuestion" {
-			continue // skip — will be re-added with correct path
-		}
-		filtered = append(filtered, entry)
-	}
-	hooks["PreToolUse"] = filtered
+	config.Settings["hooks"] = hooks
 }
 
 // NewManager creates a new session manager with required store
@@ -624,8 +514,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 		"mcp_servers", mcpServerCount,
 		"mcp_servers_detail", mcpServersDetail)
 
-	// Ensure AskUserQuestion hook config exists in working directory
-	ensureAskUserQuestionHookConfig(claudeConfig.WorkingDir)
+	// Inject AskUserQuestion hook config via --settings flag
+	injectSettings(&claudeConfig, buildAskUserQuestionHooks())
 
 	// Set env vars for AskUserQuestion hook (and other child processes)
 	setAskUserQuestionEnvVars(&claudeConfig, m.socketPath, sessionID)
@@ -1963,8 +1853,8 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		"proxy_base_url", dbSession.ProxyBaseURL,
 		"proxy_model", dbSession.ProxyModelOverride)
 
-	// Ensure AskUserQuestion hook config exists in working directory
-	ensureAskUserQuestionHookConfig(config.WorkingDir)
+	// Inject AskUserQuestion hook config via --settings flag
+	injectSettings(&config, buildAskUserQuestionHooks())
 
 	// Set env vars for AskUserQuestion hook (and other child processes)
 	setAskUserQuestionEnvVars(&config, m.socketPath, sessionID)
@@ -2380,8 +2270,8 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 			claudeConfig.DisallowedTools = disallowedTools
 		}
 	}
-	// Ensure AskUserQuestion hook config exists in working directory
-	ensureAskUserQuestionHookConfig(claudeConfig.WorkingDir)
+	// Inject AskUserQuestion hook config via --settings flag
+	injectSettings(&claudeConfig, buildAskUserQuestionHooks())
 
 	// Set env vars for AskUserQuestion hook (and other child processes)
 	setAskUserQuestionEnvVars(&claudeConfig, m.socketPath, sessionID)
