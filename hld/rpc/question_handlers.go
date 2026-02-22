@@ -114,7 +114,10 @@ func (h *QuestionHandlers) HandleAnswerQuestion(ctx context.Context, params json
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to answer question: %w", err)
+		return &AnswerQuestionResponse{
+			Success: false,
+			Error:   err.Error(),
+		}, nil
 	}
 	return &AnswerQuestionResponse{Success: true}, nil
 }

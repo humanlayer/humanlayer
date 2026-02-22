@@ -15,6 +15,11 @@ interface HookInput {
   tool_use_id: string
 }
 
+/** Maximum time to wait for a question answer (30 minutes) */
+const QUESTION_POLL_TIMEOUT_MS = 30 * 60 * 1000
+/** Interval between polling attempts */
+const QUESTION_POLL_INTERVAL_MS = 1000
+
 export async function hookAskUserQuestionCommand(): Promise<void> {
   // Read hld session ID from env (set by hld on the Claude Code process)
   const hldSessionId = process.env.HUMANLAYER_SESSION_ID
@@ -50,7 +55,7 @@ export async function hookAskUserQuestionCommand(): Promise<void> {
       const questionId = createResponse.question_id
 
       // Poll for answer (timeout after 30 minutes)
-      const maxPollDurationMs = 30 * 60 * 1000
+      const maxPollDurationMs = QUESTION_POLL_TIMEOUT_MS
       const pollStartTime = Date.now()
 
       while (Date.now() - pollStartTime < maxPollDurationMs) {
@@ -82,7 +87,7 @@ export async function hookAskUserQuestionCommand(): Promise<void> {
           return
         }
 
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, QUESTION_POLL_INTERVAL_MS))
       }
 
       writeOutput(makeErrorOutput('Question polling timed out after 30 minutes'))
@@ -113,7 +118,7 @@ function writeOutput(output: Record<string, unknown>): void {
   process.stdout.write(JSON.stringify(output) + '\n')
 }
 
-function makeErrorOutput(reason: string) {
+function makeErrorOutput(reason: string): Record<string, unknown> {
   return {
     hookSpecificOutput: {
       hookEventName: 'PreToolUse' as const,
