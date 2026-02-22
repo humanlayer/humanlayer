@@ -78,6 +78,23 @@ export async function startClaudeApprovalsMCPServer() {
 
       const input: Record<string, unknown> = request.params.arguments?.input || {}
 
+      // AskUserQuestion is handled by its own PreToolUse hook — auto-approve here
+      // to avoid a redundant approval prompt after the user already answered.
+      if (toolName === 'AskUserQuestion') {
+        logger.info('Auto-approving AskUserQuestion (handled by PreToolUse hook)', { toolName })
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify({
+                behavior: 'allow',
+                updatedInput: input,
+              }),
+            },
+          ],
+        }
+      }
+
       // Get session ID from environment (set by daemon)
       const sessionId = process.env.HUMANLAYER_SESSION_ID
       if (!sessionId) {
