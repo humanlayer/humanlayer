@@ -8,6 +8,7 @@ import { thoughtsCommand } from './commands/thoughts.js'
 import { claudeCommand } from './commands/claude.js'
 import { joinWaitlistCommand } from './commands/joinWaitlist.js'
 import { startClaudeApprovalsMCPServer } from './mcp.js'
+import { hookAskUserQuestionCommand } from './commands/hook/askUserQuestion.js'
 import { getDefaultConfigPath } from './config.js'
 import { getInvocationName, shouldLaunchApp, getAppPath, launchApp } from './utils/invocation.js'
 
@@ -34,6 +35,13 @@ mcpCommand
   .command('claude_approvals')
   .description('Start the Claude approvals MCP server for permission requests')
   .action(startClaudeApprovalsMCPServer)
+
+const hookCommand = program.command('hook').description('Claude Code hook handlers')
+
+hookCommand
+  .command('ask-user-question')
+  .description('PreToolUse hook handler for AskUserQuestion')
+  .action(hookAskUserQuestionCommand)
 
 program
   .command('launch <query>')

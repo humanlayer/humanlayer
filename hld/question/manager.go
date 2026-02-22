@@ -5,20 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"reflect"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/humanlayer/humanlayer/hld/bus"
-	"github.com/humanlayer/humanlayer/hld/internal/toolutil"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
 type manager struct {
 	store    store.ConversationStore
 	eventBus bus.EventBus
-	mu       sync.Mutex // protects CreateQuestion's read-match-insert sequence
 }
 
 func NewManager(store store.ConversationStore, eventBus bus.EventBus) Manager {
@@ -28,7 +24,7 @@ func NewManager(store store.ConversationStore, eventBus bus.EventBus) Manager {
 // maxQuestionsJSONSize is the maximum allowed size for questions JSON payload (1MB)
 const maxQuestionsJSONSize = 1 << 20
 
-func (m *manager) CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage) (*store.Question, error) {
+func (m *manager) CreateQuestion(ctx context.Context, sessionID string, questionsJSON json.RawMessage, toolUseID string) (*store.Question, error) {
 	if len(questionsJSON) == 0 {
 		return nil, fmt.Errorf("questions_json is required")
 	}
@@ -47,72 +43,24 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 		return nil, fmt.Errorf("session not found: %s", sessionID)
 	}
 
-	// Lock to prevent concurrent CreateQuestion calls from claiming the same tool_use_id
-	m.mu.Lock()
-
-	// Look up the pending tool call to get the tool_use_id for correlation.
-	// We match by ToolInputJSON content to handle parallel tool calls correctly —
-	// each tool call has unique content, so this gives us an exact match.
-	// We use semantic JSON comparison (not string comparison) because different
-	// serializers may produce different key orderings for the same object.
-	//
-	// To handle the edge case where two identical AskUserQuestion calls arrive
-	// with the same content, we exclude tool IDs that are already claimed by
-	// existing pending questions so the second call matches a different tool call.
-	var toolUseID *string
-	pendingToolCalls, lookupErr := m.store.GetPendingToolCalls(ctx, sessionID)
-	if lookupErr != nil {
-		slog.Warn("failed to look up pending tool calls for question correlation",
-			"error", lookupErr,
-			"session_id", sessionID)
-	} else {
-		// Build set of tool_use_ids already claimed by pending questions
-		claimedToolIDs := make(map[string]bool)
-		pendingQuestions, qErr := m.store.GetPendingQuestions(ctx, sessionID)
-		if qErr != nil {
-			slog.Warn("failed to look up pending questions for dedup",
-				"error", qErr,
-				"session_id", sessionID)
-		} else {
-			for _, pq := range pendingQuestions {
-				if pq.ToolUseID != nil {
-					claimedToolIDs[*pq.ToolUseID] = true
-				}
-			}
-		}
-
-		// Pre-unmarshal questionsJSON once for comparison
-		var questionsValue interface{}
-		if err := json.Unmarshal(questionsJSON, &questionsValue); err != nil {
-			slog.Warn("failed to unmarshal questionsJSON for comparison", "error", err)
-		}
-
-		for _, tc := range pendingToolCalls {
-			if !toolutil.IsAskUserQuestionTool(tc.ToolName) {
-				continue
-			}
-			if tc.ToolID != "" && !claimedToolIDs[tc.ToolID] && jsonMatchesParsed([]byte(tc.ToolInputJSON), questionsValue) {
-				toolUseID = &tc.ToolID
-				break
-			}
-		}
+	var toolUseIDPtr *string
+	if toolUseID != "" {
+		toolUseIDPtr = &toolUseID
 	}
 
 	q := &store.Question{
 		ID:            "question-" + uuid.New().String(),
 		SessionID:     sessionID,
 		RunID:         session.RunID,
-		ToolUseID:     toolUseID,
+		ToolUseID:     toolUseIDPtr,
 		Status:        store.QuestionStatusPending,
 		QuestionsJSON: questionsJSON,
 		CreatedAt:     time.Now(),
 	}
 
 	if err := m.store.CreateQuestion(ctx, q); err != nil {
-		m.mu.Unlock()
 		return nil, fmt.Errorf("failed to store question: %w", err)
 	}
-	m.mu.Unlock()
 
 	m.publishNewQuestionEvent(q)
 
@@ -130,7 +78,7 @@ func (m *manager) CreateQuestion(ctx context.Context, sessionID string, question
 	slog.Info("created question",
 		"question_id", q.ID,
 		"session_id", sessionID,
-		"tool_use_id", toolUseID)
+		"tool_use_id", toolUseIDPtr)
 
 	return q, nil
 }
@@ -215,18 +163,6 @@ func (m *manager) updateSessionStatusToRunning(ctx context.Context, sessionID st
 	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
 		slog.Warn("failed to update session status", "error", err, "session_id", sessionID)
 	}
-}
-
-// jsonMatchesParsed compares a JSON byte slice against a pre-parsed value.
-func jsonMatchesParsed(raw []byte, parsed interface{}) bool {
-	if parsed == nil {
-		return false
-	}
-	var v interface{}
-	if err := json.Unmarshal(raw, &v); err != nil {
-		return false
-	}
-	return reflect.DeepEqual(v, parsed)
 }
 
 func (m *manager) publishNewQuestionEvent(q *store.Question) {

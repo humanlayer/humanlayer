@@ -37,10 +37,14 @@ type Manager struct {
 // Compile-time check that Manager implements SessionManager
 var _ SessionManager = (*Manager)(nil)
 
-// disableBuiltInAskUserQuestion appends "AskUserQuestion" to the DisallowedTools
-// slice so the built-in tool is replaced by our MCP-based implementation.
-func disableBuiltInAskUserQuestion(config *claudecode.SessionConfig) {
-	config.DisallowedTools = append(config.DisallowedTools, "AskUserQuestion")
+// setAskUserQuestionEnvVars sets environment variables on the Claude Code process
+// so the PreToolUse hook can connect to hld for AskUserQuestion interception.
+func setAskUserQuestionEnvVars(config *claudecode.SessionConfig, socketPath string, sessionID string) {
+	if config.Env == nil {
+		config.Env = make(map[string]string)
+	}
+	config.Env["HUMANLAYER_DAEMON_SOCKET"] = socketPath
+	config.Env["HUMANLAYER_SESSION_ID"] = sessionID
 }
 
 // NewManager creates a new session manager with required store
@@ -456,8 +460,8 @@ func (m *Manager) LaunchSession(ctx context.Context, config LaunchSessionConfig,
 		"mcp_servers", mcpServerCount,
 		"mcp_servers_detail", mcpServersDetail)
 
-	// Disable built-in AskUserQuestion - we replace it with our MCP tool
-	disableBuiltInAskUserQuestion(&claudeConfig)
+	// Set env vars for AskUserQuestion hook (and other child processes)
+	setAskUserQuestionEnvVars(&claudeConfig, m.socketPath, sessionID)
 
 	// Launch Claude session (without daemon-level settings)
 	claudeSession, err := client.Launch(claudeConfig)
@@ -1792,8 +1796,8 @@ func (m *Manager) ContinueSession(ctx context.Context, req ContinueSessionConfig
 		"proxy_base_url", dbSession.ProxyBaseURL,
 		"proxy_model", dbSession.ProxyModelOverride)
 
-	// Disable built-in AskUserQuestion - we replace it with our MCP tool
-	disableBuiltInAskUserQuestion(&config)
+	// Set env vars for AskUserQuestion hook (and other child processes)
+	setAskUserQuestionEnvVars(&config, m.socketPath, sessionID)
 
 	claudeSession, err := client.Launch(config)
 	if err != nil {
@@ -2206,8 +2210,8 @@ func (m *Manager) LaunchDraftSession(ctx context.Context, sessionID string, prom
 			claudeConfig.DisallowedTools = disallowedTools
 		}
 	}
-	// Disable built-in AskUserQuestion - we replace it with our MCP tool
-	disableBuiltInAskUserQuestion(&claudeConfig)
+	// Set env vars for AskUserQuestion hook (and other child processes)
+	setAskUserQuestionEnvVars(&claudeConfig, m.socketPath, sessionID)
 	if sess.AdditionalDirectories != "" {
 		var additionalDirs []string
 		if err := json.Unmarshal([]byte(sess.AdditionalDirectories), &additionalDirs); err == nil {

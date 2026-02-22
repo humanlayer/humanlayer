@@ -15,7 +15,7 @@ import { showUndoToast } from '@/utils/undoToast'
 import { TOAST_IDS } from '@/constants/toastIds'
 
 // Import extracted components
-import { MCP_ASK_USER_QUESTION } from '../../ConversationStream/EventContent/types'
+import { ASK_USER_QUESTION_TOOL } from '../../ConversationStream/EventContent/types'
 import { ConversationStream } from '../../ConversationStream/ConversationStream'
 import { ToolResultModal } from './ToolResultModal'
 import { TodoWidget } from './TodoWidget'
@@ -315,7 +315,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     const hasPendingApprovals = events.some(e => e.approvalStatus === ApprovalStatus.Pending)
     if (hasPendingApprovals) return 'approval' as const
     const hasPendingQuestions = events.some(
-      e => e.eventType === 'tool_call' && e.toolName === MCP_ASK_USER_QUESTION && !e.isCompleted,
+      e => e.eventType === 'tool_call' && e.toolName === ASK_USER_QUESTION_TOOL && !e.isCompleted,
     )
     if (hasPendingQuestions) return 'question' as const
     return 'approval' as const

@@ -9,5 +9,19 @@
   "enableAllProjectMcpServers": false,
   "env": {
     "MAX_THINKING_TOKENS": "32000"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "hlyr hook ask-user-question",
+            "timeout": 1800
+          }
+        ]
+      }
+    ]
   }
 }

@@ -23,6 +23,7 @@ func NewQuestionHandlers(questions question.Manager) *QuestionHandlers {
 type CreateQuestionRequest struct {
 	SessionID     string          `json:"session_id"`
 	QuestionsJSON json.RawMessage `json:"questions_json"`
+	ToolUseID     string          `json:"tool_use_id,omitempty"`
 }
 
 // CreateQuestionResponse is the response for creating a question
@@ -43,7 +44,7 @@ func (h *QuestionHandlers) HandleCreateQuestion(ctx context.Context, params json
 		return nil, fmt.Errorf("questions_json is required")
 	}
 
-	q, err := h.questions.CreateQuestion(ctx, req.SessionID, req.QuestionsJSON)
+	q, err := h.questions.CreateQuestion(ctx, req.SessionID, req.QuestionsJSON, req.ToolUseID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create question: %w", err)
 	}

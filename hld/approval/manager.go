@@ -9,7 +9,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/humanlayer/humanlayer/hld/bus"
-	"github.com/humanlayer/humanlayer/hld/internal/toolutil"
 	"github.com/humanlayer/humanlayer/hld/store"
 )
 
@@ -323,11 +322,6 @@ func (m *manager) CreateApprovalWithToolUseID(ctx context.Context, sessionID, to
 		// Regular auto-accept edits mode
 		status = store.ApprovalStatusLocalApproved
 		comment = "Auto-accepted (auto-accept mode enabled)"
-	}
-
-	if toolutil.IsAskUserQuestionTool(toolName) {
-		status = store.ApprovalStatusLocalApproved
-		comment = "Auto-accepted (question tool)"
 	}
 
 	// Create approval with tool_use_id

@@ -42,7 +42,7 @@ import { logger } from '@/lib/logging'
 import { DangerousSkipPermissionsMonitor } from '@/components/DangerousSkipPermissionsMonitor'
 import { KeyboardShortcut } from '@/components/HotkeyPanel'
 import { DvdScreensaver } from '@/components/DvdScreensaver'
-import { MCP_ASK_USER_QUESTION } from '@/components/internal/ConversationStream/EventContent/types'
+import { ASK_USER_QUESTION_TOOL } from '@/components/internal/ConversationStream/EventContent/types'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
 import { useDebugStore } from '@/stores/useDebugStore'
@@ -976,7 +976,7 @@ export function Layout() {
               const hasPendingApprovals = events.some(e => e.approvalStatus === ApprovalStatus.Pending)
               const hasPendingQuestions = events.some(
                 e =>
-                  e.eventType === 'tool_call' && e.toolName === MCP_ASK_USER_QUESTION && !e.isCompleted,
+                  e.eventType === 'tool_call' && e.toolName === ASK_USER_QUESTION_TOOL && !e.isCompleted,
               )
               if (hasPendingQuestions && !hasPendingApprovals) {
                 awaitingAnswerSessionIds.add(session.id)

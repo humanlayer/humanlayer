@@ -211,7 +211,12 @@ export class DaemonClient extends EventEmitter {
               }
             }
           } catch (err) {
-            console.error('[DaemonClient] subscribe: failed to parse daemon response:', err, 'raw:', line)
+            console.error(
+              '[DaemonClient] subscribe: failed to parse daemon response:',
+              err,
+              'raw:',
+              line,
+            )
           }
         }
       }
@@ -314,7 +319,14 @@ export class DaemonClient extends EventEmitter {
                 return
               }
             } catch (err) {
-              console.error('[DaemonClient] call: failed to parse daemon response:', err, 'method:', method, 'raw:', line)
+              console.error(
+                '[DaemonClient] call: failed to parse daemon response:',
+                err,
+                'method:',
+                method,
+                'raw:',
+                line,
+              )
             }
           }
         }
@@ -389,10 +401,15 @@ export class DaemonClient extends EventEmitter {
     }
   }
 
-  async createQuestion(sessionId: string, questionsJSON: unknown): Promise<{ question_id: string }> {
+  async createQuestion(
+    sessionId: string,
+    questionsJSON: unknown,
+    toolUseId?: string,
+  ): Promise<{ question_id: string }> {
     return this.call<{ question_id: string }>('createQuestion', {
       session_id: sessionId,
       questions_json: questionsJSON,
+      ...(toolUseId && { tool_use_id: toolUseId }),
     })
   }
 
