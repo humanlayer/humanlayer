@@ -162,9 +162,6 @@ func TestManager_ApproveToolCall(t *testing.T) {
 		assert.Equal(t, comment, event.Data["response_text"])
 	})
 
-	// Mock session status update
-	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
-
 	err := manager.ApproveToolCall(ctx, approvalID, comment)
 	require.NoError(t, err)
 }
@@ -207,9 +204,6 @@ func TestManager_DenyToolCall(t *testing.T) {
 		assert.Equal(t, false, event.Data["approved"])
 		assert.Equal(t, reason, event.Data["response_text"])
 	})
-
-	// Mock session status update
-	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).Return(nil)
 
 	err := manager.DenyToolCall(ctx, approvalID, reason)
 	require.NoError(t, err)

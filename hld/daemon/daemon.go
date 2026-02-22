@@ -218,6 +218,11 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}()
 	slog.Info("started dangerous skip permissions expiry monitor")
 
+	// Start session status coordination listener
+	if d.sessions != nil {
+		go d.sessions.ListenForPendingItemResolutions(ctx)
+	}
+
 	// Register subscription handlers
 	subscriptionHandlers := rpc.NewSubscriptionHandlers(d.eventBus)
 	d.rpcServer.SetSubscriptionHandlers(subscriptionHandlers)

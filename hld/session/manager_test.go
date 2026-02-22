@@ -1002,3 +1002,145 @@ func TestStopAllSessions_ForceKillBehavior(t *testing.T) {
 	}
 
 }
+
+func TestReconcileSessionStatus_NoPendingItems_SetsRunning(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	eventBus := bus.NewEventBus()
+
+	m := &Manager{
+		activeProcesses: make(map[string]ClaudeSession),
+		eventBus:        eventBus,
+		store:           mockStore,
+	}
+
+	ctx := context.Background()
+	sessionID := "session-1"
+
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return(nil, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, sessionID).Return(nil, nil)
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, updates store.SessionUpdate) error {
+			if updates.Status == nil {
+				t.Error("expected status to be set")
+			} else if *updates.Status != store.SessionStatusRunning {
+				t.Errorf("expected status running, got %s", *updates.Status)
+			}
+			if updates.LastActivityAt == nil {
+				t.Error("expected LastActivityAt to be set")
+			}
+			return nil
+		},
+	)
+
+	m.reconcileSessionStatus(ctx, sessionID)
+}
+
+func TestReconcileSessionStatus_PendingQuestions_StaysWaitingInput(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	eventBus := bus.NewEventBus()
+
+	m := &Manager{
+		activeProcesses: make(map[string]ClaudeSession),
+		eventBus:        eventBus,
+		store:           mockStore,
+	}
+
+	ctx := context.Background()
+	sessionID := "session-1"
+
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return([]*store.Question{
+		{ID: "q-1", SessionID: sessionID, Status: store.QuestionStatusPending},
+	}, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, sessionID).Return(nil, nil)
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, updates store.SessionUpdate) error {
+			if updates.Status != nil {
+				t.Error("should not update status when questions are pending")
+			}
+			if updates.LastActivityAt == nil {
+				t.Error("expected LastActivityAt to be set")
+			}
+			return nil
+		},
+	)
+
+	m.reconcileSessionStatus(ctx, sessionID)
+}
+
+func TestReconcileSessionStatus_PendingApprovals_StaysWaitingInput(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	eventBus := bus.NewEventBus()
+
+	m := &Manager{
+		activeProcesses: make(map[string]ClaudeSession),
+		eventBus:        eventBus,
+		store:           mockStore,
+	}
+
+	ctx := context.Background()
+	sessionID := "session-1"
+
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return(nil, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, sessionID).Return([]*store.Approval{
+		{ID: "a-1", SessionID: sessionID, Status: store.ApprovalStatusLocalPending},
+	}, nil)
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, updates store.SessionUpdate) error {
+			if updates.Status != nil {
+				t.Error("should not update status when approvals are pending")
+			}
+			if updates.LastActivityAt == nil {
+				t.Error("expected LastActivityAt to be set")
+			}
+			return nil
+		},
+	)
+
+	m.reconcileSessionStatus(ctx, sessionID)
+}
+
+func TestReconcileSessionStatus_BothPending_StaysWaitingInput(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockStore := store.NewMockConversationStore(ctrl)
+	eventBus := bus.NewEventBus()
+
+	m := &Manager{
+		activeProcesses: make(map[string]ClaudeSession),
+		eventBus:        eventBus,
+		store:           mockStore,
+	}
+
+	ctx := context.Background()
+	sessionID := "session-1"
+
+	mockStore.EXPECT().GetPendingQuestions(ctx, sessionID).Return([]*store.Question{
+		{ID: "q-1", SessionID: sessionID, Status: store.QuestionStatusPending},
+	}, nil)
+	mockStore.EXPECT().GetPendingApprovals(ctx, sessionID).Return([]*store.Approval{
+		{ID: "a-1", SessionID: sessionID, Status: store.ApprovalStatusLocalPending},
+	}, nil)
+	mockStore.EXPECT().UpdateSession(ctx, sessionID, gomock.Any()).DoAndReturn(
+		func(_ context.Context, _ string, updates store.SessionUpdate) error {
+			if updates.Status != nil {
+				t.Error("should not update status when both items are pending")
+			}
+			if updates.LastActivityAt == nil {
+				t.Error("expected LastActivityAt to be set")
+			}
+			return nil
+		},
+	)
+
+	m.reconcileSessionStatus(ctx, sessionID)
+}

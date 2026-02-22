@@ -169,13 +169,6 @@ func (m *manager) ApproveToolCall(ctx context.Context, id string, comment string
 	// Publish event
 	m.publishApprovalResolvedEvent(approval, true, comment)
 
-	// Update session status back to running
-	if err := m.updateSessionStatus(ctx, approval.SessionID, store.SessionStatusRunning); err != nil {
-		slog.Warn("failed to update session status",
-			"error", err,
-			"session_id", approval.SessionID)
-	}
-
 	slog.Info("approved tool call",
 		"approval_id", id,
 		"comment", comment)
@@ -205,13 +198,6 @@ func (m *manager) DenyToolCall(ctx context.Context, id string, reason string) er
 
 	// Publish event
 	m.publishApprovalResolvedEvent(approval, false, reason)
-
-	// Update session status back to running
-	if err := m.updateSessionStatus(ctx, approval.SessionID, store.SessionStatusRunning); err != nil {
-		slog.Warn("failed to update session status",
-			"error", err,
-			"session_id", approval.SessionID)
-	}
 
 	slog.Info("denied tool call",
 		"approval_id", id,

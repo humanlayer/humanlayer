@@ -157,6 +157,11 @@ type SessionManager interface {
 
 	// GetClaudeVersion returns the Claude binary version if available
 	GetClaudeVersion() (string, error)
+
+	// ListenForPendingItemResolutions subscribes to approval and question
+	// resolution events and transitions the session to "running" only when
+	// no other pending items remain.
+	ListenForPendingItemResolutions(ctx context.Context)
 }
 
 // ReadToolResult represents the JSON structure of a Read tool result

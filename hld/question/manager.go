@@ -107,7 +107,6 @@ func (m *manager) AnswerQuestion(ctx context.Context, id string, answersJSON jso
 	}
 
 	m.publishQuestionAnsweredEvent(q)
-	m.updateSessionStatusToRunning(ctx, q.SessionID)
 
 	return nil
 }
@@ -124,45 +123,8 @@ func (m *manager) DeclineQuestion(ctx context.Context, id string) error {
 	}
 
 	m.publishQuestionAnsweredEvent(q)
-	m.updateSessionStatusToRunning(ctx, q.SessionID)
 
 	return nil
-}
-
-func (m *manager) updateSessionStatusToRunning(ctx context.Context, sessionID string) {
-	// Check if there are other pending questions or approvals before
-	// transitioning to running — another pending item should keep the
-	// session in waiting_input.
-	pendingQuestions, qErr := m.store.GetPendingQuestions(ctx, sessionID)
-	if qErr != nil {
-		slog.Warn("failed to check pending questions", "error", qErr, "session_id", sessionID)
-	}
-	pendingApprovals, aErr := m.store.GetPendingApprovals(ctx, sessionID)
-	if aErr != nil {
-		slog.Warn("failed to check pending approvals", "error", aErr, "session_id", sessionID)
-	}
-
-	if len(pendingQuestions) > 0 || len(pendingApprovals) > 0 {
-		// Other items still pending — keep status as waiting_input, just update activity
-		now := time.Now()
-		updates := store.SessionUpdate{
-			LastActivityAt: &now,
-		}
-		if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
-			slog.Warn("failed to update session activity", "error", err, "session_id", sessionID)
-		}
-		return
-	}
-
-	status := store.SessionStatusRunning
-	now := time.Now()
-	updates := store.SessionUpdate{
-		Status:         &status,
-		LastActivityAt: &now,
-	}
-	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
-		slog.Warn("failed to update session status", "error", err, "session_id", sessionID)
-	}
 }
 
 func (m *manager) publishNewQuestionEvent(q *store.Question) {

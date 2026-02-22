@@ -73,6 +73,10 @@ func resolveHlyrPath() string {
 	return cmd
 }
 
+// askUserQuestionHookTimeoutSec is the timeout for the AskUserQuestion
+// PreToolUse hook (30 minutes).
+const askUserQuestionHookTimeoutSec = 1800
+
 // buildAskUserQuestionHooks returns the hooks config for the AskUserQuestion PreToolUse hook.
 func buildAskUserQuestionHooks() map[string]interface{} {
 	hlyrPath := resolveHlyrPath()
@@ -84,7 +88,7 @@ func buildAskUserQuestionHooks() map[string]interface{} {
 					map[string]interface{}{
 						"type":    "command",
 						"command": hlyrPath + " hook ask-user-question",
-						"timeout": 1800,
+						"timeout": askUserQuestionHookTimeoutSec,
 					},
 				},
 			},
@@ -166,6 +170,62 @@ func (m *Manager) SetHTTPPort(port int) {
 	defer m.mu.Unlock()
 	m.httpPort = port
 	slog.Debug("HTTP port set for proxy endpoint", "port", port)
+}
+
+// ListenForPendingItemResolutions subscribes to approval and question
+// resolution events and transitions the session to "running" only when
+// no other pending items remain.
+func (m *Manager) ListenForPendingItemResolutions(ctx context.Context) {
+	sub := m.eventBus.Subscribe(ctx, bus.EventFilter{
+		Types: []bus.EventType{bus.EventApprovalResolved, bus.EventQuestionAnswered},
+	})
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event, ok := <-sub.Channel:
+			if !ok {
+				return
+			}
+			sessionID, _ := event.Data["session_id"].(string)
+			if sessionID == "" {
+				continue
+			}
+			m.reconcileSessionStatus(ctx, sessionID)
+		}
+	}
+}
+
+func (m *Manager) reconcileSessionStatus(ctx context.Context, sessionID string) {
+	pendingQuestions, qErr := m.store.GetPendingQuestions(ctx, sessionID)
+	if qErr != nil {
+		slog.Warn("failed to check pending questions", "error", qErr, "session_id", sessionID)
+	}
+	pendingApprovals, aErr := m.store.GetPendingApprovals(ctx, sessionID)
+	if aErr != nil {
+		slog.Warn("failed to check pending approvals", "error", aErr, "session_id", sessionID)
+	}
+
+	now := time.Now()
+	if len(pendingQuestions) > 0 || len(pendingApprovals) > 0 {
+		// Still pending items — keep waiting_input, just update activity
+		updates := store.SessionUpdate{LastActivityAt: &now}
+		if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
+			slog.Warn("failed to update session activity", "error", err, "session_id", sessionID)
+		}
+		return
+	}
+
+	// No pending items — transition to running
+	status := store.SessionStatusRunning
+	updates := store.SessionUpdate{
+		Status:         &status,
+		LastActivityAt: &now,
+	}
+	if err := m.store.UpdateSession(ctx, sessionID, updates); err != nil {
+		slog.Warn("failed to update session status to running", "error", err, "session_id", sessionID)
+	}
 }
 
 // initializeClaudeClient attempts to create or reinitialize the Claude client
