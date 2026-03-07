@@ -16,6 +16,25 @@ import (
 	"time"
 )
 
+// antiNestingEnvVar is the environment variable that Claude Code sets as an
+// anti-nesting guard to prevent running Claude inside another Claude session.
+// We strip this when spawning claude subprocesses so that tools like Riptide
+// work correctly when launched from a Claude Code terminal.
+const antiNestingEnvVar = "CLAUDECODE"
+
+// filteredEnviron returns os.Environ() with the anti-nesting guard variable removed.
+func filteredEnviron() []string {
+	env := os.Environ()
+	filtered := make([]string, 0, len(env))
+	prefix := antiNestingEnvVar + "="
+	for _, e := range env {
+		if !strings.HasPrefix(e, prefix) {
+			filtered = append(filtered, e)
+		}
+	}
+	return filtered
+}
+
 // isClosedPipeError checks if an error is due to a closed pipe (expected when process exits)
 func isClosedPipeError(err error) bool {
 	if err == nil {
@@ -124,6 +143,7 @@ func (c *Client) GetVersion() (string, error) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, c.claudePath, "--version")
+	cmd.Env = filteredEnviron()
 	output, err := cmd.Output()
 	if err != nil {
 		// Check if it was a timeout
@@ -320,12 +340,10 @@ func (c *Client) Launch(config SessionConfig) (*Session, error) {
 	log.Printf("Executing Claude command: %s %v", c.claudePath, args)
 	cmd := exec.Command(c.claudePath, args...)
 
-	// Set environment variables if specified
-	if len(config.Env) > 0 {
-		cmd.Env = os.Environ() // Start with current environment
-		for key, value := range config.Env {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
-		}
+	// Set environment variables, always starting from a filtered base environment
+	cmd.Env = filteredEnviron()
+	for key, value := range config.Env {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
 	}
 
 	// Set working directory if specified
