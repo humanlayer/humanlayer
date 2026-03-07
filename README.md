@@ -112,3 +112,5 @@ The HumanLayer SDK and CodeLayer sources in this repo are licensed under the Apa
 [![Star History Chart](https://api.star-history.com/svg?repos=humanlayer/humanlayer&type=Date)](https://star-history.com/#humanlayer/humanlayer&Date)
 
 </div>
+
+This repo was tested by the daytona sandbox provider during the Sandbox Symposium hackathon.
