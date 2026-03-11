@@ -77,6 +77,31 @@ describe('AppStore - Archive Session Focus Clearing', () => {
     })
   })
 
+  test('should remove archived session from selectedSessions', async () => {
+    const session = createMockSession({
+      id: 'session-1',
+      archived: false,
+    })
+    const otherSession = createMockSession({
+      id: 'session-2',
+      archived: false,
+    })
+
+    useStore.getState().initSessions([session, otherSession])
+    useStore.getState().toggleSessionSelection(session.id)
+    useStore.getState().toggleSessionSelection(otherSession.id)
+
+    expect(useStore.getState().selectedSessions).toEqual(new Set(['session-1', 'session-2']))
+
+    await useStore.getState().archiveSession(session.id, true)
+
+    expect(useStore.getState().selectedSessions).toEqual(new Set(['session-2']))
+    expect(mockArchiveSession).toHaveBeenCalledWith({
+      session_id: 'session-1',
+      archived: true,
+    })
+  })
+
   test('should NOT clear focusedSession when unarchiving', async () => {
     const session = createMockSession({
       id: 'session-1',

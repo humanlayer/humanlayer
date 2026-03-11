@@ -459,6 +459,14 @@ export const useStore = create<StoreState>((set, get) => {
         // Update local state immediately for better UX
         get().updateSession(sessionId, { archived })
 
+        if (archived) {
+          set(state => ({
+            selectedSessions: new Set(
+              Array.from(state.selectedSessions).filter(id => id !== sessionId),
+            ),
+          }))
+        }
+
         // Clear focus if archiving and in Normal view
         const state = get()
         if (
