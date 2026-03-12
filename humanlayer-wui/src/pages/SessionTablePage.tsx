@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '@/AppStore'
-import { ViewMode } from '@/lib/daemon/types'
+import { SessionStatus, type Session, ViewMode } from '@/lib/daemon/types'
 import SessionTable from '@/components/internal/SessionTable'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useKeyboardNavigationProtection } from '@/hooks'
@@ -127,6 +127,20 @@ export function SessionTablePage() {
       navigate(`/sessions/${session.id}`)
     }
   }
+
+  const handleOpenLatestChildSession = useCallback(
+    (session: Session) => {
+      const latestChildSession = getLatestChildSession(sessions, session.id)
+
+      if (latestChildSession) {
+        handleActivateSession(latestChildSession)
+        return
+      }
+
+      handleActivateSession(session)
+    },
+    [sessions],
+  )
 
   // Custom navigation functions that work with sessions
   const focusNextSession = () => {
@@ -385,6 +399,7 @@ export function SessionTablePage() {
             }
           }}
           handleActivateSession={handleActivateSession}
+          handleOpenLatestChildSession={handleOpenLatestChildSession}
           focusedSession={focusedSession}
           handleFocusNextSession={focusNextSession}
           handleFocusPreviousSession={focusPreviousSession}
@@ -411,4 +426,32 @@ export function SessionTablePage() {
       </HotkeyScopeBoundary>
     </div>
   )
+}
+
+function getSessionTimestamp(session: Session) {
+  return new Date(session.lastActivityAt ?? session.createdAt).getTime()
+}
+
+export function getLatestChildSession(sessions: Session[], parentSessionId: string) {
+  const childSessions = sessions.filter(session => session.parentSessionId === parentSessionId)
+
+  if (childSessions.length === 0) {
+    return null
+  }
+
+  const activeStatuses = new Set<SessionStatus>([
+    SessionStatus.Running,
+    SessionStatus.WaitingInput,
+    SessionStatus.Starting,
+  ])
+
+  const activeChild = childSessions
+    .filter(session => activeStatuses.has(session.status))
+    .sort((left, right) => getSessionTimestamp(right) - getSessionTimestamp(left))[0]
+
+  if (activeChild) {
+    return activeChild
+  }
+
+  return childSessions.sort((left, right) => getSessionTimestamp(right) - getSessionTimestamp(left))[0]
 }

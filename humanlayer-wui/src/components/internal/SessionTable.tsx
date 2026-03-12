@@ -38,6 +38,7 @@ interface SessionTableProps {
   handleFocusNextSession?: () => void
   handleFocusPreviousSession?: () => void
   handleActivateSession?: (session: Session) => void
+  handleOpenLatestChildSession?: (session: Session) => void
   focusedSession: Session | null
   searchText?: string
   matchedSessions?: Map<string, any>
@@ -54,6 +55,7 @@ function SessionTableInner({
   handleFocusNextSession,
   handleFocusPreviousSession,
   handleActivateSession,
+  handleOpenLatestChildSession,
   focusedSession,
   searchText,
   matchedSessions,
@@ -371,6 +373,27 @@ function SessionTableInner({
       }
     },
     { scopes: [tableScope], enabled: !isSessionLauncherOpen },
+  )
+
+  useHotkeys(
+    'meta+enter, ctrl+enter',
+    () => {
+      if (!focusedSession) {
+        return
+      }
+
+      if (handleOpenLatestChildSession) {
+        handleOpenLatestChildSession(focusedSession)
+        return
+      }
+
+      handleActivateSession?.(focusedSession)
+    },
+    {
+      scopes: [tableScope],
+      enabled: !isSessionLauncherOpen,
+      preventDefault: true,
+    },
   )
 
   // Track if g>e was recently pressed to prevent 'e' from firing
