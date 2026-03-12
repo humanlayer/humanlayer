@@ -15,7 +15,7 @@ import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { useLocalStorage } from '@/hooks/useLocalStorage'
 import { useRecentPaths } from '@/hooks/useRecentPaths'
 import { daemonClient } from '@/lib/daemon'
-import { type Session, ViewMode } from '@/lib/daemon/types'
+import { type Session, SessionStatus, ViewMode } from '@/lib/daemon/types'
 import { logger } from '@/lib/logging'
 import { formatError } from '@/utils/errors'
 import { DangerouslySkipPermissionsDialog } from '../DangerouslySkipPermissionsDialog'
@@ -33,6 +33,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const draftInputRef = useRef<{ focus: () => void; blur?: () => void }>(null)
   const { trackEvent } = usePostHogTracking()
 
   // Core Form State
@@ -139,11 +140,21 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
       setSessionId(draftId)
     }
 
-    // Always focus title input on mount
+    const shouldFocusDraftInput =
+      !session ||
+      (session.status === SessionStatus.Draft &&
+        !(session.title ?? session.summary ?? '').trim() &&
+        !session.editorState)
+
+    if (shouldFocusDraftInput && draftInputRef.current) {
+      draftInputRef.current.focus()
+      return
+    }
+
     if (titleInputRef.current) {
       titleInputRef.current.focus()
     }
-  }, []) // Run only once on mount
+  }, [searchParams, session]) // Run on mount for the current draft
 
   // Load localStorage values once they're ready
   useEffect(() => {
@@ -822,6 +833,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
 
           {/* Draft Launcher Input */}
           <DraftLauncherInput
+            ref={draftInputRef}
             session={displaySession}
             workingDirectoryRef={workingDirectoryRef}
             onLaunchDraft={handleLaunchDraft}
