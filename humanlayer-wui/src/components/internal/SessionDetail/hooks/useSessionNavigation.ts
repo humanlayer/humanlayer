@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { ConversationEvent, ConversationEventType } from '@/lib/daemon/types'
 import { HotkeyScope } from '@/hooks/hotkeys/scopes'
@@ -308,29 +308,81 @@ export function useSessionNavigation({
     { enabled: !expandedToolResult && !disabled, scopes: [scope] },
   )
 
-  // U key to jump to most recent user message
+  // Build list of user message event IDs (chronological order) for u/U cycling
+  const userMessageIds = useMemo(
+    () =>
+      events
+        .filter(e => e.eventType === ConversationEventType.Message && e.role === 'user')
+        .map(e => e.id),
+    [events],
+  )
+
+  // Index into userMessageIds array for u/U cycling. null = not in cycle mode.
+  const userMessageCycleIndex = useRef<number | null>(null)
+
+  // Reset cycle when focus changes externally (j/k, mouse, gg/G)
+  const lastCycleFocusId = useRef<number | null>(null)
+  useEffect(() => {
+    if (focusedEventId !== lastCycleFocusId.current) {
+      userMessageCycleIndex.current = null
+      lastCycleFocusId.current = null
+    }
+  }, [focusedEventId])
+
+  const jumpToUserMessage = useCallback(
+    (index: number) => {
+      const eventId = userMessageIds[index]
+      if (eventId == null) return
+
+      userMessageCycleIndex.current = index
+      lastCycleFocusId.current = eventId
+      setFocusedEventId(eventId)
+      setFocusSource('keyboard')
+
+      setTimeout(() => {
+        const element = document.querySelector(`[data-event-id="${eventId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 0)
+    },
+    [userMessageIds, setFocusedEventId, setFocusSource],
+  )
+
+  // U key - jump to previous (older) user message
   useHotkeys(
     'u',
     () => {
+      if (userMessageIds.length === 0) return
       startKeyboardNavigation?.()
 
-      // Find the most recent user message (search from end)
-      for (let i = events.length - 1; i >= 0; i--) {
-        const event = events[i]
-        if (event.eventType === ConversationEventType.Message && event.role === 'user') {
-          setFocusedEventId(event.id)
-          setFocusSource('keyboard')
-
-          // Scroll to the message
-          setTimeout(() => {
-            const element = document.querySelector(`[data-event-id="${event.id}"]`)
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            }
-          }, 0)
-          break
-        }
+      if (userMessageCycleIndex.current === null) {
+        // First press: jump to most recent user message
+        jumpToUserMessage(userMessageIds.length - 1)
+      } else if (userMessageCycleIndex.current > 0) {
+        // Subsequent presses: move to older message (stop at boundary)
+        jumpToUserMessage(userMessageCycleIndex.current - 1)
       }
+      // At index 0 (oldest): do nothing
+    },
+    { enabled: !disabled, scopes: [scope] },
+  )
+
+  // Shift+U key - jump to next (newer) user message
+  useHotkeys(
+    'shift+u',
+    () => {
+      if (userMessageIds.length === 0) return
+      startKeyboardNavigation?.()
+
+      if (userMessageCycleIndex.current === null) {
+        // If not in cycle mode, start at most recent (same as u)
+        jumpToUserMessage(userMessageIds.length - 1)
+      } else if (userMessageCycleIndex.current < userMessageIds.length - 1) {
+        // Move to newer message (stop at boundary)
+        jumpToUserMessage(userMessageCycleIndex.current + 1)
+      }
+      // At last index (newest): do nothing
     },
     { enabled: !disabled, scopes: [scope] },
   )
