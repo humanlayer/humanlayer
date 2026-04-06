@@ -16,7 +16,7 @@ Use the following information to understand how to create your document:
         - ENG-XXXX is the ticket number (replace with `general` if no ticket)
         - ENG-ZZZZ is the ticket number (omit if no ticket)
         - description is a brief kebab-case description
-    - Get current git info: `git rev-parse --short HEAD`, `git branch --show-current`
+    - Get current git info running these commands: `git rev-parse --short HEAD` (commit), `git branch --show-current` (branch), `git config user.name` (researcher), `basename $(git rev-parse --show-toplevel)` (repo name), `date -u +"%Y-%m-%dT%H:%M:%S%z"` (timestamp)
     - Examples:
         - With ticket: `2025-01-08_13-55-22_ENG-2166_create-context-compaction.md`
         - Without ticket: `2025-01-08_13-55-22_create-context-compaction.md`

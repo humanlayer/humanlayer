@@ -83,7 +83,7 @@ Then wait for the user's research query.
    - Answer the user's specific questions with concrete evidence
 
 5. **Gather metadata for the research document:**
-   - Get current git info: `git rev-parse --short HEAD`, `git branch --show-current`
+   - Get current git info running these commands: `git rev-parse --short HEAD` (commit), `git branch --show-current` (branch), `git config user.name` (researcher), `basename $(git rev-parse --show-toplevel)` (repo name), `date -u +"%Y-%m-%dT%H:%M:%S%z"` (timestamp)
    - Filename: `thoughts/research/YYYY-MM-DD-ENG-XXXX-description.md`
      - Format: `YYYY-MM-DD-ENG-XXXX-description.md` where:
        - YYYY-MM-DD is today's date
