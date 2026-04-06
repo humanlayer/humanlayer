@@ -55,9 +55,9 @@ Then wait for the user's research query.
    - Use the **web-search-researcher** agent for external documentation and resources
    - IF you use web-research agents, instruct them to return LINKS with their findings, and please INCLUDE those links in your final report
 
-   **For Linear tickets (if relevant):**
-   - Use the **linear-ticket-reader** agent to get full details of a specific ticket
-   - Use the **linear-searcher** agent to find related tickets or historical context
+   **For local tickets (if relevant):**
+   - Use the **ticket-reader** agent to get full details of a specific ticket
+   - Use the **ticket-searcher** agent to find related tickets or historical context
 
    The key is to use these agents intelligently:
    - Start with locator agents to find what exists
