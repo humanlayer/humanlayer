@@ -47,7 +47,6 @@ think deeply about the findings
 3a. summarize key findings and technical decisions
 3b. identify potential implementation approaches
 3c. note any risks or concerns discovered
-3d. run `humanlayer thoughts sync` to save the research
 
 4. update the ticket:
 4a. attach the research document to the ticket using the MCP tools with proper link formatting
