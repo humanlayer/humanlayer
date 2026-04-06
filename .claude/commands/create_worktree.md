@@ -1,41 +1,54 @@
-
 ---
-description: Create worktree and launch implementation session for a plan
+description: Create a git worktree and prepare an implementation session for a plan
 ---
 
-2. set up worktree for implementation:
-2a. read `hack/create_worktree.sh` and create a new worktree with the Linear branch name: `./hack/create_worktree.sh ENG-XXXX BRANCH_NAME`
+# Create Worktree
 
-3. determine required data:
+You are tasked with creating a git worktree for isolated implementation of a plan.
 
-branch name
-path to plan file (use relative path only)
-launch prompt
-command to run
+## Steps
 
-**IMPORTANT PATH USAGE:**
-- The thoughts/ directory is synced between the main repo and worktrees
-- Always use ONLY the relative path starting with `thoughts/shared/...` without any directory prefix
-- Example: `thoughts/shared/plans/fix-mcp-keepalive-proper.md` (not the full absolute path)
-- This works because thoughts are synced and accessible from the worktree
+1. **Ask for required information** (if not already provided):
+   - Path to the plan file (e.g. `thoughts/plans/2025-01-08-description.md`)
+   - Branch name for the implementation (e.g. `feature/short-description`)
 
-3a. confirm with the user by sending a message to the Human
+2. **Read the plan file** to understand the scope.
 
-```
-based on the input, I plan to create a worktree with the following details:
+3. **Determine the worktree path:**
+   - Use `~/wt/BRANCH_NAME` as the default location (e.g. `~/wt/feature-short-description`)
 
-worktree path: ~/wt/humanlayer/ENG-XXXX
-branch name: BRANCH_NAME
-path to plan file: $FILEPATH
-launch prompt:
+4. **Confirm with the user before creating:**
+   ```
+   Based on the input, I plan to create a worktree with the following details:
 
-    /implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link
+   Worktree path: ~/wt/BRANCH_NAME
+   Branch name:   BRANCH_NAME
+   Plan file:     thoughts/plans/YYYY-MM-DD-description.md
 
-command to run:
+   Command to run:
+     git worktree add ~/wt/BRANCH_NAME -b BRANCH_NAME
+   ```
 
-    humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"
-```
+5. **Create the worktree** after user confirmation:
+   ```bash
+   git worktree add ~/wt/BRANCH_NAME -b BRANCH_NAME
+   ```
 
-incorporate any user feedback then:
+6. **Provide next steps** to the user:
+   ```
+   Worktree created at ~/wt/BRANCH_NAME
 
-4. launch implementation session: `humanlayer launch --model opus -w ~/wt/humanlayer/ENG-XXXX "/implement_plan at $FILEPATH and when you are done implementing and all tests pass, read ./claude/commands/commit.md and create a commit, then read ./claude/commands/describe_pr.md and create a PR, then add a comment to the Linear ticket with the PR link"`
+   To start implementation:
+   1. Open a new Claude Code session in the worktree:
+        cd ~/wt/BRANCH_NAME && claude
+   2. In the new session, run:
+        /implement_plan at thoughts/plans/YYYY-MM-DD-description.md
+   3. When done: /commit then /describe_pr
+   ```
+
+## Important Notes
+
+- Always confirm with the user before running git commands
+- Use only relative paths starting with `thoughts/` when referencing plan files — worktrees share the same `thoughts/` directory
+- Worktrees share the same git history — commits in the worktree are immediately visible in the main repo
+- To clean up after merging: `git worktree remove ~/wt/BRANCH_NAME`
