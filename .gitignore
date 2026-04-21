@@ -1,5 +1,8 @@
 docs/source
 **/.env
+thoughts/
+tss
+tsg
 humanlayer-tui/humanlayer-tui
 claude_output.jsonl
 

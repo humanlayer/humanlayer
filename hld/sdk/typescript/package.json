@@ -20,5 +20,8 @@
     "@types/node": "^20.0.0",
     "@types/node-fetch": "^2.6.12",
     "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "axios": "1.10.0"
   }
 }

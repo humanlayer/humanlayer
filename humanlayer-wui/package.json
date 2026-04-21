@@ -104,5 +104,8 @@
   },
   "trustedDependencies": [
     "@tailwindcss/oxide"
-  ]
+  ],
+  "overrides": {
+    "axios": "1.11.0"
+  }
 }

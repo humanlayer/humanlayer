@@ -1,4 +1,8 @@
 {
+  "fileSuggestion": {
+    "type": "command",
+    "command": ".claude/file-suggestions.sh"
+  },
   "permissions": {
     "allow": [
       "Bash(./hack/spec_metadata.sh)",
