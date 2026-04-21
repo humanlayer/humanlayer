@@ -3,6 +3,7 @@ import { BashToolCallContentProps } from './types'
 import { StatusBadge } from './StatusBadge'
 import { getApprovalStatusColor } from './utils/formatters'
 import { ApprovalStatus } from '@humanlayer/hld-sdk'
+import { HighlightText } from '@/components/HighlightText'
 
 export function BashToolCallContent({
   toolInput,
@@ -10,6 +11,8 @@ export function BashToolCallContent({
   toolResultContent,
   isFocused,
   isGroupItem,
+  searchQuery,
+  isCurrentSearchMatch,
 }: BashToolCallContentProps) {
   const formatToolResult = (content: string) => {
     const lines = content.split('\n').filter(l => l.trim())
@@ -37,11 +40,23 @@ export function BashToolCallContent({
           <div className="flex items-baseline gap-2">
             <span className={`font-semibold ${statusColor || ''}`}>Bash</span>
             {toolInput.description && (
-              <span className="text-sm text-muted-foreground">{toolInput.description}</span>
+              <span className="text-sm text-muted-foreground">
+                <HighlightText
+                  text={toolInput.description}
+                  query={searchQuery}
+                  isCurrentMatch={isCurrentSearchMatch}
+                />
+              </span>
             )}
           </div>
           <div className="mt-1">
-            <CommandToken>{toolInput.command}</CommandToken>
+            <CommandToken>
+              <HighlightText
+                text={toolInput.command}
+                query={searchQuery}
+                isCurrentMatch={isCurrentSearchMatch}
+              />
+            </CommandToken>
           </div>
         </div>
         <div className="ml-4">

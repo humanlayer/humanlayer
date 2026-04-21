@@ -6,6 +6,7 @@ import { DiffViewToggle } from './DiffViewToggle'
 import { formatToolResultPreview, detectToolError, getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
 import { ApprovalStatus } from '@humanlayer/hld-sdk'
+import { HighlightText } from '@/components/HighlightText'
 
 export interface EditToolInput {
   file_path: string
@@ -21,6 +22,8 @@ export function EditToolCallContent({
   toolResultContent,
   isFocused,
   isGroupItem,
+  searchQuery,
+  isCurrentSearchMatch,
 }: ToolCallContentProps<EditToolInput>) {
   const [isSplitView, setIsSplitView] = useState(false)
   const isDenied = approvalStatus === ApprovalStatus.Denied
@@ -43,7 +46,15 @@ export function EditToolCallContent({
       <ToolHeader
         name="Edit"
         description={toolInput.replace_all ? 'Replace all occurrences' : undefined}
-        primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
+        primaryParam={
+          <span className="font-mono text-sm">
+            <HighlightText
+              text={toolInput.file_path}
+              query={searchQuery}
+              isCurrentMatch={isCurrentSearchMatch}
+            />
+          </span>
+        }
         nameColor={statusColor}
         status={
           <div className="flex items-center gap-2">

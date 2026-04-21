@@ -67,6 +67,11 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   const isEditingSessionTitle = useStore(state => state.isEditingSessionTitle)
   const setIsEditingSessionTitle = useStore(state => state.setIsEditingSessionTitle)
 
+  const conversationSearchOpen = useStore(state => state.conversationSearch.isOpen)
+  const openConversationSearch = useStore(state => state.openConversationSearch)
+  const closeConversationSearch = useStore(state => state.closeConversationSearch)
+  const cycleConversationSearchMatch = useStore(state => state.cycleConversationSearchMatch)
+
   // Keyboard navigation protection
   const { shouldIgnoreMouseEvent, startKeyboardNavigation } = useKeyboardNavigationProtection()
 
@@ -347,6 +352,16 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         return
       }
 
+      // If conversation search is open and its input is not focused, close the search bar.
+      // (When the input is focused, the input's own onKeyDown handles Escape to blur.)
+      if (conversationSearchOpen) {
+        const activeEl = document.activeElement as HTMLElement | null
+        if (activeEl?.tagName !== 'INPUT') {
+          closeConversationSearch()
+          return
+        }
+      }
+
       // Check for denying state early - whether editor is focused or not
       const isDenying = approvals.denyingApprovalId !== null
 
@@ -401,6 +416,8 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
       navigation.setFocusedEventId,
       onClose,
       responseEditor,
+      conversationSearchOpen,
+      closeConversationSearch,
     ],
   )
 
@@ -763,6 +780,55 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
     },
     [session.workingDir],
   )
+
+  // Open conversation search
+  useHotkeys(
+    '/',
+    e => {
+      e.preventDefault()
+      openConversationSearch()
+    },
+    {
+      scopes: [detailScope],
+      enabled: !expandedToolResult && !forkViewOpen,
+      preventDefault: true,
+    },
+    [openConversationSearch, expandedToolResult, forkViewOpen],
+  )
+
+  // Cycle conversation search matches with n / N (only when input is blurred)
+  useHotkeys(
+    'n',
+    () => {
+      cycleConversationSearchMatch('next')
+    },
+    {
+      scopes: [detailScope],
+      enabled: conversationSearchOpen && !expandedToolResult,
+    },
+    [conversationSearchOpen, expandedToolResult, cycleConversationSearchMatch],
+  )
+
+  useHotkeys(
+    'shift+n',
+    () => {
+      cycleConversationSearchMatch('prev')
+    },
+    {
+      scopes: [detailScope],
+      enabled: conversationSearchOpen && !expandedToolResult,
+    },
+    [conversationSearchOpen, expandedToolResult, cycleConversationSearchMatch],
+  )
+
+  // Close conversation search when navigating away or switching sessions
+  useEffect(() => {
+    return () => {
+      if (useStore.getState().conversationSearch.isOpen) {
+        closeConversationSearch()
+      }
+    }
+  }, [session.id, closeConversationSearch])
 
   // Rename session hotkey
   useHotkeys(

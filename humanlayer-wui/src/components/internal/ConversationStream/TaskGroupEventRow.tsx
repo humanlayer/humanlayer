@@ -15,6 +15,9 @@ interface TaskGroupEventRowProps extends Omit<ConversationEventRowProps, 'event'
   onToggle: () => void
   toolResultsByKey?: Record<string, ConversationEvent>
   focusedEventId?: number | null
+  taskGroupMatchCount?: number
+  searchMatchesByEventId?: Map<number, unknown>
+  currentSearchEventId?: number
 }
 
 function TaskGroupEventRowInner({
@@ -34,6 +37,12 @@ function TaskGroupEventRowInner({
   denyingApprovalId,
   setDenyingApprovalId,
   onCancelDeny,
+  searchQuery,
+  taskGroupMatchCount,
+  searchMatchesByEventId,
+  currentSearchEventId,
+  isSearchMatch,
+  isCurrentSearchMatch,
   ...props
 }: TaskGroupEventRowProps) {
   const { parentTask, toolCallCount, latestEvent, hasPendingApproval, subTaskEvents } = group
@@ -56,6 +65,12 @@ function TaskGroupEventRowInner({
     }
   } else {
     outerContainerClasses.push('border-l-transparent')
+  }
+
+  if (isCurrentSearchMatch) {
+    outerContainerClasses.push('ring-2 ring-accent/60 bg-accent/15')
+  } else if (isSearchMatch) {
+    outerContainerClasses.push('bg-yellow-500/5')
   }
 
   if (!isLast) {
@@ -111,6 +126,12 @@ function TaskGroupEventRowInner({
             {!hasPendingApproval && !isCompleted && session.id === group.parentTask.sessionId && (
               <StatusBadge status={isSessionInterrupted ? 'interrupted' : 'groupRunning'} />
             )}
+
+            {!isExpanded && taskGroupMatchCount && taskGroupMatchCount > 0 ? (
+              <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 rounded">
+                {taskGroupMatchCount} {taskGroupMatchCount === 1 ? 'match' : 'matches'}
+              </span>
+            ) : null}
           </div>
 
           {/* Preview when collapsed */}
@@ -161,6 +182,9 @@ function TaskGroupEventRowInner({
                     onCancelDeny={onCancelDeny}
                     isGroupItem={true}
                     sessionId={session.id}
+                    searchQuery={searchQuery}
+                    isSearchMatch={searchMatchesByEventId?.has(subEvent.id) ?? false}
+                    isCurrentSearchMatch={currentSearchEventId === subEvent.id}
                   />
                 </div>
               )

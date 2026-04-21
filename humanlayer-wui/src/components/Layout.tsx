@@ -45,6 +45,7 @@ import { DvdScreensaver } from '@/components/DvdScreensaver'
 import { MCP_ASK_USER_QUESTION } from '@/components/internal/ConversationStream/EventContent/types'
 import { TestErrorTrigger } from '@/components/TestErrorTrigger'
 import { CodeLayerToaster } from '@/components/internal/CodeLayerToaster'
+import { ConversationSearchBar } from '@/components/ConversationSearchBar'
 import { useDebugStore } from '@/stores/useDebugStore'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 import { usePostHogTracking } from '@/hooks/usePostHogTracking'
@@ -1078,6 +1079,7 @@ export function Layout() {
           <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             humanlayer
           </div>
+          <ConversationSearchBar />
           {connected && healthStatus === 'degraded' && (
             <Button
               onClick={() => setSettingsDialogOpen(true)}

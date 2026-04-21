@@ -22,6 +22,7 @@ import lua from 'react-syntax-highlighter/dist/cjs/languages/prism/lua'
 import clojure from 'react-syntax-highlighter/dist/cjs/languages/prism/clojure'
 import zig from 'react-syntax-highlighter/dist/cjs/languages/prism/zig'
 import { CommandToken } from '../CommandToken'
+import { HighlightText } from '@/components/HighlightText'
 
 // Register languages
 SyntaxHighlighter.registerLanguage('json', json)
@@ -47,9 +48,12 @@ interface MarkdownRendererProps {
   content: string
   className?: string
   sanitize?: boolean
+  searchQuery?: string
+  isCurrentSearchMatch?: boolean
 }
 
-const MarkdownRendererInner = memo(({ content, className = '' }: MarkdownRendererProps) => {
+const MarkdownRendererInner = memo(
+  ({ content, className = '', searchQuery, isCurrentSearchMatch }: MarkdownRendererProps) => {
   const [copiedBlocks, setCopiedBlocks] = React.useState<Set<string>>(new Set())
 
   const handleCopy = useCallback(async (code: string, id: string) => {
@@ -177,8 +181,22 @@ const MarkdownRendererInner = memo(({ content, className = '' }: MarkdownRendere
           </a>
         )
       },
+      ...(searchQuery
+        ? {
+            text({ children }: { children?: React.ReactNode }) {
+              if (typeof children !== 'string') return <>{children}</>
+              return (
+                <HighlightText
+                  text={children}
+                  query={searchQuery}
+                  isCurrentMatch={isCurrentSearchMatch}
+                />
+              )
+            },
+          }
+        : {}),
     }),
-    [handleCopy, copiedBlocks],
+    [handleCopy, copiedBlocks, searchQuery, isCurrentSearchMatch],
   )
 
   return (

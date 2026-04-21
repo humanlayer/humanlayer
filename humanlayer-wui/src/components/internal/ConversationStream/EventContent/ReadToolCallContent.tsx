@@ -2,6 +2,7 @@ import { ToolHeader } from './ToolHeader'
 import { StatusBadge } from './StatusBadge'
 import { formatLineCount, getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
+import { HighlightText } from '@/components/HighlightText'
 
 export interface ReadToolInput {
   file_path: string
@@ -15,6 +16,8 @@ export function ReadToolCallContent({
   toolResultContent,
   isFocused,
   isGroupItem,
+  searchQuery,
+  isCurrentSearchMatch,
 }: ToolCallContentProps<ReadToolInput>) {
   const lineCount = toolResultContent ? formatLineCount(toolResultContent, 1) : null // Subtract 1 for system reminder
 
@@ -27,7 +30,15 @@ export function ReadToolCallContent({
       <ToolHeader
         name="Read"
         description={'Read from file'}
-        primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
+        primaryParam={
+          <span className="font-mono text-sm">
+            <HighlightText
+              text={toolInput.file_path}
+              query={searchQuery}
+              isCurrentMatch={isCurrentSearchMatch}
+            />
+          </span>
+        }
         status={<StatusBadge status={approvalStatus} />}
         nameColor={statusColor}
       />

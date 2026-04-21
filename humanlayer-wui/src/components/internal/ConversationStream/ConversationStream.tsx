@@ -4,6 +4,7 @@ import keyBy from 'lodash.keyby'
 import { ConversationEvent, ConversationEventType, Session } from '@/lib/daemon/types'
 import { useConversation } from '@/hooks/useConversation'
 import { useSessionSnapshots } from '@/hooks/useSessionSnapshots'
+import { useConversationSearch } from '@/hooks/useConversationSearch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTaskGrouping } from '../SessionDetail/hooks/useTaskGrouping'
 import { useStore } from '@/AppStore'
@@ -70,6 +71,9 @@ export function ConversationStream({
   )
   const toolResultsByKey = keyBy(toolResults, 'toolResultForId')
 
+  // Conversation search — matches across all events (including sub-task children).
+  const search = useConversationSearch(filteredEvents, toolResultsByKey)
+
   // Use task grouping hook - use props if provided, otherwise use local hook
   const localTaskGrouping = useTaskGrouping(filteredEvents)
   const { taskGroups, rootEvents, hasSubTasks } = localTaskGrouping
@@ -134,6 +138,27 @@ export function ConversationStream({
       previousEventsRef.current = [...filteredEvents]
     }
   }, [loading, eventsToRender.length, filteredEvents])
+
+  // Scroll to the current search match whenever it changes
+  useEffect(() => {
+    if (!search.currentMatch || !containerRef.current) return
+    const eventId = search.currentMatch.eventId
+    // If the match is inside a collapsed task group, fall back to the group header
+    const parentId = search.currentMatch.parentToolUseId
+    const parentGroup = parentId ? taskGroups.get(parentId) : undefined
+    const shouldTargetGroup =
+      parentGroup && !actualExpandedTasks.has(parentId!)
+    const targetId = shouldTargetGroup ? parentGroup!.parentTask.id : eventId
+    const element = containerRef.current.querySelector(`[data-event-id="${targetId}"]`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [
+    search.currentMatch?.eventId,
+    search.currentMatchIndex,
+    taskGroups,
+    actualExpandedTasks,
+  ])
 
   // Scroll focused event into view (only for keyboard navigation)
   useEffect(() => {
@@ -205,6 +230,9 @@ export function ConversationStream({
         const taskGroup = event.toolId ? taskGroups.get(event.toolId) : undefined
 
         if (taskGroup) {
+          const groupMatchCount = event.toolId
+            ? search.taskGroupMatchCounts.get(event.toolId) || 0
+            : 0
           return (
             <TaskGroupEventRow
               key={event.id}
@@ -230,10 +258,19 @@ export function ConversationStream({
               setDenyingApprovalId={setDenyingApprovalId}
               onCancelDeny={onCancelDeny}
               sessionId={session.id}
+              searchQuery={search.query}
+              isSearchMatch={search.matchesByEventId.has(event.id)}
+              isCurrentSearchMatch={search.currentMatch?.eventId === event.id}
+              taskGroupMatchCount={groupMatchCount}
+              searchMatchesByEventId={search.matchesByEventId}
+              currentSearchEventId={search.currentMatch?.eventId}
             />
           )
         }
 
+        const toolResultCount = event.toolId
+          ? search.toolResultMatchCounts.get(event.toolId) || 0
+          : 0
         return (
           <ConversationEventRow
             key={event.id}
@@ -254,6 +291,10 @@ export function ConversationStream({
             setDenyingApprovalId={setDenyingApprovalId}
             onCancelDeny={onCancelDeny}
             sessionId={session.id}
+            searchQuery={search.query}
+            isSearchMatch={search.matchesByEventId.has(event.id)}
+            isCurrentSearchMatch={search.currentMatch?.eventId === event.id}
+            toolResultMatchCount={toolResultCount}
           />
         )
       })}

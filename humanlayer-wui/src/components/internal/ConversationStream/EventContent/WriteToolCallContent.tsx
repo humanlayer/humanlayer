@@ -3,6 +3,7 @@ import { StatusBadge } from './StatusBadge'
 import { DiffViewer } from './DiffViewer/DiffViewer'
 import { getApprovalStatusColor } from './utils/formatters'
 import { ToolCallContentProps } from './types'
+import { HighlightText } from '@/components/HighlightText'
 
 export interface WriteToolInput {
   file_path: string
@@ -19,6 +20,8 @@ export function WriteToolCallContent({
   approvalStatus,
   fileSnapshot,
   isGroupItem,
+  searchQuery,
+  isCurrentSearchMatch,
 }: WriteToolCallContentPropsWithSnapshot) {
   const approvalStatusColor = getApprovalStatusColor(approvalStatus)
   let statusColor =
@@ -31,7 +34,15 @@ export function WriteToolCallContent({
       <ToolHeader
         name="Write"
         description={isNewFile ? 'Create new file' : 'Overwrite file'}
-        primaryParam={<span className="font-mono text-sm">{toolInput.file_path}</span>}
+        primaryParam={
+          <span className="font-mono text-sm">
+            <HighlightText
+              text={toolInput.file_path}
+              query={searchQuery}
+              isCurrentMatch={isCurrentSearchMatch}
+            />
+          </span>
+        }
         nameColor={statusColor}
         status={<StatusBadge status={approvalStatus} />}
       />
