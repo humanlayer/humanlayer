@@ -113,13 +113,15 @@ export function useSessionApprovals({
     if (oldestApproval) {
       // Call the callback to clear fork state if needed
       onStartDeny?.()
+      // Ensure parent task group is expanded for nested events
+      expandTaskForEvent?.(oldestApproval)
 
       setDenyingApprovalId(oldestApproval.approvalId!)
       // focus the oldest approval
       setFocusedEventId(oldestApproval.id)
       setFocusSource?.('keyboard')
     }
-  }, [events, setFocusedEventId, setFocusSource, onStartDeny])
+  }, [events, setFocusedEventId, setFocusSource, onStartDeny, expandTaskForEvent])
 
   const handleStartDeny = useCallback(
     (approvalId: string) => {
@@ -157,9 +159,7 @@ export function useSessionApprovals({
       if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
 
       // Ensure parent task group is expanded for nested events
-      if (pendingApprovalEvent.parentToolUseId && expandTaskForEvent) {
-        expandTaskForEvent(pendingApprovalEvent)
-      }
+      expandTaskForEvent?.(pendingApprovalEvent)
 
       // If no event is focused, or a different event is focused, focus this pending approval
       if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
@@ -226,9 +226,7 @@ export function useSessionApprovals({
       if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
 
       // Ensure parent task group is expanded for nested events
-      if (pendingApprovalEvent.parentToolUseId && expandTaskForEvent) {
-        expandTaskForEvent(pendingApprovalEvent)
-      }
+      expandTaskForEvent?.(pendingApprovalEvent)
 
       // If no event is focused, or a different event is focused, focus this pending approval
       if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
@@ -268,9 +266,7 @@ export function useSessionApprovals({
 
       if (event && event.id !== undefined && event.approvalStatus === ApprovalStatus.Pending) {
         // Ensure parent task group is expanded for nested events
-        if (event.parentToolUseId && expandTaskForEvent) {
-          expandTaskForEvent(event)
-        }
+        expandTaskForEvent?.(event)
         setFocusedEventId(event.id)
         setFocusSource?.('keyboard')
 
