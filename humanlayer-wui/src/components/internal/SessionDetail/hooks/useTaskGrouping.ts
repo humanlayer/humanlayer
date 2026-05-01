@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { ConversationEvent, ConversationEventType, ApprovalStatus } from '@/lib/daemon/types'
 
 export interface TaskEventGroup {
@@ -73,16 +73,20 @@ export function useTaskGrouping(events: ConversationEvent[]) {
   // Process events into display structure (memoized for performance)
   const { taskGroups, rootEvents, hasSubTasks } = useMemo(() => buildTaskGroups(events), [events])
 
+  // Compute which tasks have pending approvals (used for auto-expand and preventing collapse)
+  const tasksWithPendingApprovals = useMemo(() => {
+    const pending = new Set<string>()
+    taskGroups.forEach((group, taskId) => {
+      if (group.hasPendingApproval) {
+        pending.add(taskId)
+      }
+    })
+    return pending
+  }, [taskGroups])
+
   // Auto-expand tasks with pending approvals
   useEffect(() => {
     if (!hasSubTasks) return
-
-    const tasksWithPendingApprovals = new Set<string>()
-    taskGroups.forEach((group, taskId) => {
-      if (group.hasPendingApproval) {
-        tasksWithPendingApprovals.add(taskId)
-      }
-    })
 
     if (tasksWithPendingApprovals.size > 0) {
       // Save current state before auto-expanding
@@ -96,10 +100,14 @@ export function useTaskGrouping(events: ConversationEvent[]) {
       setExpandedTasks(preApprovalExpanded)
       setPreApprovalExpanded(null)
     }
-  }, [taskGroups, hasSubTasks])
+  }, [taskGroups, hasSubTasks, tasksWithPendingApprovals])
 
-  // Toggle function
+  // Toggle function — prevent collapsing groups with pending approvals
   const toggleTaskGroup = (taskId: string) => {
+    if (tasksWithPendingApprovals.has(taskId)) {
+      // Don't allow collapsing a group that has a pending approval
+      return
+    }
     setExpandedTasks(prev => {
       const next = new Set(prev)
       if (next.has(taskId)) {
@@ -111,11 +119,19 @@ export function useTaskGrouping(events: ConversationEvent[]) {
     })
   }
 
+  // Expand the parent task group for a nested event
+  const expandTaskForEvent = useCallback((event: ConversationEvent) => {
+    if (event.parentToolUseId) {
+      setExpandedTasks(prev => new Set([...prev, event.parentToolUseId!]))
+    }
+  }, [])
+
   return {
     taskGroups,
     rootEvents,
     hasSubTasks,
     expandedTasks,
     toggleTaskGroup,
+    expandTaskForEvent,
   }
 }

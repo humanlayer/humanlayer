@@ -123,7 +123,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
   const { events } = useConversation(session.id)
 
   // Use task grouping
-  const { hasSubTasks, expandedTasks, toggleTaskGroup } = useTaskGrouping(events)
+  const { hasSubTasks, expandedTasks, toggleTaskGroup, expandTaskForEvent } = useTaskGrouping(events)
 
   // Use navigation hook
   const navigation = useSessionNavigation({
@@ -154,6 +154,7 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
         responseEditor?.commands.setContent('')
       }
     },
+    expandTaskForEvent,
   })
 
   // Use clipboard hook
@@ -796,6 +797,9 @@ export function ActiveSession({ session, onClose }: ActiveSessionProps) {
               elementRect.top < containerRect.bottom && elementRect.bottom > containerRect.top
 
             setHasPendingApprovalsOutOfView(!inView)
+          } else if (container) {
+            // Element not in DOM (e.g. inside a collapsed task group) — treat as out of view
+            setHasPendingApprovalsOutOfView(true)
           }
         } else {
           setHasPendingApprovalsOutOfView(false)

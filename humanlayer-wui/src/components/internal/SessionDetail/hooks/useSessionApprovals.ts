@@ -21,6 +21,7 @@ interface UseSessionApprovalsProps {
   setFocusSource?: (source: 'mouse' | 'keyboard' | null) => void
   scope: HotkeyScope
   onStartDeny?: () => void // Callback when denial mode is entered
+  expandTaskForEvent?: (event: ConversationEvent) => void // Expand parent task group for nested events
 }
 
 export function useSessionApprovals({
@@ -31,6 +32,7 @@ export function useSessionApprovals({
   setFocusSource,
   scope,
   onStartDeny,
+  expandTaskForEvent,
 }: UseSessionApprovalsProps) {
   // sessionId may be used in future for session-specific approvals
   void sessionId
@@ -154,16 +156,23 @@ export function useSessionApprovals({
 
       if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
 
+      // Ensure parent task group is expanded for nested events
+      if (pendingApprovalEvent.parentToolUseId && expandTaskForEvent) {
+        expandTaskForEvent(pendingApprovalEvent)
+      }
+
       // If no event is focused, or a different event is focused, focus this pending approval
       if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
-        const wasInView = isElementInView(pendingApprovalEvent.id)
         setFocusedEventId(pendingApprovalEvent.id)
         setFocusSource?.('keyboard')
 
-        // Only set confirming state if element was out of view and we're scrolling to it
-        if (!wasInView) {
-          setConfirmingApprovalId(pendingApprovalEvent.approvalId!)
-        }
+        // Check visibility after a tick to allow DOM to update from expansion
+        setTimeout(() => {
+          const wasInView = isElementInView(pendingApprovalEvent.id)
+          if (!wasInView) {
+            setConfirmingApprovalId(pendingApprovalEvent.approvalId!)
+          }
+        }, 50)
         return
       }
 
@@ -190,6 +199,7 @@ export function useSessionApprovals({
       isElementInView,
       setFocusedEventId,
       setFocusSource,
+      expandTaskForEvent,
     ],
   )
 
@@ -215,6 +225,11 @@ export function useSessionApprovals({
 
       if (!pendingApprovalEvent || pendingApprovalEvent.id === undefined) return
 
+      // Ensure parent task group is expanded for nested events
+      if (pendingApprovalEvent.parentToolUseId && expandTaskForEvent) {
+        expandTaskForEvent(pendingApprovalEvent)
+      }
+
       // If no event is focused, or a different event is focused, focus this pending approval
       if (!focusedEventId || focusedEventId !== pendingApprovalEvent.id) {
         setFocusedEventId(pendingApprovalEvent.id)
@@ -225,7 +240,7 @@ export function useSessionApprovals({
     {
       scopes: [scope],
     },
-    [events, focusedEventId, handleStartDeny, setFocusedEventId, setFocusSource],
+    [events, focusedEventId, handleStartDeny, setFocusedEventId, setFocusSource, expandTaskForEvent],
   )
 
   // Scroll deny form into view when opened
@@ -252,6 +267,10 @@ export function useSessionApprovals({
       const event = events.find(e => e.approvalId === approvalId)
 
       if (event && event.id !== undefined && event.approvalStatus === ApprovalStatus.Pending) {
+        // Ensure parent task group is expanded for nested events
+        if (event.parentToolUseId && expandTaskForEvent) {
+          expandTaskForEvent(event)
+        }
         setFocusedEventId(event.id)
         setFocusSource?.('keyboard')
 
@@ -323,7 +342,7 @@ export function useSessionApprovals({
         }
       }
     },
-    [events, setFocusedEventId, setFocusSource, isElementInView],
+    [events, setFocusedEventId, setFocusSource, isElementInView, expandTaskForEvent],
   )
 
   return {
