@@ -41,7 +41,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			name: "successful session creation",
 			request: api.CreateSessionRequest{
 				Query:      "Help me write tests",
-				Model:      modelPtr(api.Sonnet),
+				Model:      stringPtr("sonnet"),
 				WorkingDir: stringPtr("/home/user/project"),
 			},
 			mockSetup: func() {
@@ -68,7 +68,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			name: "launch session failure",
 			request: api.CreateSessionRequest{
 				Query: "Help me",
-				Model: modelPtr(api.Sonnet),
+				Model: stringPtr("sonnet"),
 			},
 			mockSetup: func() {
 				mockManager.EXPECT().
@@ -85,7 +85,7 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			name: "with MCP config",
 			request: api.CreateSessionRequest{
 				Query: "Test with MCP",
-				Model: modelPtr(api.Sonnet),
+				Model: stringPtr("sonnet"),
 				McpConfig: &api.MCPConfig{
 					McpServers: &map[string]api.MCPServer{
 						"test-server": {
@@ -119,6 +119,27 @@ func TestSessionHandlers_CreateSession(t *testing.T) {
 			validateBody: func(t *testing.T, resp *api.CreateSessionResponse) {
 				assert.Equal(t, "sess-789", resp.Data.SessionId)
 				assert.Equal(t, "run-012", resp.Data.RunId)
+			},
+		},
+		{
+			name: "full model id passes through",
+			request: api.CreateSessionRequest{
+				Query: "Use full model ID",
+				Model: stringPtr("claude-3-5-sonnet-20241022"),
+			},
+			mockSetup: func() {
+				mockManager.EXPECT().
+					LaunchSession(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig, isDraft bool) (*session.Session, error) {
+						assert.Equal(t, "Use full model ID", config.Query)
+						assert.Equal(t, claudecode.Model("claude-3-5-sonnet-20241022"), config.Model)
+						return &session.Session{ID: "sess-abc", RunID: "run-def"}, nil
+					})
+			},
+			expectedStatus: 201,
+			validateBody: func(t *testing.T, resp *api.CreateSessionResponse) {
+				assert.Equal(t, "sess-abc", resp.Data.SessionId)
+				assert.Equal(t, "run-def", resp.Data.RunId)
 			},
 		},
 	}
@@ -1049,8 +1070,4 @@ func boolPtr(b bool) *bool {
 
 func stringPtr(s string) *string {
 	return &s
-}
-
-func modelPtr(m api.CreateSessionRequestModel) *api.CreateSessionRequestModel {
-	return &m
 }

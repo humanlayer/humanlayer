@@ -59,6 +59,19 @@ type LaunchSessionRequest struct {
 	DangerouslySkipPermissionsTimeout *int64                `json:"dangerously_skip_permissions_timeout,omitempty"`
 }
 
+func parseLaunchModel(model string) claudecode.Model {
+	switch model {
+	case "opus":
+		return claudecode.ModelOpus
+	case "sonnet":
+		return claudecode.ModelSonnet
+	case "haiku":
+		return claudecode.ModelHaiku
+	default:
+		return claudecode.Model(model)
+	}
+}
+
 // LaunchSessionResponse is the response for launching a new session
 type LaunchSessionResponse struct {
 	SessionID string `json:"session_id"`
@@ -102,16 +115,7 @@ func (h *SessionHandlers) HandleLaunchSession(ctx context.Context, params json.R
 
 	// Parse model if provided
 	if req.Model != "" {
-		switch req.Model {
-		case "opus":
-			config.Model = claudecode.ModelOpus
-		case "sonnet":
-			config.Model = claudecode.ModelSonnet
-		case "haiku":
-			config.Model = claudecode.ModelHaiku
-		default:
-			// Let Claude decide the default
-		}
+		config.Model = parseLaunchModel(req.Model)
 	}
 
 	// Launch session (RPC always launches, never creates drafts)

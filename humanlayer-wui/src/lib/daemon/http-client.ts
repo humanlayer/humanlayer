@@ -175,14 +175,10 @@ export class HTTPDaemonClient implements IDaemonClient {
     let model: string | undefined = params.model
     const provider = 'provider' in params ? params.provider : 'anthropic'
 
-    // Only map to enum for Anthropic provider
+    // Preserve short Claude aliases while allowing full model IDs to pass through.
     if (provider === 'anthropic' && params.model) {
-      if (params.model.includes('sonnet')) {
-        model = 'sonnet'
-      } else if (params.model.includes('opus')) {
-        model = 'opus'
-      } else if (params.model.includes('haiku')) {
-        model = 'haiku'
+      if (params.model === 'opus' || params.model === 'sonnet' || params.model === 'haiku') {
+        model = params.model
       }
     }
     // For OpenRouter and Baseten, pass model string as-is via proxyModelOverride
@@ -198,10 +194,7 @@ export class HTTPDaemonClient implements IDaemonClient {
       title: 'title' in params ? params.title : undefined,
       workingDir:
         'workingDir' in params ? params.workingDir : (params as LaunchSessionRequest).working_dir,
-      model:
-        provider === 'openrouter' || provider === 'baseten'
-          ? undefined
-          : (model as 'opus' | 'sonnet' | 'haiku' | undefined),
+      model: provider === 'openrouter' || provider === 'baseten' ? undefined : model,
       mcpConfig: 'mcpConfig' in params ? params.mcpConfig : (params as LaunchSessionRequest).mcp_config,
       permissionPromptTool:
         'permissionPromptTool' in params

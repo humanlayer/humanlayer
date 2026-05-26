@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	claudecode "github.com/humanlayer/humanlayer/claudecode-go"
 	"github.com/humanlayer/humanlayer/hld/approval"
 	"github.com/humanlayer/humanlayer/hld/session"
 	"github.com/humanlayer/humanlayer/hld/store"
@@ -15,6 +16,59 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+func TestHandleLaunchSession(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockManager := session.NewMockSessionManager(ctrl)
+	mockStore := store.NewMockConversationStore(ctrl)
+	mockApprovalManager := approval.NewMockManager(ctrl)
+
+	handlers := NewSessionHandlers(mockManager, mockStore, mockApprovalManager)
+
+	t.Run("maps alias model to claudecode model", func(t *testing.T) {
+		mockManager.EXPECT().
+			LaunchSession(gomock.Any(), gomock.Any(), false).
+			DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig, isDraft bool) (*session.Session, error) {
+				assert.Equal(t, claudecode.ModelOpus, config.Model)
+				assert.Equal(t, "Build API", config.Query)
+				return &session.Session{ID: "sess-1", RunID: "run-1"}, nil
+			})
+
+		req := LaunchSessionRequest{Query: "Build API", Model: "opus"}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleLaunchSession(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(*LaunchSessionResponse)
+		require.True(t, ok)
+		assert.Equal(t, "sess-1", resp.SessionID)
+		assert.Equal(t, "run-1", resp.RunID)
+	})
+
+	t.Run("preserves full model IDs in config", func(t *testing.T) {
+		mockManager.EXPECT().
+			LaunchSession(gomock.Any(), gomock.Any(), false).
+			DoAndReturn(func(ctx context.Context, config session.LaunchSessionConfig, isDraft bool) (*session.Session, error) {
+				assert.Equal(t, claudecode.Model("claude-3-5-sonnet-20241022"), config.Model)
+				assert.Equal(t, "Use full model", config.Query)
+				return &session.Session{ID: "sess-2", RunID: "run-2"}, nil
+			})
+
+		req := LaunchSessionRequest{Query: "Use full model", Model: "claude-3-5-sonnet-20241022"}
+		reqJSON, _ := json.Marshal(req)
+
+		result, err := handlers.HandleLaunchSession(context.Background(), reqJSON)
+		require.NoError(t, err)
+
+		resp, ok := result.(*LaunchSessionResponse)
+		require.True(t, ok)
+		assert.Equal(t, "sess-2", resp.SessionID)
+		assert.Equal(t, "run-2", resp.RunID)
+	})
+}
 
 func TestHandleGetConversation(t *testing.T) {
 	ctrl := gomock.NewController(t)

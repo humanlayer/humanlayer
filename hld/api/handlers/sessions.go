@@ -57,6 +57,19 @@ func NewSessionHandlersWithConfig(manager session.SessionManager, store store.Co
 	}
 }
 
+func parseLaunchModel(model string) claudecode.Model {
+	switch model {
+	case "opus":
+		return claudecode.ModelOpus
+	case "sonnet":
+		return claudecode.ModelSonnet
+	case "haiku":
+		return claudecode.ModelHaiku
+	default:
+		return claudecode.Model(model)
+	}
+}
+
 // expandTilde expands ~ to the user's home directory
 func expandTilde(path string) string {
 	if len(path) > 0 && path[0] == '~' {
@@ -230,16 +243,7 @@ func (h *SessionHandlers) CreateSession(ctx context.Context, req api.CreateSessi
 
 	// Parse model if provided
 	if req.Body.Model != nil && *req.Body.Model != "" {
-		switch *req.Body.Model {
-		case api.Opus:
-			config.Model = claudecode.ModelOpus
-		case api.Sonnet:
-			config.Model = claudecode.ModelSonnet
-		case api.Haiku:
-			config.Model = claudecode.ModelHaiku
-		default:
-			// Let Claude decide the default
-		}
+		config.Model = parseLaunchModel(*req.Body.Model)
 	}
 
 	// Handle createDirectoryIfNotExists flag

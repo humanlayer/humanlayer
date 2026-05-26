@@ -44,7 +44,7 @@ export interface CreateSessionRequest {
      * @type {string}
      * @memberof CreateSessionRequest
      */
-    model?: CreateSessionRequestModelEnum;
+    model?: string;
     /**
      * 
      * @type {MCPConfig}
@@ -167,18 +167,6 @@ export interface CreateSessionRequest {
     createDirectoryIfNotExists?: boolean;
 }
 
-
-/**
- * @export
- */
-export const CreateSessionRequestModelEnum = {
-    Opus: 'opus',
-    Sonnet: 'sonnet',
-    Haiku: 'haiku'
-} as const;
-export type CreateSessionRequestModelEnum = typeof CreateSessionRequestModelEnum[keyof typeof CreateSessionRequestModelEnum];
-
-
 /**
  * Check if a given object implements the CreateSessionRequest interface.
  */
@@ -259,4 +247,3 @@ export function CreateSessionRequestToJSONTyped(value?: CreateSessionRequest | n
         'createDirectoryIfNotExists': value['createDirectoryIfNotExists'],
     };
 }
-

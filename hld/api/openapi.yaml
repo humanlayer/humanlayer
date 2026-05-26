@@ -1323,8 +1323,7 @@ components:
           example: "CSV Processing Script"
         model:
           type: string
-          enum: [opus, sonnet, haiku]
-          description: Model to use for the session
+          description: Model to use for the session. Supports aliases such as opus, sonnet, and haiku, or a full Claude model ID.
         mcp_config:
           $ref: '#/components/schemas/MCPConfig'
         permission_prompt_tool:

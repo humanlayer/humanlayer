@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test'
-import { HTTPDaemonClient } from './http-client'
+
+let HTTPDaemonClient: typeof import('./http-client').HTTPDaemonClient
 
 // Mock the HLDClient
 const mockHealth = mock(
@@ -10,9 +11,30 @@ const mockHealth = mock(
     }),
 )
 
+const mockCreateSession = mock(() =>
+  Promise.resolve({
+    sessionId: 'session-1',
+    runId: 'run-1',
+  }),
+)
+
 mock.module('@humanlayer/hld-sdk', () => ({
+  __esModule: true,
+  CreateSessionResponseData: class {},
+  RecentPath: class {},
+  Approval: class {},
+  ConversationEvent: class {},
+  UserSettingsResponse: class {},
+  UpdateUserSettingsRequest: class {},
+  ConfigResponse: class {},
+  UpdateConfigRequest: class {},
+  FuzzySearchFilesResponse: class {},
+  Agent: class {},
+  SessionStatus: 'running',
+  ApprovalStatus: 'approved',
   HLDClient: class MockHLDClient {
     health = mockHealth
+    createSession = mockCreateSession
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     constructor(_options: any) {
       // Store options for testing if needed
@@ -36,12 +58,20 @@ mock.module('@/lib/logging', () => ({
   },
 }))
 
-describe('HTTPDaemonClient', () => {
-  let client: HTTPDaemonClient
+// Mock telemetry sink to avoid import cycle through AppStore -> daemonClient -> http-client
+mock.module('@/lib/telemetry/sentry', () => ({
+  captureException: mock(() => {}),
+}))
 
-  beforeEach(() => {
+describe('HTTPDaemonClient', () => {
+  let client: InstanceType<typeof HTTPDaemonClient>
+
+  beforeEach(async () => {
+    const module = await import('./http-client')
+    HTTPDaemonClient = module.HTTPDaemonClient
     client = new HTTPDaemonClient()
     mockHealth.mockReset()
+    mockCreateSession.mockReset()
   })
 
   describe('connect', () => {
@@ -160,6 +190,64 @@ describe('HTTPDaemonClient', () => {
 
       // Should have made a new health check
       expect(mockHealth).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  describe('launchSession', () => {
+    test('should pass through exact anthropic model aliases', async () => {
+      mockHealth.mockResolvedValueOnce({ status: 'ok', version: '1.0.0' })
+      mockCreateSession.mockResolvedValueOnce({ sessionId: 'session-1', runId: 'run-1' })
+
+      await expect(
+        client.launchSession({
+          query: 'Write a helper',
+          model: 'sonnet',
+        }),
+      ).resolves.toEqual({ sessionId: 'session-1', runId: 'run-1' })
+
+      expect(mockCreateSession).toHaveBeenCalledTimes(1)
+      expect(mockCreateSession.mock.calls[0]![0]).toMatchObject({
+        query: 'Write a helper',
+        model: 'sonnet',
+      })
+    })
+
+    test('should keep full anthropic model IDs in createSession model field', async () => {
+      mockHealth.mockResolvedValueOnce({ status: 'ok', version: '1.0.0' })
+      mockCreateSession.mockResolvedValueOnce({ sessionId: 'session-2', runId: 'run-2' })
+
+      await expect(
+        client.launchSession({
+          query: 'Do research',
+          model: 'claude-3-5-sonnet-20241022',
+        }),
+      ).resolves.toEqual({ sessionId: 'session-2', runId: 'run-2' })
+
+      const request = mockCreateSession.mock.calls[0]![0]
+      expect(request).toMatchObject({
+        query: 'Do research',
+        model: 'claude-3-5-sonnet-20241022',
+      })
+    })
+
+    test('should keep openrouter model values in proxy override', async () => {
+      mockHealth.mockResolvedValueOnce({ status: 'ok', version: '1.0.0' })
+      mockCreateSession.mockResolvedValueOnce({ sessionId: 'session-3', runId: 'run-3' })
+
+      await expect(
+        client.launchSession({
+          query: 'Plan a feature',
+          provider: 'openrouter',
+          model: 'openai/gpt-4o',
+        }),
+      ).resolves.toEqual({ sessionId: 'session-3', runId: 'run-3' })
+
+      expect(mockCreateSession).toHaveBeenCalledTimes(1)
+      expect(mockCreateSession.mock.calls[0]![0]).toMatchObject({
+        query: 'Plan a feature',
+        model: undefined,
+        proxyModelOverride: 'openai/gpt-4o',
+      })
     })
   })
 })
