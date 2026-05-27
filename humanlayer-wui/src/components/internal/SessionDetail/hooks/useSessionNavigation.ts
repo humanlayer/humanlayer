@@ -134,12 +134,63 @@ export function useSessionNavigation({
     }
   }, [focusedEventId, navigableItems, startKeyboardNavigation])
 
+  const scrollFocusedEventWithinView = useCallback(
+    (direction: 'next' | 'previous') => {
+      if (!focusedEventId) return false
+
+      const container = document.querySelector('[data-conversation-container]') as HTMLElement | null
+      const focusedElement = container?.querySelector(`[data-event-id="${focusedEventId}"]`)
+      if (!container || !focusedElement) return false
+
+      const containerRect = container.getBoundingClientRect()
+      const focusedRect = focusedElement.getBoundingClientRect()
+      const pageStep = container.clientHeight * 0.8
+
+      if (direction === 'next' && focusedRect.bottom > containerRect.bottom) {
+        container.scrollBy({
+          top: Math.min(focusedRect.bottom - containerRect.bottom, pageStep),
+          behavior: 'smooth',
+        })
+        return true
+      }
+
+      if (direction === 'previous' && focusedRect.top < containerRect.top) {
+        container.scrollBy({
+          top: -Math.min(containerRect.top - focusedRect.top, pageStep),
+          behavior: 'smooth',
+        })
+        return true
+      }
+
+      return false
+    },
+    [focusedEventId],
+  )
+
+  const focusNextEventWithScroll = useCallback(() => {
+    if (scrollFocusedEventWithinView('next')) return
+    focusNextEvent()
+  }, [focusNextEvent, scrollFocusedEventWithinView])
+
+  const focusPreviousEventWithScroll = useCallback(() => {
+    if (scrollFocusedEventWithinView('previous')) return
+    focusPreviousEvent()
+  }, [focusPreviousEvent, scrollFocusedEventWithinView])
+
   // Keyboard navigation
-  useHotkeys('j, ArrowDown', focusNextEvent, {
+  useHotkeys('j', focusNextEventWithScroll, {
     enabled: !expandedToolResult && !disabled,
     scopes: [scope],
   })
-  useHotkeys('k, ArrowUp', focusPreviousEvent, {
+  useHotkeys('k', focusPreviousEventWithScroll, {
+    enabled: !expandedToolResult && !disabled,
+    scopes: [scope],
+  })
+  useHotkeys('ArrowDown', focusNextEvent, {
+    enabled: !expandedToolResult && !disabled,
+    scopes: [scope],
+  })
+  useHotkeys('ArrowUp', focusPreviousEvent, {
     enabled: !expandedToolResult && !disabled,
     scopes: [scope],
   })
