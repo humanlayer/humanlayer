@@ -3,7 +3,17 @@ import { act, renderHook } from '@testing-library/react'
 import type { ConversationEvent } from '@/lib/daemon/types'
 import { HOTKEY_SCOPES } from '@/hooks/hotkeys/scopes'
 
-const hotkeyHandlers = new Map<string, () => void>()
+// Each registered hotkey carries its enabled/scope state so the test mock
+// honors the third options arg of useHotkeys instead of silently dropping
+// it. Without this the mock would happily fire callbacks even when production
+// said enabled: false or scoped to a different scope.
+type HotkeyRegistration = {
+  callback: () => void
+  enabled: boolean
+  scopes: string[]
+}
+const hotkeyRegistrations = new Map<string, HotkeyRegistration>()
+let activeScopes: string[] = []
 
 mock.module('@humanlayer/hld-sdk', () => ({
   SessionStatus: {},
@@ -11,8 +21,22 @@ mock.module('@humanlayer/hld-sdk', () => ({
 }))
 
 mock.module('react-hotkeys-hook', () => ({
-  useHotkeys: (keys: string, callback: () => void) => {
-    hotkeyHandlers.set(keys, callback)
+  useHotkeys: (
+    keys: string,
+    callback: () => void,
+    options?: { enabled?: boolean; scopes?: string[] | string },
+  ) => {
+    const scopes =
+      options?.scopes === undefined
+        ? []
+        : Array.isArray(options.scopes)
+          ? options.scopes
+          : [options.scopes]
+    hotkeyRegistrations.set(keys, {
+      callback,
+      enabled: options?.enabled !== false,
+      scopes,
+    })
   },
 }))
 
@@ -80,19 +104,32 @@ const focusEvent = (result: ReturnType<typeof renderNavigation>['result'], id: n
 }
 
 const press = (key: string) => {
-  const handler = hotkeyHandlers.get(key)
-  if (!handler) {
+  const registration = hotkeyRegistrations.get(key)
+  if (!registration) {
     throw new Error(`No hotkey handler registered for ${key}`)
+  }
+  if (!registration.enabled) {
+    throw new Error(`Hotkey ${key} is registered but disabled (production check failing)`)
+  }
+  if (
+    activeScopes.length > 0 &&
+    registration.scopes.length > 0 &&
+    !registration.scopes.some(s => activeScopes.includes(s))
+  ) {
+    throw new Error(
+      `Hotkey ${key} scopes [${registration.scopes.join(',')}] do not intersect active scopes [${activeScopes.join(',')}]`,
+    )
   }
 
   act(() => {
-    handler()
+    registration.callback()
   })
 }
 
 describe('useSessionNavigation', () => {
   beforeEach(() => {
-    hotkeyHandlers.clear()
+    hotkeyRegistrations.clear()
+    activeScopes = [HOTKEY_SCOPES.SESSION_DETAIL]
     document.body.innerHTML = ''
   })
 
@@ -176,5 +213,12 @@ describe('useSessionNavigation', () => {
     press('ArrowUp')
     expect(result.current.focusedEventId).toBe(1)
     expect(scrollBy).not.toHaveBeenCalled()
+  })
+
+  it('refuses to fire j when the wrong scope is active (wiring check)', () => {
+    renderNavigation()
+    activeScopes = ['some-other-scope']
+
+    expect(() => press('j')).toThrow(/scopes.*do not intersect/)
   })
 })
