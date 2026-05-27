@@ -25,7 +25,7 @@ export function AssistantMessageContent({
   }
 
   return (
-    <div className="relative min-w-0 flex-1">
+    <div className="group relative min-w-0 flex-1">
       {showFocusButton && (
         <>
           <Button

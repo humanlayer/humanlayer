@@ -41,6 +41,17 @@ describe('Focus view modal', () => {
     expect(screen.getByRole('button', { name: /open focus view/i })).toBeInTheDocument()
   })
 
+  test('does not render a focus button one character below the threshold', () => {
+    renderWithHotkeys(
+      <AssistantMessageContent
+        eventContent={'x'.repeat(FOCUS_VIEW_CHARACTER_THRESHOLD - 1)}
+        isThinking={false}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: /open focus view/i })).not.toBeInTheDocument()
+  })
+
   test('opens the modal with rendered markdown when focus is clicked', async () => {
     renderWithHotkeys(<AssistantMessageContent eventContent={longMessage} isThinking={false} />)
 
