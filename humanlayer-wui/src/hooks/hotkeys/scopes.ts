@@ -10,6 +10,7 @@ export const HOTKEY_SCOPES = {
   SESSION_DETAIL_FORK_IN_PROGRESS: 'sessions.details.forkInProgress',
   FORK_MODAL: 'sessions.details.forkModal',
   TOOL_RESULT_MODAL: 'sessions.details.toolResultModal',
+  FOCUS_VIEW_MODAL: 'sessions.details.focusViewModal',
   BYPASS_PERMISSIONS_MODAL: 'sessions.details.bypassPermissionsModal',
   SELECT_MODEL_MODAL: 'sessions.details.selectModelModal',
   DISCARD_DRAFT_DIALOG: 'sessions.details.discardDraftDialog',
