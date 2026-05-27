@@ -8,6 +8,8 @@ import { Clock } from 'lucide-react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import type { RecentPath } from '@/lib/daemon'
 
+const DEFAULT_PLACEHOLDER_VALUES = ['', '~/']
+
 interface QuickLauncherDirectoryInputProps {
   value?: string
   onChange?: (value: string) => void
@@ -169,7 +171,7 @@ export function QuickLauncherDirectoryInput({
 
   // Initialize with recent directories on focus
   useEffect(() => {
-    if (isFocused && !searchValue && recentDirectories.length > 0) {
+    if (isFocused && DEFAULT_PLACEHOLDER_VALUES.includes(searchValue) && recentDirectories.length > 0) {
       const items = recentDirectories.slice(0, 4).map(recent => ({
         path: recent.path,
       }))
