@@ -452,7 +452,7 @@ export const DraftLauncherForm: React.FC<DraftLauncherFormProps> = ({ session, o
         return
       }
 
-      const workingDir = workingDirectory
+      const workingDir = workingDirectoryRef.current
       if (!workingDir) {
         toast.error('Please select a working directory', {
           description: 'You must choose a directory before launching the session',
