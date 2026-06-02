@@ -31,6 +31,13 @@ interface StoreState {
   selectedSessions: Set<string> // For bulk selection
   pendingUpdates: Map<string, PendingUpdate> // Track in-flight updates
   isRefreshing: boolean // Prevent concurrent refresh/updates
+  /**
+   * Set when a refresh is requested while one is already in flight. Causes
+   * exactly one trailing {@link AppState.refreshSessions} to run after the
+   * current refresh settles, so a mid-flight request is coalesced rather than
+   * silently dropped. Reset to `false` once that trailing refresh starts.
+   */
+  refreshQueued: boolean
   activeSessionDetail: {
     session: Session
     conversation: any[] // ConversationEvent[] from useConversation
@@ -176,6 +183,7 @@ export const useStore = create<StoreState>((set, get) => {
     selectedSessions: new Set<string>(),
     pendingUpdates: new Map<string, PendingUpdate>(),
     isRefreshing: false,
+    refreshQueued: false,
     activeSessionDetail: null,
     claudeConfig: null,
     responseEditor: null,
@@ -316,15 +324,34 @@ export const useStore = create<StoreState>((set, get) => {
               }
             : state.activeSessionDetail,
       })),
+    /**
+     * Refresh the session list from the daemon, reconciling server state with
+     * any in-flight optimistic updates.
+     *
+     * Refreshes are serialized — at most one runs at a time. Critically, a
+     * refresh requested while another is in flight is **not** dropped: it sets
+     * {@link AppState.refreshQueued}, and exactly one trailing refresh runs once
+     * the current one settles (in `finally`). This prevents a discard→refresh
+     * from racing an undo→refresh and stranding the UI on stale `discarded`
+     * session state — the undo's refresh would otherwise hit the `isRefreshing`
+     * guard and be lost until a full reload. A burst of mid-flight requests
+     * coalesces to a single trailing refresh (the flag is a boolean, not a
+     * counter), preserving the original anti-thundering-herd behavior.
+     */
     refreshSessions: async () => {
       // Prevent concurrent refreshes
       const state = get()
       if (state.isRefreshing) {
-        logger.debug('Refresh already in progress, skipping')
+        // Don't silently drop the request: a refresh issued while one is in
+        // flight (e.g. an undo→refresh racing a discard→refresh) would otherwise
+        // be lost forever, leaving the UI desynced from the server. Remember it
+        // and run exactly one more refresh once the current one settles.
+        logger.debug('Refresh already in progress, queueing a trailing refresh')
+        set({ refreshQueued: true })
         return
       }
 
-      set({ isRefreshing: true })
+      set({ isRefreshing: true, refreshQueued: false })
 
       try {
         const { pendingUpdates, getViewMode } = get()
@@ -382,6 +409,13 @@ export const useStore = create<StoreState>((set, get) => {
       } catch (error) {
         logger.error('Failed to refresh sessions:', error)
         set({ isRefreshing: false })
+      } finally {
+        // If a refresh was requested while this one was running, honor it now so
+        // the latest server state is always reflected (fixes the discard/undo race).
+        if (get().refreshQueued) {
+          set({ refreshQueued: false })
+          await get().refreshSessions()
+        }
       }
     },
     refreshActiveSessionConversation: async (sessionId: string) => {

@@ -34,6 +34,7 @@ describe('AppStore - State Synchronization', () => {
       selectedSessions: new Set(),
       pendingUpdates: new Map(),
       isRefreshing: false,
+      refreshQueued: false,
       activeSessionDetail: null,
     })
     // Set view mode separately using the method
@@ -222,19 +223,26 @@ describe('AppStore - State Synchronization', () => {
       expect(state.pendingUpdates.has('test-1')).toBe(false)
     })
 
-    test('should prevent concurrent refreshes', async () => {
+    test('should coalesce a concurrent refresh into a single trailing refresh', async () => {
       let resolvePromise: (value: { sessions: any[] }) => void
       const promise = new Promise<{ sessions: any[] }>(resolve => {
         resolvePromise = resolve
       })
 
-      mockGetSessionLeaves.mockImplementation(() => promise)
+      mockGetSessionLeaves
+        .mockImplementationOnce(() => promise) // first refresh, kept in flight
+        .mockImplementationOnce(() => Promise.resolve({ sessions: [] })) // trailing refresh
 
       // Start first refresh
       const refresh1Promise = useStore.getState().refreshSessions()
 
-      // Try to start second refresh immediately (should be skipped)
+      // Request a second refresh while the first is in flight. It must NOT run
+      // concurrently, but it must NOT be silently dropped either — it is queued.
       const refresh2Promise = useStore.getState().refreshSessions()
+
+      // Only one in-flight call so far; the second is queued.
+      expect(mockGetSessionLeaves).toHaveBeenCalledTimes(1)
+      expect(useStore.getState().refreshQueued).toBe(true)
 
       // Resolve the promise to complete the first refresh
       resolvePromise!({ sessions: [] })
@@ -243,11 +251,44 @@ describe('AppStore - State Synchronization', () => {
       await refresh1Promise
       await refresh2Promise
 
-      // Should only call API once
-      expect(mockGetSessionLeaves).toHaveBeenCalledTimes(1)
+      // Exactly one trailing refresh runs after the first settles (2 calls total).
+      expect(mockGetSessionLeaves).toHaveBeenCalledTimes(2)
 
-      // Ensure isRefreshing is false after completion
+      // Ensure flags are clear after completion
       expect(useStore.getState().isRefreshing).toBe(false)
+      expect(useStore.getState().refreshQueued).toBe(false)
+    })
+
+    test('should run a trailing refresh so a mid-flight request is not lost (discard/undo desync)', async () => {
+      // Models the SessionTable discard→undo race: a refresh (the discard flow)
+      // is in flight and returns STALE data; meanwhile the undo flow restores the
+      // draft server-side and requests another refresh. Before the fix that second
+      // refresh hit the `isRefreshing` guard and was dropped forever, leaving the
+      // UI desynced. With the trailing-refresh fix, the latest server state wins.
+      let resolveFirst: (value: { sessions: any[] }) => void
+      const first = new Promise<{ sessions: any[] }>(resolve => {
+        resolveFirst = resolve
+      })
+      const staleSessions = [createMockSession({ id: 'stale-discarded' })]
+      const restoredSessions = [createMockSession({ id: 'restored-draft' })]
+
+      mockGetSessionLeaves
+        .mockImplementationOnce(() => first) // discard-flow refresh (stale)
+        .mockImplementationOnce(() => Promise.resolve({ sessions: restoredSessions as any }))
+
+      const discardRefresh = useStore.getState().refreshSessions()
+      const undoRefresh = useStore.getState().refreshSessions() // queued, not dropped
+
+      expect(useStore.getState().refreshQueued).toBe(true)
+
+      resolveFirst!({ sessions: staleSessions as any })
+      await discardRefresh
+      await undoRefresh
+
+      // The trailing refresh ran and the restored (latest) state is reflected.
+      expect(mockGetSessionLeaves).toHaveBeenCalledTimes(2)
+      expect(useStore.getState().sessions.map(s => s.id)).toEqual(['restored-draft'])
+      expect(useStore.getState().refreshQueued).toBe(false)
     })
 
     test('should set isRefreshing flag correctly', async () => {
