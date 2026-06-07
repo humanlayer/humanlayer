@@ -32,18 +32,57 @@ function sanitizeDirectoryName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, '_')
 }
 
-function prompt(question: string): Promise<string> {
+interface PromptSessionOptions {
+  input?: NodeJS.ReadableStream
+  output?: NodeJS.WritableStream
+}
+
+export function createPromptSession(options: PromptSessionOptions = {}) {
+  const output = options.output ?? process.stdout
+  const queuedAnswers: string[] = []
+  const pendingPrompts: Array<(answer: string) => void> = []
+  let inputClosed = false
+
   const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
+    input: options.input ?? process.stdin,
+    output,
   })
 
-  return new Promise(resolve => {
-    rl.question(question, answer => {
-      rl.close()
+  const resolvePrompt = (answer: string): void => {
+    const resolve = pendingPrompts.shift()
+    if (resolve) {
       resolve(answer.trim())
-    })
+    } else {
+      queuedAnswers.push(answer.trim())
+    }
+  }
+
+  rl.on('line', resolvePrompt)
+  rl.on('close', () => {
+    inputClosed = true
+    while (pendingPrompts.length > 0) {
+      pendingPrompts.shift()?.('')
+    }
   })
+
+  return {
+    prompt(question: string): Promise<string> {
+      output.write(question)
+      const queuedAnswer = queuedAnswers.shift()
+      if (queuedAnswer !== undefined) {
+        return Promise.resolve(queuedAnswer)
+      }
+      if (inputClosed) {
+        return Promise.resolve('')
+      }
+      return new Promise(resolve => {
+        pendingPrompts.push(resolve)
+      })
+    },
+    close(): void {
+      rl.close()
+    },
+  }
 }
 
 function checkExistingSetup(config?: ThoughtsConfig | null): {
@@ -105,7 +144,11 @@ function checkExistingSetup(config?: ThoughtsConfig | null): {
   return { exists: true, isValid: true }
 }
 
-async function selectFromList(message: string, options: string[]): Promise<number> {
+async function selectFromList(
+  message: string,
+  options: string[],
+  prompt: (question: string) => Promise<string>,
+): Promise<number> {
   if (message) {
     console.log(chalk.cyan(message))
   }
@@ -317,6 +360,9 @@ fi
 }
 
 export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
+  const promptSession = createPromptSession()
+  const { prompt } = promptSession
+
   try {
     const currentRepo = getCurrentRepoPath()
 
@@ -545,7 +591,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
             ...existingRepos.map(repo => `Use existing: ${repo}`),
             '→ Create new directory',
           ]
-          const selection = await selectFromList('', options)
+          const selection = await selectFromList('', options, prompt)
 
           if (selection === options.length - 1) {
             // Create new
@@ -724,5 +770,7 @@ export async function thoughtsInitCommand(options: InitOptions): Promise<void> {
   } catch (error) {
     console.error(chalk.red(`Error during thoughts init: ${error}`))
     process.exit(1)
+  } finally {
+    promptSession.close()
   }
 }
