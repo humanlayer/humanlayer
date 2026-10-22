@@ -1,0 +1,1 @@
+ALTER TABLE "workspace_repository_status_for_user_for_host" ADD COLUMN "accepted_skips" jsonb DEFAULT '[]'::jsonb NOT NULL;

@@ -1,0 +1,1 @@
+ALTER TABLE "organization_settings" ADD COLUMN "enable_creating_publicly_shareable_links" boolean DEFAULT true NOT NULL;

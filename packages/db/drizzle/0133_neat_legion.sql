@@ -1,0 +1,1 @@
+ALTER TABLE "online_hosts" ADD COLUMN "coding_agent_usage_limits" jsonb;

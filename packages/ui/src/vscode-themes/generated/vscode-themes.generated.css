@@ -1,0 +1,189 @@
+/* ===== AUTO-GENERATED VS CODE THEMES ===== */
+/* Generated at: 2026-08-25T22:44:55.602Z */
+/* DO NOT EDIT BELOW THIS LINE - Regenerate with: cd packages/ui && bun run generate:themes */
+
+/* Tokyo Night Light (VS Code) */
+[data-theme="tokyo-night-light-vscode"] {
+	--terminal-bg: #e6e7ed;
+	--terminal-bg-alt: #d6d8df;
+	--terminal-fg: #343b59;
+	--terminal-fg-alt: #343b58;
+	--terminal-fg-dim: #707280;
+	--terminal-selection: #acb0bf40;
+	--terminal-accent: #2959aadd;
+	--terminal-border: #c1c2c7;
+	--terminal-input-bg: #e6e7ed;
+	--terminal-input-border: #c1c2c7;
+	--terminal-success: #0da0ba;
+	--terminal-warning: #8f5e15;
+	--terminal-error: #bd4040;
+	--terminal-color-0: #343b58;
+	--terminal-color-1: #8c4351;
+	--terminal-color-2: #33635c;
+	--terminal-color-3: #8f5e15;
+	--terminal-color-4: #2959aa;
+	--terminal-color-5: #7b43ba;
+	--terminal-color-6: #006c86;
+	--terminal-color-7: #707280;
+	--terminal-color-8: #343b58;
+	--terminal-color-9: #8c4351;
+	--terminal-color-10: #33635c;
+	--terminal-color-11: #8f5e15;
+	--terminal-color-12: #2959aa;
+	--terminal-color-13: #7b43ba;
+	--terminal-color-14: #006c86;
+	--terminal-color-15: #707280;
+	--terminal-accent-dim: rgba(41, 89, 170, 0.3);
+	--terminal-accent-alt: #2959aadd;
+}
+
+/* Poimandres (VS Code) */
+[data-theme="poimandres-vscode"] {
+	--terminal-bg: #1b1e28;
+	--terminal-bg-alt: #303340;
+	--terminal-fg: #a6accd;
+	--terminal-fg-alt: #a6accd;
+	--terminal-fg-dim: #a6accdb3;
+	--terminal-selection: #717cb425;
+	--terminal-accent: #add7ff;
+	--terminal-border: #303340;
+	--terminal-input-bg: #ffffff05;
+	--terminal-input-border: #ffffff10;
+	--terminal-success: #add7ff;
+	--terminal-warning: #fffac2;
+	--terminal-error: #d0679d;
+	--terminal-color-0: #1b1e28;
+	--terminal-color-1: #d0679d;
+	--terminal-color-2: #5de4c7;
+	--terminal-color-3: #fffac2;
+	--terminal-color-4: #89ddff;
+	--terminal-color-5: #f087bd;
+	--terminal-color-6: #89ddff;
+	--terminal-color-7: #ffffff;
+	--terminal-color-8: #a6accd;
+	--terminal-color-9: #d0679d;
+	--terminal-color-10: #5de4c7;
+	--terminal-color-11: #fffac2;
+	--terminal-color-12: #add7ff;
+	--terminal-color-13: #f087bd;
+	--terminal-color-14: #add7ff;
+	--terminal-color-15: #ffffff;
+	--terminal-accent-dim: rgba(173, 215, 255, 0.3);
+	--terminal-accent-alt: #add7ff;
+}
+
+/* Night Owl Light (VS Code) */
+[data-theme="night-owl-light-vscode"] {
+	--terminal-bg: #fbfbfb;
+	--terminal-bg-alt: #f6f6f6;
+	--terminal-fg: #403f53;
+	--terminal-fg-alt: #403f53;
+	--terminal-fg-dim: #403f53;
+	--terminal-selection: #e0e0e0;
+	--terminal-accent: #2aa298;
+	--terminal-border: #d9d9d9;
+	--terminal-input-bg: #f0f0f0;
+	--terminal-input-border: #d9d9d9;
+	--terminal-warning: #daaa01;
+	--terminal-error: #e64d49;
+	--terminal-color-0: #403f53;
+	--terminal-color-1: #de3d3b;
+	--terminal-color-2: #08916a;
+	--terminal-color-3: #e0af02;
+	--terminal-color-4: #288ed7;
+	--terminal-color-5: #d6438a;
+	--terminal-color-6: #2aa298;
+	--terminal-color-7: #93a1a1;
+	--terminal-color-8: #403f53;
+	--terminal-color-9: #de3d3b;
+	--terminal-color-10: #08916a;
+	--terminal-color-11: #daaa01;
+	--terminal-color-12: #288ed7;
+	--terminal-color-13: #d6438a;
+	--terminal-color-14: #2aa298;
+	--terminal-color-15: #93a1a1;
+	--terminal-accent-dim: rgba(42, 162, 152, 0.3);
+	--terminal-accent-alt: #2aa298;
+	--terminal-success: #08916a;
+}
+
+/* Nord (VS Code) */
+[data-theme="nord-vscode"] {
+	--terminal-bg: #2e3440;
+	--terminal-bg-alt: #3b4252;
+	--terminal-fg: #d8dee9;
+	--terminal-fg-alt: #d8dee9;
+	--terminal-fg-dim: #d8dee9e6;
+	--terminal-selection: #434c5ecc;
+	--terminal-accent: #88c0d0ee;
+	--terminal-border: #3b4252;
+	--terminal-input-bg: #3b4252;
+	--terminal-input-border: #3b4252;
+	--terminal-warning: #ebcb8b;
+	--terminal-error: #bf616a;
+	--terminal-color-0: #3b4252;
+	--terminal-color-1: #bf616a;
+	--terminal-color-2: #a3be8c;
+	--terminal-color-3: #ebcb8b;
+	--terminal-color-4: #81a1c1;
+	--terminal-color-5: #b48ead;
+	--terminal-color-6: #88c0d0;
+	--terminal-color-7: #e5e9f0;
+	--terminal-color-8: #4c566a;
+	--terminal-color-9: #bf616a;
+	--terminal-color-10: #a3be8c;
+	--terminal-color-11: #ebcb8b;
+	--terminal-color-12: #81a1c1;
+	--terminal-color-13: #b48ead;
+	--terminal-color-14: #8fbcbb;
+	--terminal-color-15: #eceff4;
+	--terminal-accent-dim: rgba(136, 192, 208, 0.3);
+	--terminal-accent-alt: #88c0d0ee;
+	--terminal-success: #a3be8c;
+}
+
+/* Vercel Dark (VS Code) */
+[data-theme="vercel-dark-vscode"] {
+	--terminal-bg: #0a0a0a;
+	--terminal-bg-alt: #000000;
+	--terminal-fg: #ededed;
+	--terminal-fg-alt: #ededed;
+	--terminal-fg-dim: #a1a1a1;
+	--terminal-selection: #ffffff1a;
+	--terminal-accent: #ededed;
+	--terminal-border: #242424;
+	--terminal-input-bg: #000000;
+	--terminal-input-border: #333333;
+	--terminal-success: #58c760;
+	--terminal-warning: #f99902;
+	--terminal-error: #f56464;
+	--terminal-color-0: #000000;
+	--terminal-color-1: #f56464;
+	--terminal-color-2: #58c760;
+	--terminal-color-3: #f99902;
+	--terminal-color-4: #62a6ff;
+	--terminal-color-5: #b675f1;
+	--terminal-color-6: #14cbb7;
+	--terminal-color-7: #a1a1a1;
+	--terminal-color-8: #676767;
+	--terminal-color-9: #f56464;
+	--terminal-color-10: #58c760;
+	--terminal-color-11: #f99902;
+	--terminal-color-12: #62a6ff;
+	--terminal-color-13: #b675f1;
+	--terminal-color-14: #14cbb7;
+	--terminal-color-15: #ededed;
+	--terminal-code-bg: #ffffff1a;
+	--terminal-accent-alt: #62a6ff;
+	--terminal-label-blue: #62a6ff;
+	--terminal-label-purple: #b675f1;
+	--terminal-label-pink: #f05b8d;
+	--terminal-label-green: #58c760;
+	--syntax-property: #62a6ff;
+	--syntax-string: #58c760;
+	--syntax-operator: #f05b8d;
+	--syntax-keyword: #f05b8d;
+	--syntax-function: #b675f1;
+	--syntax-variable: #ededed;
+	--terminal-accent-dim: rgba(237, 237, 237, 0.3);
+}

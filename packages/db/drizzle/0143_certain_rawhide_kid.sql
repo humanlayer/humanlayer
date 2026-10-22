@@ -1,0 +1,1 @@
+ALTER TABLE "organization_settings" DROP COLUMN "commit_session_trailers_allowed";

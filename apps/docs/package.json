@@ -1,0 +1,26 @@
+{
+  "name": "@humanlayer/docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev --host 0.0.0.0 --port 5175",
+    "docs:dev": "vitepress dev --host 0.0.0.0 --port 5175",
+    "build": "vitepress build",
+    "docs:build": "vitepress build",
+    "build:linux": "bun run build",
+    "build:macos": "bun run build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@vue/compiler-dom": "3.5.38",
+    "@vue/server-renderer": "3.5.38",
+    "medium-zoom": "1.1.0",
+    "mermaid": "11.16.0",
+    "typescript": "catalog:",
+    "vite": "^5.4.14",
+    "vitepress": "^1.6.4",
+    "vue": "3.5.38"
+  }
+}

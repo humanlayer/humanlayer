@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "claude_code_effect_runtime_enabled" boolean DEFAULT false NOT NULL;

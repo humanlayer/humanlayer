@@ -1,0 +1,1 @@
+ALTER TABLE "artifact_comments" ADD COLUMN "created_by_agent" boolean DEFAULT false NOT NULL;

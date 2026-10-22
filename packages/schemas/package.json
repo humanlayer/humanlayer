@@ -1,0 +1,53 @@
+{
+	"name": "@humanlayer/schemas",
+	"version": "0.1.0",
+	"private": true,
+	"sideEffects": false,
+	"type": "module",
+	"exports": {
+		"./coding-agent": "./coding-agent/coding-agent.ts",
+		"./model-provider": "./model-provider/model-provider.ts",
+		"./task-intent": "./src/task-intent.ts",
+		"./effect": "./src/effect/index.ts",
+		"./effect/daemon": "./src/effect/daemon/index.ts",
+		"./effect/daemon/identity": "./src/effect/daemon/identity.ts",
+		"./effect/daemon/process-event": "./src/effect/daemon/process-event.ts",
+		"./effect/daemon/stage": "./src/effect/daemon/stage.ts",
+		"./effect/electric": "./src/effect/electric/index.ts",
+		"./effect/electric/fetch-error": "./src/effect/electric/fetch-error.ts",
+		"./effect/workos-access-token": "./src/effect/workos-access-token.ts",
+		"./effect/model-context": "./src/effect/model-context.ts",
+		"./effect/model-usage": "./src/effect/model-usage.ts",
+		"./effect/project-workspace": "./src/effect/project-workspace/index.ts",
+		"./effect/project-workspace/*": "./src/effect/project-workspace/*.ts",
+		"./effect/session": "./src/effect/session/index.ts",
+		"./effect/session/*": "./src/effect/session/*.ts",
+		"./effect/workspace": "./src/effect/workspace/index.ts",
+		"./effect/workspace/*": "./src/effect/workspace/*.ts",
+		"./effect/taskconfiguration": "./src/effect/taskconfiguration/index.ts",
+		"./effect/taskconfiguration/task-configuration": "./src/effect/taskconfiguration/task-configuration.ts",
+		"./zod/model-catalog": "./src/zod/model-catalog.ts",
+		"./zod/workspace": "./src/zod/workspace/index.ts",
+		"./zod/workspace/*": "./src/zod/workspace/*.ts",
+		"./zod/project-workspace": "./src/zod/project-workspace/index.ts",
+		"./zod/project-workspace/*": "./src/zod/project-workspace/*.ts",
+		"./zod/host": "./src/zod/host/index.ts",
+		"./zod/host/*": "./src/zod/host/*.ts",
+		"./zod/session": "./src/zod/session/index.ts",
+		"./zod/session/*": "./src/zod/session/*.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run --config vitest.config.ts"
+	},
+	"dependencies": {
+		"effect": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@effect/vitest": "catalog:",
+		"@electric-sql/client": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "structured_summary" jsonb;

@@ -1,0 +1,53 @@
+import { queuedMessages } from '@humanlayer/db/tables/queued-messages'
+import * as Sentry from '@sentry/node'
+import { and, getTableColumns } from 'drizzle-orm'
+
+import { buildQueuedMessagesSyncWhere } from '../../../db/sync-auth'
+import { buildDrizzleOrderFromSorts, buildDrizzleWhereFromExpression, SyncFilterError } from '../../../db/sync-filters'
+import { apiBaseOrgRequired } from '../../base'
+
+/**
+ * Queued messages sync handler.
+ *
+ * Authorization: org-scoped via buildQueuedMessagesSyncWhere (joins through
+ * queued_messages.task_id to tasks ACL).
+ */
+export const syncQueuedMessagesProcedure = apiBaseOrgRequired.sync.queuedMessages.handler(
+	async ({ input, context, errors }) => {
+		const { where, sorts, limit, offset } = input
+		const { organizationId, userId } = context.auth
+		const { db } = context.services
+
+		try {
+			const authWhere = buildQueuedMessagesSyncWhere({ organizationId, userId }, db)
+			const clientWhere = buildDrizzleWhereFromExpression(
+				getTableColumns(queuedMessages),
+				where,
+				'queued_messages',
+			)
+			const orderBy = buildDrizzleOrderFromSorts(getTableColumns(queuedMessages), sorts, 'queued_messages')
+
+			let query = db.select().from(queuedMessages).where(and(authWhere, clientWhere)).$dynamic()
+
+			if (orderBy.length > 0) {
+				query = query.orderBy(...orderBy)
+			}
+			query = query.limit(limit ?? 10000)
+			if (offset !== undefined) {
+				query = query.offset(offset)
+			}
+
+			const rows = await query
+			return { rows }
+		} catch (error) {
+			if (error instanceof SyncFilterError) {
+				throw errors.BAD_REQUEST({ data: { message: error.message } })
+			}
+			Sentry.captureException(error, {
+				tags: { error_type: 'sync_query' },
+				extra: { table: 'queued_messages', hasWhere: !!where },
+			})
+			throw error
+		}
+	},
+)

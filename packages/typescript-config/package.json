@@ -1,0 +1,14 @@
+{
+	"name": "@humanlayer/typescript-config",
+  "scripts": {
+    "build": "echo 'No build required - library package'",
+    "build:macos": "bun run build",
+    "build:linux": "bun run build"
+  },
+	"version": "0.0.0",
+	"private": true,
+	"license": "Apache-2.0",
+	"publishConfig": {
+		"access": "public"
+	}
+}

@@ -1,0 +1,5 @@
+{
+	"name": "@humanlayer/oxlint-plugin-anti-slop",
+	"private": true,
+	"type": "module"
+}

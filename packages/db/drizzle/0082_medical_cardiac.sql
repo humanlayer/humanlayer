@@ -1,0 +1,1 @@
+ALTER TABLE "artifact_comments" ADD COLUMN "kind" text DEFAULT 'comment' NOT NULL;

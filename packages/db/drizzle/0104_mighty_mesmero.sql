@@ -1,0 +1,1 @@
+ALTER TABLE "queued_messages" ADD COLUMN "deliver_on_interrupt" boolean DEFAULT false NOT NULL;

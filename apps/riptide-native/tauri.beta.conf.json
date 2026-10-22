@@ -1,0 +1,36 @@
+{
+  "productName": "HumanLayer-Beta",
+  "identifier": "com.humanlayer.riptide.beta",
+  "build": {
+    "beforeBuildCommand": "bun run --cwd ../riptide-ui build:beta && ([ -f ./bin/riptided ] || (bun run --cwd ../riptide-daemon build:beta && cp ../riptide-daemon/dist/daemon ./bin/riptided))"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "HumanLayer Beta",
+        "width": 1440,
+        "height": 900,
+        "center": true,
+        "minWidth": 800,
+        "minHeight": 600,
+        "zoomHotkeysEnabled": true,
+        "titleBarStyle": "Overlay",
+        "transparent": true,
+        "hiddenTitle": true,
+        "dragDropEnabled": true
+      }
+    ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["riptide-beta"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDczMjAzNUZENEREQTREQQpSV1RhcE4zVVh3TXlCemIwRy8rZmJkTDg5UmIyYzJZSUFDSWFZNERzOURsN2J3aG9JRUpUWG5OZgo=",
+      "endpoints": ["https://update.codelayer.cloud/beta/{{target}}-{{arch}}/{{current_version}}"]
+    }
+  }
+}

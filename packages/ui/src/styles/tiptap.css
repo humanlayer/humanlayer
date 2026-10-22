@@ -1,0 +1,695 @@
+/* Scoped to .tiptap-comment-wrapper to avoid bleeding into RichTextEditor inputs */
+.tiptap-comment-wrapper .tiptap {
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	font-size: 1rem;
+	font-weight: 300;
+	letter-spacing: 0.03em;
+	line-height: 1.9;
+	color: inherit;
+	padding: 1em;
+	padding-right: 80px;
+	max-width: 100%;
+
+	/* Typography - headings with modular scale (aligned with prose-pretty) */
+	h1 {
+		font-size: 2em;
+		font-weight: 700;
+		line-height: 1.2;
+		margin-top: 1.5em;
+		margin-bottom: 0.8em;
+		color: var(--terminal-accent);
+		letter-spacing: -0.025em;
+	}
+
+	h2 {
+		font-size: 1.5em;
+		font-weight: 600;
+		line-height: 1.3;
+		margin-top: 1.75em;
+		margin-bottom: 0.6em;
+		color: inherit;
+		letter-spacing: -0.02em;
+	}
+
+	h3 {
+		font-size: 1.25em;
+		font-weight: 600;
+		line-height: 1.4;
+		margin-top: 1.5em;
+		margin-bottom: 0.5em;
+		color: var(--terminal-accent-alt);
+	}
+
+	h4,
+	h5,
+	h6 {
+		font-size: 1em;
+		font-weight: 600;
+		line-height: 1.5;
+		margin-top: 1.25em;
+		margin-bottom: 0.4em;
+		color: inherit;
+	}
+
+	/* First heading has no top margin */
+	> h1:first-child,
+	> h2:first-child,
+	> h3:first-child,
+	> h4:first-child,
+	> h5:first-child,
+	> h6:first-child {
+		margin-top: 0;
+	}
+
+	/* Paragraphs */
+	p {
+		margin-bottom: 1.75em;
+		line-height: 1.9;
+	}
+
+	> p:last-child,
+	li > p:last-child {
+		margin-bottom: 0;
+	}
+
+	/* Strong and emphasis */
+	strong {
+		font-weight: 600;
+	}
+
+	em {
+		font-style: italic;
+	}
+
+	/* Links */
+	a {
+		color: var(--terminal-accent);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+		transition: color 0.15s ease;
+	}
+
+	a:hover {
+		color: var(--terminal-accent-alt);
+	}
+
+	/* Lists */
+	ul,
+	ol {
+		margin-top: 1em;
+		margin-bottom: 1.75em;
+		padding-left: 1.75em;
+	}
+
+	> ul:last-child,
+	> ol:last-child {
+		margin-bottom: 0;
+	}
+
+	li {
+		margin: 0;
+		padding: 0;
+		line-height: 1.9;
+	}
+
+	li + li {
+		margin-top: 0.5em;
+	}
+
+	li > p {
+		margin: 0;
+	}
+
+	/* Unordered list bullets */
+	ul {
+		list-style: disc;
+	}
+
+	ul ul {
+		list-style: circle;
+	}
+
+	ul ul ul {
+		list-style: square;
+	}
+
+	ul > li::marker {
+		color: var(--terminal-fg-dim);
+	}
+
+	/* Task list: remove default bullets since checkboxes replace them */
+	ul[data-type='taskList'] {
+		list-style: none;
+		padding-left: 0;
+	}
+
+	/* Task list items: flex layout so checkbox and text are on the same line */
+	ul[data-type='taskList'] li {
+		display: flex;
+		align-items: flex-start;
+	}
+
+	ul[data-type='taskList'] li > label {
+		flex: 0 0 auto;
+		margin-right: 0.5rem;
+		user-select: none;
+	}
+
+
+	ul[data-type='taskList'] li > div {
+		flex: 1 1 auto;
+	}
+
+	ul[data-type='taskList'] li p {
+		margin: 0;
+	}
+
+	/* Ordered list numbers */
+	ol {
+		list-style-type: decimal;
+	}
+
+	ol > li {
+		list-style-position: outside;
+		display: list-item;
+	}
+
+	ol li::marker {
+		color: var(--terminal-fg-dim);
+		font-weight: 500;
+	}
+
+	/* Nested lists */
+	li > ul,
+	li > ol {
+		margin-top: 0.5em;
+		margin-bottom: 0;
+		padding-left: 1.5em;
+	}
+
+	li > ol > li {
+		list-style-type: lower-alpha;
+	}
+
+	/* Blockquotes */
+	blockquote {
+		border-left: 3px solid var(--terminal-accent);
+		padding-left: 1.25em;
+		margin-top: 1.75em;
+		margin-bottom: 1.75em;
+		color: var(--terminal-fg-dim);
+		font-style: italic;
+	}
+
+	blockquote p {
+		margin-bottom: 0.5em;
+	}
+
+	blockquote p:last-child {
+		margin-bottom: 0;
+	}
+
+	/* Tables — wrap in scrollable container to prevent overflow */
+	.tableWrapper {
+		overflow-x: auto;
+		max-width: 100%;
+		margin-top: 1.75em;
+		margin-bottom: 1.75em;
+	}
+
+	table {
+		width: 100%;
+		border-collapse: collapse;
+		font-size: 0.9em;
+	}
+
+	/* Legacy: tables not in wrapper still need margins */
+	> table {
+		margin-top: 1.75em;
+		margin-bottom: 1.75em;
+	}
+
+	th {
+		padding: 0.75em 1em;
+		text-align: left;
+		font-weight: 600;
+		border-bottom: 2px solid var(--terminal-border);
+		background: var(--terminal-bg-alt);
+	}
+
+	td {
+		padding: 0.75em 1em;
+		border-bottom: 1px solid var(--terminal-border);
+	}
+
+	tr:last-child td {
+		border-bottom: none;
+	}
+
+	/* Horizontal rules */
+	hr {
+		margin-top: 2em;
+		margin-bottom: 2em;
+		border: none;
+		border-top: 1px solid var(--terminal-border);
+	}
+
+	/* Images */
+	img {
+		max-width: 100%;
+		height: auto;
+		margin-top: 1.75em;
+		margin-bottom: 1.75em;
+	}
+
+	/* Inline code */
+	code {
+		font-family: var(--font-mono);
+		font-size: 0.875em;
+		background: var(--terminal-bg-alt);
+		padding: 0.1em 0.3em 0em;
+	}
+
+	/* Code blocks */
+	.code-block {
+		position: relative;
+	}
+
+	pre {
+		font-family: var(--font-mono);
+		font-size: 0.875rem;
+		line-height: 1.6;
+		margin-top: 2em;
+		margin-bottom: 2em;
+		padding: 1em;
+		overflow-x: auto;
+		background: var(--terminal-bg-alt);
+
+		border-radius: 0;
+		color: var(--terminal-fg);
+
+		code {
+			background: transparent;
+			padding: 0;
+			font-size: inherit;
+			color: inherit;
+		}
+
+		/* Code styling - aligned with react-syntax-highlighter-terminal.css */
+
+		/* comment, prolog, doctype, cdata */
+		.hljs-comment,
+		.hljs-quote {
+			color: var(--terminal-fg-dim);
+			font-style: italic;
+		}
+
+		/* punctuation */
+		.hljs-punctuation {
+			color: var(--terminal-fg);
+		}
+
+		/* property, tag, boolean, number, constant, symbol */
+		.hljs-tag,
+		.hljs-name,
+		.hljs-number,
+		.hljs-literal,
+		.hljs-symbol,
+		.hljs-selector-id {
+			color: var(--syntax-property, var(--terminal-accent));
+		}
+
+		/* selector, attr-name, string, char, builtin */
+		.hljs-string,
+		.hljs-attribute,
+		.hljs-selector-class,
+		.hljs-built_in,
+		.hljs-builtin-name,
+		.hljs-bullet {
+			color: var(--syntax-string, var(--terminal-success));
+		}
+
+		/* operator, entity, url */
+		.hljs-link,
+		.hljs-operator {
+			color: var(--syntax-operator, var(--terminal-accent-alt));
+		}
+
+		/* keyword, attr-value */
+		.hljs-keyword,
+		.hljs-selector-tag,
+		.hljs-meta {
+			color: var(--syntax-keyword, var(--terminal-warning));
+		}
+
+		/* function, class-name */
+		.hljs-title,
+		.hljs-section {
+			color: var(--syntax-function, var(--terminal-accent-alt));
+		}
+
+		/* regex, variable */
+		.hljs-variable,
+		.hljs-template-variable,
+		.hljs-regexp,
+		.hljs-type,
+		.hljs-params {
+			color: var(--syntax-variable, var(--terminal-warning));
+		}
+
+		/* diff: deleted */
+		.hljs-deletion {
+			background: color-mix(in srgb, var(--terminal-color-1) 30%, transparent);
+			color: var(--terminal-fg);
+		}
+
+		/* diff: inserted */
+		.hljs-addition {
+			background: color-mix(in srgb, var(--terminal-color-2) 30%, transparent);
+			color: var(--terminal-fg);
+		}
+
+		.hljs-emphasis {
+			font-style: italic;
+		}
+
+		.hljs-strong {
+			font-weight: 700;
+		}
+	}
+
+	/* Search match highlights */
+	.search-match {
+		background: color-mix(in srgb, var(--terminal-warning) 25%, transparent);
+		border-radius: 0;
+	}
+
+	.search-match-current {
+		background: color-mix(in srgb, var(--terminal-warning) 60%, transparent);
+		outline: 1px solid var(--terminal-warning);
+	}
+
+	/* Comment highlights */
+	.comment-highlight {
+		background-color: color-mix(in srgb, var(--comment-color, #fbbf24) 30%, transparent);
+		cursor: pointer;
+		transition: background-color 0.15s;
+	}
+
+	.comment-highlight:hover {
+		background-color: color-mix(in srgb, var(--comment-color, #fbbf24) 45%, transparent);
+	}
+
+	/* Inline code inside comment highlights - blend highlight color with code bg */
+	.comment-highlight code {
+		background: color-mix(in srgb, var(--comment-color, #fbbf24) 18%, var(--terminal-bg-alt)) !important;
+	}
+
+	/* Inline code inside blocks with comments - blend highlight color with code bg */
+	.has-comments code:not(pre *) {
+		background: color-mix(in srgb, var(--comment-color, #fbbf24) 15%, var(--terminal-bg-alt)) !important;
+	}
+
+	/* Block-level hover — any block is hoverable */
+	/* For lists, target li not ul/ol so hover matches click selection */
+	/* Code blocks are wrapped by TipTap in .react-renderer, so use descendant selector */
+	> p,
+	> h1,
+	> h2,
+	> h3,
+	> h4,
+	> h5,
+	> h6,
+	> blockquote,
+	.code-block,
+	li {
+		cursor: pointer;
+		transition: background-color 0.15s;
+	}
+
+	> p:hover,
+	> h1:hover,
+	> h2:hover,
+	> h3:hover,
+	> h4:hover,
+	> h5:hover,
+	> h6:hover,
+	> blockquote:hover {
+		background-color: color-mix(in srgb, var(--terminal-fg) 4%, transparent);
+	}
+
+	/* Code blocks: outline instead of background to not clash with syntax highlighting */
+	/* TipTap wraps React node views, so .code-block is a grandchild, not direct child */
+	.code-block:hover {
+		outline: 2px solid color-mix(in srgb, var(--terminal-fg) 20%, transparent);
+		outline-offset: -2px;
+	}
+
+	/* List items: highlight only the directly-hovered paragraph, not child bullets */
+	li:hover:not(:has(li:hover)) > p:not(.has-comments) {
+		background-color: color-mix(in srgb, var(--terminal-fg) 4%, transparent);
+	}
+
+	/* Task list items: li > div > div[node-view-content] > div[content-react] > p */
+	li[data-type='taskItem']:hover:not(:has(li:hover)) > div > [data-node-view-content] > [data-node-view-content-react] > p:not(.has-comments) {
+		background-color: color-mix(in srgb, var(--terminal-fg) 4%, transparent);
+	}
+
+	/* Commented block right border - use box-shadow for edge positioning */
+	.has-comments {
+		box-shadow: inset -3px 0 0 var(--comment-color, #fbbf24);
+		transition: background-color 0.15s;
+	}
+
+	/* Code blocks with comments - target pre inside wrapper (CSS var inherits) */
+	.code-block.has-comments pre,
+	pre.has-comments {
+		box-shadow: inset -3px 0 0 var(--comment-color, #fbbf24);
+	}
+
+	.has-comments:hover {
+		background-color: color-mix(in srgb, var(--comment-color, #fbbf24) 8%, transparent);
+	}
+
+	/* Pending comment highlight - shown while comment dialog is open, before submission */
+	.pending-comment {
+		background-color: color-mix(in srgb, var(--comment-color, #fbbf24) 10%, transparent);
+		box-shadow: inset -3px 0 0 color-mix(in srgb, var(--comment-color, #fbbf24) 60%, transparent);
+	}
+}
+
+/* Inline code transparent on hover - outside .tiptap for higher specificity */
+/* Targets any inline code (not in pre) when ancestor block is hovered */
+/* Use multiple selectors and high specificity to override base code styles */
+.tiptap > p:hover code:not(pre *),
+.tiptap > h1:hover code:not(pre *),
+.tiptap > h2:hover code:not(pre *),
+.tiptap > h3:hover code:not(pre *),
+.tiptap > h4:hover code:not(pre *),
+.tiptap > h5:hover code:not(pre *),
+.tiptap > h6:hover code:not(pre *),
+.tiptap > blockquote:hover code:not(pre *),
+.tiptap ul:has(li:hover) li:hover:not(:has(li:hover)) code:not(pre *),
+.tiptap ol:has(li:hover) li:hover:not(:has(li:hover)) code:not(pre *) {
+	background: transparent !important;
+	background-color: transparent !important;
+}
+
+/* Comment gutter wrapper — relative container, no flex needed since overlay is absolute */
+.tiptap-comment-wrapper {
+	position: relative;
+	container-type: inline-size;
+	max-width: 100%;
+	overflow-x: hidden;
+}
+
+/* When the comment overlay is suppressed (e.g. mobile viewer), reclaim the 80px
+   right-hand gutter that would otherwise sit empty. */
+.tiptap-comment-wrapper.tiptap-no-gutter .tiptap {
+	padding-right: 1em;
+}
+
+/* Sidebar artifact previews need comments, but the default 80px gutter is too
+   expensive at narrow widths. Keep a compact lane until there is truly no room. */
+.tiptap-comment-wrapper.tiptap-compact-gutter .tiptap {
+	padding-right: 44px;
+}
+
+.tiptap-comment-wrapper.tiptap-compact-gutter .comment-gutter-overlay {
+	width: 44px;
+}
+
+.tiptap-comment-wrapper.tiptap-compact-gutter .comment-gutter-item {
+	right: 8px;
+}
+
+@container (max-width: 319px) {
+	.tiptap-comment-wrapper.tiptap-compact-gutter .tiptap {
+		padding-right: 1em;
+	}
+
+	.tiptap-comment-wrapper.tiptap-compact-gutter .comment-gutter-overlay {
+		display: none;
+	}
+}
+
+/* Comment gutter overlay — floats inside the padding-right area */
+.comment-gutter-overlay {
+	position: absolute;
+	top: 0;
+	right: 0;
+	width: 80px;
+	pointer-events: auto;
+}
+
+.comment-gutter-item {
+	position: absolute;
+	right: 12px;
+	transform: translateY(-2px);
+}
+
+/* Clicked comment info panel */
+.comment-click-info {
+	margin-top: 4px;
+	border: 1px solid var(--terminal-border);
+	background: var(--terminal-bg-alt);
+	padding: 8px 12px;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+}
+
+.comment-click-info-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 4px;
+}
+
+.comment-click-info-line {
+	color: var(--terminal-accent);
+	font-weight: 600;
+}
+
+.comment-click-info-close {
+	background: none;
+	border: none;
+	color: var(--terminal-fg-dim);
+	cursor: pointer;
+	font-size: 1.1rem;
+	line-height: 1;
+	padding: 0 4px;
+}
+
+.comment-click-info-close:hover {
+	color: var(--terminal-fg);
+}
+
+.comment-click-info-source {
+	margin: 0;
+	padding: 6px 8px;
+	background: var(--terminal-bg);
+	overflow-x: auto;
+	white-space: pre;
+	color: var(--terminal-fg);
+	font-size: 0.8rem;
+	line-height: 1.5;
+}
+
+.comment-click-info-source code {
+	background: transparent;
+	padding: 0;
+}
+
+.comment-click-info-meta {
+	margin-top: 6px;
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.comment-click-info-author {
+	color: var(--terminal-fg-dim);
+	font-size: 0.75rem;
+}
+
+/* Interactive comment demo layout */
+.interactive-comment-demo {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+}
+
+.interactive-comment-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 8px 12px;
+	background: var(--terminal-bg-alt);
+	border: 1px solid var(--terminal-border);
+	border-bottom: none;
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+}
+
+.interactive-comment-hint {
+	color: var(--terminal-fg-dim);
+}
+
+.interactive-comment-add-btn {
+	background: var(--terminal-accent);
+	color: var(--terminal-bg);
+	border: none;
+	padding: 4px 12px;
+	font-family: var(--font-mono);
+	font-size: 0.75rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: opacity 0.15s;
+}
+
+.interactive-comment-add-btn:hover {
+	opacity: 0.85;
+}
+
+.interactive-comment-count {
+	margin-left: auto;
+	color: var(--terminal-fg-dim);
+	font-size: 0.75rem;
+}
+
+.interactive-comment-sidebar {
+	border: 1px solid var(--terminal-border);
+	border-top: none;
+	padding: 12px;
+	background: var(--terminal-bg-alt);
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	max-height: 240px;
+	overflow-y: auto;
+}
+
+.interactive-comment-sidebar h4 {
+	margin: 0 0 8px;
+	font-size: 0.8rem;
+	color: var(--terminal-fg-dim);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.interactive-comment-sidebar-item {
+	padding: 6px 0 6px 10px;
+	border-left: 3px solid #fbbf24;
+	margin-bottom: 6px;
+}
+
+.interactive-comment-sidebar-item strong {
+	display: block;
+	font-size: 0.75rem;
+	color: var(--terminal-fg);
+}
+
+.interactive-comment-sidebar-text {
+	color: var(--terminal-fg-dim);
+	font-size: 0.75rem;
+	font-style: italic;
+}

@@ -1,0 +1,10 @@
+{
+  "name": "hl",
+  "description": "Built-in HumanLayer skills.",
+  "version": "0.2.0",
+  "author": {
+    "name": "HumanLayer",
+    "email": "support@humanlayer.dev"
+  },
+  "license": "Apache-2.0"
+}

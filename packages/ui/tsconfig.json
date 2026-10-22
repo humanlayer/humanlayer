@@ -1,0 +1,36 @@
+{
+	"compilerOptions": {
+		"noUncheckedIndexedAccess": true,
+		"lib": [
+			"ESNext"
+		],
+		"target": "ESNext",
+		"module": "Preserve",
+		"moduleDetection": "force",
+		"jsx": "react-jsx",
+		"allowJs": true,
+		// Bundler mode
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		"paths": {
+			"@humanlayer/ui/*": [
+				"./src/*"
+			],
+			"@/*": [
+				"./src/*"
+			]
+		},
+		"skipLibCheck": true
+	},
+	"include": [
+		"."
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"src/vscode-themes/themeClones",
+		"**/*.stories.tsx"
+	]
+}

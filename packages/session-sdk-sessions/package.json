@@ -1,0 +1,19 @@
+{
+	"name": "@humanlayer/session-sdk-sessions",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Session-side client: session row changes (continue, interrupt), an Electric shape reader, conversation events, and the prepare body",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/session-sdk-base": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0"
+	}
+}

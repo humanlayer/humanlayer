@@ -1,0 +1,31 @@
+{
+  "ignore": {
+    "files": [
+      "src/integrations/electron/**"
+    ],
+    "overrides": [
+      {
+        "files": [
+          "src/components/session-detail/MultiplayerPromptingControl.tsx",
+          "src/components/github/useOpenPullRequestDelivery.ts",
+          "src/hooks/useSafeUpdate.ts"
+        ],
+        "rules": [
+          "react-doctor/query-mutation-missing-invalidation"
+        ]
+      },
+      {
+        "files": [
+          "src/components/providers/SyncProvider.tsx"
+        ],
+        "rules": [
+          "react-hooks-js/refs"
+        ]
+      }
+    ]
+  },
+  "rules": {
+    "react-hooks-js/todo": "off",
+    "react-doctor/react-compiler-no-manual-memoization": "off"
+  }
+}

@@ -1,0 +1,29 @@
+{
+	"name": "@humanlayer/riptide-electron-rpc",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/desktop-rpc.ts",
+		"./get-host-id": "./src/rpcs/get-host-id.ts",
+		"./open-in-editor": "./src/rpcs/open-in-editor.ts",
+		"./open-external-url": "./src/rpcs/open-external-url.ts",
+		"./diagnostics": "./src/rpcs/diagnostics.ts",
+		"./host-logging": "./src/rpcs/host-logging.ts",
+		"./set-zoom": "./src/rpcs/set-zoom.ts",
+		"./set-window-theme": "./src/rpcs/set-window-theme.ts",
+		"./protocol": "./src/protocol.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@humanlayer/schemas": "workspace:*",
+		"effect": "catalog:"
+	},
+	"devDependencies": {
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}

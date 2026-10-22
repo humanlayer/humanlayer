@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+dist/
+# Claude Code writes the mods API types here each time it loads the plugin from a folder.
+.claude-plugin/types/

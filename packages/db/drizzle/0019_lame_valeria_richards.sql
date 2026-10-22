@@ -1,0 +1,1 @@
+ALTER TABLE "conversation_events" ADD COLUMN "next_step_suggestion" jsonb;

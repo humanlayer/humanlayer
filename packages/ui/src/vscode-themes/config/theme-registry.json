@@ -1,0 +1,51 @@
+{
+	"themes": [
+		{
+			"repo": "https://github.com/enkia/tokyo-night-vscode-theme",
+			"themes": ["themes/tokyo-night-light-color-theme.json"]
+		},
+		{
+			"repo": "https://github.com/drcmda/poimandres-theme",
+			"themes": [{ "name": "Poimandres", "path": "themes/poimandres-color-theme.json" }],
+			"mappingOverrides": {
+				"--terminal-accent": "terminal.ansiBrightBlue",
+				"--terminal-border": "tree.indentGuidesStroke",
+				"--terminal-bg-alt": "statusBarItem.remoteBackground"
+			}
+		},
+		{
+			"repo": "https://github.com/sdras/night-owl-vscode-theme",
+			"themes": ["themes/Night Owl-Light-color-theme.json"]
+		},
+		{
+			"repo": "https://github.com/nordtheme/visual-studio-code",
+			"themes": ["themes/nord-color-theme.json"],
+			"mappingOverrides": {
+				"--terminal-bg-alt": "statusBar.background"
+			}
+		},
+		{
+			"repo": "https://github.com/gantoreno/vscode-vercel",
+			"themes": [{ "name": "Vercel Dark", "path": "themes/vercel-dark.json" }],
+			"mappingOverrides": {
+				"--terminal-bg-alt": "panel.background",
+				"--terminal-code-bg": "button.secondaryBackground",
+				"--terminal-fg-dim": "breadcrumb.foreground",
+				"--terminal-accent-alt": "terminal.ansiBlue",
+				"--terminal-success": "terminal.ansiGreen",
+				"--terminal-warning": "terminal.ansiYellow",
+				"--terminal-error": "terminal.ansiRed",
+				"--terminal-label-blue": "terminal.ansiBlue",
+				"--terminal-label-purple": "terminal.ansiMagenta",
+				"--terminal-label-pink": "list.errorForeground",
+				"--terminal-label-green": "terminal.ansiGreen",
+				"--syntax-property": "terminal.ansiBlue",
+				"--syntax-string": "terminal.ansiGreen",
+				"--syntax-operator": "list.errorForeground",
+				"--syntax-keyword": "list.errorForeground",
+				"--syntax-function": "terminal.ansiMagenta",
+				"--syntax-variable": "editor.foreground"
+			}
+		}
+	]
+}

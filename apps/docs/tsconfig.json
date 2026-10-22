@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["node", "vite/client"]
+  },
+  "include": [".vitepress/**/*.ts"]
+}

@@ -1,0 +1,3 @@
+DROP INDEX "conversation_events_session_id_organization_id_index";--> statement-breakpoint
+CREATE INDEX "conversation_events_org_owner_session_idx" ON "conversation_events" USING btree ("organization_id","resource_owner_user_id","session_id");--> statement-breakpoint
+CREATE INDEX "conversation_events_org_task_session_idx" ON "conversation_events" USING btree ("organization_id","task_id","session_id");

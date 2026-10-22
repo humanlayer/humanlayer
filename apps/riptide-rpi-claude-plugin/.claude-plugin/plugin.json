@@ -1,0 +1,24 @@
+{
+	"name": "rpi",
+	"description": "Research-Plan-Implement workflow for Linear and Jira tickets.",
+	"version": "0.50.0",
+	"author": {
+		"name": "HumanLayer",
+		"email": "support@humanlayer.dev"
+	},
+	"repository": "https://github.com/humanlayer/riptide-rpi",
+	"license": "Apache-2.0",
+	"keywords": [
+		"linear",
+		"jira",
+		"planning",
+		"rpi",
+		"thoughts",
+		"humanlayer",
+		"research",
+		"codelayer",
+		"riptide",
+		"plan",
+		"implement"
+	]
+}

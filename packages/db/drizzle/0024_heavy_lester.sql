@@ -1,0 +1,1 @@
+DROP INDEX "tasks_organization_id_created_by_index";

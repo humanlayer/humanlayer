@@ -1,0 +1,33 @@
+name: Build Electric Proxy ARM Container
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: &electric-proxy-inputs
+      - apps/riptide-electric-proxy/**
+      - packages/db/**
+      - packages/logger/**
+      - packages/schemas/**
+      - packages/typescript-config/**
+      - package.json
+      - bun.lock
+      - bunfig.toml
+      - .npmrc
+      - tsconfig.json
+      - turbo.json
+      - vitest.config.ts
+      - .dockerignore
+      - .github/workflows/arm-container-electric-proxy.yml
+  push:
+    branches: [main]
+    paths: *electric-proxy-inputs
+
+jobs:
+  build:
+    name: ARM container build (Electric proxy)
+    # GitHub-hosted, so fork code never runs on hardware we pay for
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: docker buildx build --platform linux/arm64 --output type=cacheonly --file apps/riptide-electric-proxy/Dockerfile .

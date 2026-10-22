@@ -1,0 +1,2 @@
+ALTER TABLE "organization_settings" ADD COLUMN "haiku_research_subagents_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD COLUMN "haiku_research_subagents_enabled" boolean DEFAULT false NOT NULL;

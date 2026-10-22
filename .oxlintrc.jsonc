@@ -1,0 +1,236 @@
+{
+	"$schema": "./node_modules/@effect/tsgo/oxlint-schema.json",
+	// Effect's rules are emitted by its patched tsgolint backend and require type information.
+	"options": {
+		"typeAware": true,
+	},
+	// Native recommended behavior (the `correctness` category) is enabled by default.
+	// We keep oxc + typescript on (defaults) and add react so we can govern React rules.
+	// `vitest` is oxlint's native equivalent of @vitest/eslint-plugin; its rules are API-gated
+	// (only fire in test files). Note: setting `plugins` overrides the default set, so `unicorn`
+	// is intentionally dropped to keep the migration diff small; the core eslint rules are always on.
+	"plugins": ["typescript", "react", "oxc", "vitest", "effecttsgo"],
+	"jsPlugins": [
+		{ "name": "anti-slop", "specifier": "./tools/oxlint/anti-slop/index.ts" },
+		{ "name": "automation", "specifier": "./tools/oxlint/automation/index.ts" },
+	],
+	// Mirrors the intentional source/generated boundary from the former biome.json.
+	// The root scripts already scope linting to apps/packages/contracts,
+	// so these patterns also make an ad-hoc `oxlint .` behave the same way.
+	"ignorePatterns": [
+		"**/node_modules/**",
+		"**/dist/**",
+		"tools/oxlint/**",
+		"**/.sst/**",
+		"**/.react-router/**",
+		"scripts/**",
+		"tools/oxlint/anti-slop/**",
+		"vendor/**",
+		"packages/ui/src/**/*.ts*",
+		"**/sst-env.d.ts",
+		"**/*.stories.ts*",
+		"**/routeTree.gen.ts",
+	],
+	"rules": {
+		"automation/no-cascading-layer-provide": "error",
+		"automation/no-manual-effect-error-tag": "error",
+		"automation/no-manual-tag-comparison": "error",
+		"automation/no-manual-tagged-construction": "error",
+		"automation/no-nested-layer-provide": "error",
+		"automation/prefer-use-mount-effect": "error",
+		// Tighten barrel files to errors (was a biome warning).
+		"oxc/no-barrel-file": "error",
+		// `any` erases type evidence at the boundaries that need it most. Enforced as an
+		// error repo-wide; packages still carrying findings are held at `warn` by the
+		// per-package migration override below, and promoted simply by removing them
+		// from that list once their findings reach zero.
+		"typescript/no-explicit-any": "error",
+		"typescript/await-thenable": "error",
+		"typescript/no-floating-promises": [
+			"error",
+			{
+				// TanStack Router navigation is intentionally scheduled from UI callbacks.
+				"allowForKnownSafeCalls": [{ "from": "file", "name": "navigate" }],
+			},
+		],
+		"typescript/no-base-to-string": "error",
+		"eslint/no-unused-vars": "error",
+		"typescript/no-misused-promises": [
+			"error",
+			{
+				// This rule has no per-call allowlist like no-floating-promises does, so navigate()
+				// and other fire-and-forget UI callbacks can't be exempted by name. Disable the
+				// void-return checks for the two positions where navigate lives — JSX handler
+				// attributes (onClick={() => navigate(...)}) and callback arguments
+				// (setTimeout/useHotkeys) — so they never need a `void` prefix.
+				"checksVoidReturn": { "attributes": false, "arguments": false },
+			},
+		],
+		"typescript/no-meaningless-void-operator": "error",
+		// Spreading a class instance drops its prototype; construct the shape explicitly.
+		"typescript/no-misused-spread": "error",
+		"typescript/no-non-null-assertion": "error",
+		"typescript/no-redundant-type-constituents": "error",
+		"typescript/restrict-template-expressions": "error",
+		"typescript/unbound-method": "error",
+		"anti-slop/max-ternary-depth": ["error", { "maxDepth": 2 }],
+		"anti-slop/no-chained-type-assertions": "error",
+		"anti-slop/no-conditional-spread": "error",
+		"anti-slop/no-known-value-widening": "error",
+		"anti-slop/no-object-parameters": "error",
+		"anti-slop/no-reprovide-ambient-service": "error",
+		"anti-slop/no-unknown-type-aliases": "error",
+		"anti-slop/no-widen-then-assert": "error",
+		// Explicitly enforce all 18 correctness rules from @effect/tsgo 0.36.4.
+		"effecttsgo/any-unknown-in-error-context": "error",
+		"effecttsgo/class-self-mismatch": "error",
+		"effecttsgo/duplicate-package": "error",
+		"effecttsgo/effect-fn-implicit-any": "error",
+		"effecttsgo/floating-effect": "error",
+		"effecttsgo/floating-effect-in-vitest": "error",
+		"effecttsgo/generic-effect-services": "error",
+		"effecttsgo/missing-effect-context": "error",
+		"effecttsgo/missing-effect-error": "error",
+		"effecttsgo/missing-layer-context": "error",
+		"effecttsgo/missing-return-yield-star": "error",
+		"effecttsgo/missing-star-in-yield-effect-gen": "error",
+		"effecttsgo/non-object-effect-service-type": "error",
+		"effecttsgo/outdated-api": "error",
+		"effecttsgo/overridden-schema-constructor": "error",
+		"effecttsgo/promise-in-effect-success": "error",
+		"effecttsgo/schema-literal-non-finite": "error",
+		"effecttsgo/schema-opaque-instance-member": "error",
+		// Prevent regressions in 22 already-clean Effect patterns.
+		"effecttsgo/catch-chain-to-first-success-of": "error",
+		"effecttsgo/catch-tag-to-catch-reason": "error",
+		"effecttsgo/effect-do-notation": "error",
+		"effecttsgo/effect-gen-uses-adapter": "error",
+		"effecttsgo/effect-in-failure": "error",
+		"effecttsgo/effect-in-void-success": "error",
+		"effecttsgo/effect-map-flatten": "error",
+		"effecttsgo/effect-map-void": "error",
+		"effecttsgo/flat-map-to-map": "error",
+		"effecttsgo/global-error-in-effect-catch": "error",
+		"effecttsgo/global-random-in-effect": "error",
+		"effecttsgo/global-timers-in-effect": "error",
+		"effecttsgo/lazy-promise-in-effect-sync": "error",
+		"effecttsgo/missing-effect-service-dependency": "error",
+		"effecttsgo/redundant-map-error": "error",
+		"effecttsgo/redundant-or-die": "error",
+		"effecttsgo/redundant-schema-tag-identifier": "error",
+		"effecttsgo/schema-union-of-literals": "error",
+		"effecttsgo/scope-in-layer-effect": "error",
+		"effecttsgo/service-not-as-class": "error",
+		"effecttsgo/unnecessary-pipe": "error",
+		"effecttsgo/unsafe-effect-type-assertion": "error",
+		// Enforce 10 Effect patterns addressed by the small-cleanup batch.
+		"effecttsgo/abort-controller-in-effect": "error",
+		"effecttsgo/catch-all-to-map-error": "error",
+		"effecttsgo/catch-unfailable-effect": "error",
+		"effecttsgo/effect-fn-iife": "error",
+		"effecttsgo/prefer-unsafe-constructor": "error",
+		"effecttsgo/schema-struct-with-tag": "error",
+		"effecttsgo/sync-to-succeed": "error",
+		"effecttsgo/try-catch-in-effect-gen": "error",
+		"effecttsgo/unnecessary-effect-gen": "error",
+		"effecttsgo/unnecessary-pipe-chain": "error",
+		// Enforce Effect-native time, schema, configuration, and logging APIs.
+		"effecttsgo/global-date-in-effect": "error",
+		"effecttsgo/schema-sync-in-effect": "error",
+		"effecttsgo/process-env-in-effect": "error",
+		"effecttsgo/global-console-in-effect": "error",
+		// These patterns are intentional in learning and failure-path tests.
+		"vitest/expect-expect": "off",
+		"vitest/no-conditional-expect": "off",
+		"vitest/no-disabled-tests": "off",
+		"vitest/no-standalone-expect": "off",
+		"vitest/require-mock-type-parameters": "off",
+		"vitest/require-to-throw-message": "off",
+		// Hook dependencies are intentionally managed by each component.
+		"react-hooks/exhaustive-deps": "off",
+		// Preserved as off to match the former biome allowance and avoid churn.
+		"react/no-array-index-key": "off",
+	},
+	"overrides": [
+		{
+			// These helpers implement mount effects using React directly (shared UI is also ignored above).
+			"files": [
+				"apps/riptide-ui/src/hooks/useMountEffect.ts",
+				"apps/riptide-cloud/src/hooks/useMountEffect.ts",
+				"packages/ui/src/hooks/use-mount-effect.ts",
+			],
+			"rules": { "automation/prefer-use-mount-effect": "off" },
+		},
+		{
+			"files": ["apps/riptide-daemon/src/effects/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": ["@/lib/macros", "**/lib/macros"],
+								"message": "resolve config in start.ts; read it with Config",
+							},
+						],
+					},
+				],
+			},
+		},
+		{
+			// @opencode/* pins its own Effect 4.0.0-rc.112; the plugin talks to it only through its
+			// promise client, so the second copy never meets ours.
+			"files": ["apps/riptide-opencode-plugin/**"],
+			"rules": {
+				"effecttsgo/duplicate-package": "off",
+			},
+		},
+		{
+			// Keep migration-oriented diagnostics focused on production code.
+			"files": ["**/test/**", "**/tests/**", "**/*.test.ts*", "packages/test-fixtures/**"],
+			"rules": {
+				"anti-slop/max-ternary-depth": "off",
+				"anti-slop/no-chained-type-assertions": "off",
+				"anti-slop/no-conditional-spread": "off",
+				"anti-slop/no-known-value-widening": "off",
+				"anti-slop/no-object-parameters": "off",
+				"anti-slop/no-reprovide-ambient-service": "off",
+				"anti-slop/no-unknown-type-aliases": "off",
+				"anti-slop/no-widen-then-assert": "off",
+				"automation/no-cascading-layer-provide": "off",
+				"automation/no-nested-layer-provide": "off",
+				"effecttsgo/any-unknown-in-error-context": "off",
+				"effecttsgo/floating-effect": "off",
+				"effecttsgo/missing-effect-context": "off",
+				"effecttsgo/missing-return-yield-star": "off",
+				"eslint/no-constant-condition": "off",
+				"eslint/no-unsafe-optional-chaining": "off",
+				"eslint/no-unused-expressions": "off",
+				"eslint/no-unused-vars": "off",
+				"eslint/require-yield": "off",
+				"typescript/await-thenable": "off",
+				"typescript/no-explicit-any": "off",
+				"typescript/no-base-to-string": "off",
+				"typescript/no-floating-promises": "off",
+				"typescript/no-misused-promises": "off",
+				"typescript/no-misused-spread": "off",
+				"typescript/no-non-null-assertion": "off",
+				"typescript/no-redundant-type-constituents": "off",
+				"typescript/no-useless-default-assignment": "off",
+				"typescript/require-array-sort-compare": "off",
+				"typescript/restrict-template-expressions": "off",
+				"typescript/unbound-method": "off",
+				"vitest/valid-expect": "off",
+				"vitest/valid-title": "off",
+			},
+		},
+		{
+			// Tests and sample data intentionally inspect and spell out wire-format tagged values.
+			"files": ["**/test/**", "**/tests/**", "**/*.test.*", "**/*.spec.*", "**/fixtures/**", "**/examples/**"],
+			"rules": {
+				"automation/no-manual-tag-comparison": "off",
+				"automation/no-manual-tagged-construction": "off",
+			},
+		},
+	],
+}

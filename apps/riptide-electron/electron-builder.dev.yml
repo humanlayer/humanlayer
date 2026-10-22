@@ -1,0 +1,15 @@
+extends: electron-builder.yml
+appId: com.humanlayer.electron.dev
+productName: HumanLayerElectronDev
+protocols:
+  - name: HumanLayer Electron Dev
+    schemes:
+      - humanlayer-electron-dev
+mac:
+  target:
+    - target: dmg
+      arch:
+        - arm64
+    - target: zip
+      arch:
+        - arm64

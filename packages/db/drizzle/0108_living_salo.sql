@@ -1,0 +1,1 @@
+CREATE INDEX "github_repositories_full_name_lower_idx" ON "github_integration_repositories" USING btree (lower("full_name"));

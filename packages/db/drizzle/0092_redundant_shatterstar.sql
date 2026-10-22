@@ -1,0 +1,1 @@
+ALTER TABLE "task_workspace_setup_for_host" ADD COLUMN "resolved_workspace_spec" jsonb;

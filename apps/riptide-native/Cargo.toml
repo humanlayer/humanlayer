@@ -1,0 +1,62 @@
+[package]
+name = "riptide-native"
+version = "0.200.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "riptide_native_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "HumanLayer-Local"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.6.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.11.0", features = ["devtools"] }
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2.3.0"
+tauri-plugin-fs = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-store = "2"
+tauri-plugin-global-shortcut = "2.0.1"
+tauri-plugin-deep-link = "2"
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+tauri-plugin-log = "2"
+tokio = { version = "1", features = ["full"] }
+dirs = "5.0"
+regex = "1.10"
+reqwest = { version = "0.11", features = ["blocking"] }
+chrono = { version = "0.4", features = ["serde"] }
+nix = { version = "0.30.1", features = ["signal", "process"] }
+fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
+shellexpand = "3.1"
+uuid = { version = "1", features = ["v4"] }
+sentry = { version = "0.38", features = ["log"] }
+glob = "0.3"
+ignore = "0.4"
+nucleo-matcher = "0.3"
+portable-pty = "0.8"
+tauri-plugin-dialog = "2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage", "NSResponder"] }
+objc2-foundation = { version = "0.3", features = ["NSString"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "windows"))'.dependencies]
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }

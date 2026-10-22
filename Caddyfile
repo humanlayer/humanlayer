@@ -1,0 +1,25 @@
+{
+	log {
+		level WARN
+	}
+}
+
+https://localhost:4443 {
+	reverse_proxy localhost:8888 {
+		flush_interval -1
+	}
+	header {
+		Cache-Control "no-cache, no-transform"
+		X-Accel-Buffering "no"
+	}
+}
+
+https://localhost:4444 {
+	reverse_proxy localhost:5537 {
+		flush_interval -1
+	}
+	header {
+		Cache-Control "no-cache, no-transform"
+		X-Accel-Buffering "no"
+	}
+}

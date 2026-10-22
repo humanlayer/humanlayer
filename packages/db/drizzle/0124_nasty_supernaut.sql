@@ -1,0 +1,4 @@
+ALTER TABLE "repository_locations_for_user_for_host" DROP CONSTRAINT "repository_locations_source_path_check";--> statement-breakpoint
+ALTER TABLE "repository_locations_for_user_for_host" ALTER COLUMN "source_path" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "workspace_repository_status_for_user_for_host" ADD COLUMN "source_policy" text;--> statement-breakpoint
+ALTER TABLE "repository_locations_for_user_for_host" ADD CONSTRAINT "repository_locations_source_path_check" CHECK (("repository_locations_for_user_for_host"."source_kind" = 'filesystem' and "repository_locations_for_user_for_host"."source_path" is not null and length("repository_locations_for_user_for_host"."source_path") > 0) or ("repository_locations_for_user_for_host"."source_kind" = 'managed_clone' and "repository_locations_for_user_for_host"."source_path" is null));

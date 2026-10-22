@@ -1,0 +1,22 @@
+{
+	"$schema": "./node_modules/oxfmt/configuration_schema.json",
+	// Carried over verbatim from the former biome.json formatter settings:
+	// tabs, indent width 4, line width 120, single quotes, semicolons as needed.
+	"printWidth": 120,
+	"tabWidth": 4,
+	"useTabs": true,
+	"singleQuote": true,
+	"semi": false,
+	// Replaces biome's `source.organizeImports` assist.
+	"sortImports": true,
+	// The root scripts scope formatting to *.ts* under the active workspaces, so JSON,
+	// Markdown, YAML, and package.json sorting stay out of this first migration. These
+	// patterns subtract the generated/excluded files that live inside those workspaces.
+	"ignorePatterns": [
+		"**/.react-router/**",
+		"packages/ui/src/**/*.ts*",
+		"**/sst-env.d.ts",
+		"**/*.stories.ts*",
+		"**/routeTree.gen.ts"
+	]
+}

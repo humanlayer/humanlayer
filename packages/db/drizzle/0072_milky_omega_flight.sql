@@ -1,0 +1,2 @@
+DROP INDEX "slack_notification_automations_org_enabled_idx";--> statement-breakpoint
+CREATE INDEX "slack_notification_automations_org_idx" ON "slack_notification_automations" USING btree ("organization_id");

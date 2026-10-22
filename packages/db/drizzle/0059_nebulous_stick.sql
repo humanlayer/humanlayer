@@ -1,0 +1,1 @@
+ALTER TABLE "task_user_settings" ALTER COLUMN "auto_advance_questions_to_research" SET DEFAULT true;

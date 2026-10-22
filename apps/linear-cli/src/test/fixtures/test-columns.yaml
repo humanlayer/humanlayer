@@ -1,0 +1,15 @@
+columns:
+  - name: ready-for-questions
+    description: Ready for research questions to be generated
+    color: "#5C9BC0"
+    type: started
+
+  - name: questions-in-progress
+    description: Research questions are being worked on
+    color: "#F7DC6F"
+    type: started
+
+  - name: questions-in-review
+    description: Research questions ready for human review
+    color: "#81C784"
+    type: started

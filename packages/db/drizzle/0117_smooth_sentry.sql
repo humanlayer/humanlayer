@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "experiment_flags" jsonb DEFAULT '{}'::jsonb NOT NULL;

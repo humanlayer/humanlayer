@@ -1,0 +1,2 @@
+CREATE INDEX "conversation_events_tool_correlation_idx" ON "conversation_events" USING btree ("session_id","event_type","tool_result_for_id","tool_call_id","created_at") WHERE ("conversation_events"."event_type" = 'tool_call' AND "conversation_events"."tool_call_id" IS NOT NULL) OR "conversation_events"."tool_result_for_id" IS NOT NULL;--> statement-breakpoint
+CREATE INDEX "sessions_lost_candidates_idx" ON "sessions" USING btree ("status","last_activity_at","id") WHERE "sessions"."status" IN ('running', 'launching', 'resuming', 'interrupt_requested');

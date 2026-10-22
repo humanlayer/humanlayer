@@ -1,0 +1,22 @@
+{
+  "local": {
+    "productName": "HumanLayerElectronLocal",
+    "url": "http://localhost:8976/dev",
+    "updaterCacheDirName": "humanlayer-electron-local-updater"
+  },
+  "dev": {
+    "productName": "HumanLayerElectronDev",
+    "url": "https://update.dev.codelayer.gg/dev",
+    "updaterCacheDirName": "humanlayer-electron-dev-updater"
+  },
+  "beta": {
+    "productName": "HumanLayerElectronBeta",
+    "url": "https://update.codelayer.cloud/beta",
+    "updaterCacheDirName": "humanlayer-electron-beta-updater"
+  },
+  "prod": {
+    "productName": "HumanLayerElectron",
+    "url": "https://update.humanlayer.com/stable",
+    "updaterCacheDirName": "humanlayer-electron-updater"
+  }
+}

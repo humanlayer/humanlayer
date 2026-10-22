@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow cheat sheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* print variant: black ink + framer accent colors on a full-white page,
+     sized to 11x8.5in landscape at 150px/in (rendered via Chromium
+     print-to-pdf at scale 0.64, so 1650x1275 maps 1:1 onto the sheet). */
+  :root {
+    --bg: #ffffff;
+    --ink: #000000;
+    --accent: #0066cc;
+    --teal: #22a06b;
+    --yellow: #cc7722;
+    --blue: #006bb3;
+    --pink: #7b61ff;
+    --red: #dc3545;
+  }
+  html, body { margin: 0; background: var(--bg); }
+  * { box-sizing: border-box; border-radius: 0; }
+  #c {
+    width: 1650px;
+    height: 1275px;
+    padding: 60px 70px 50px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .title { color: var(--accent); font-size: 36px; font-weight: 700; letter-spacing: 0.5px; }
+  .subtitle { color: var(--ink); font-size: 17px; margin-top: 10px; }
+
+  /* ---- workflow block ---- */
+  .wf { margin-top: auto; border-top: 1px solid var(--ink); padding-top: 24px; }
+  .wf-head { display: flex; align-items: baseline; gap: 16px; }
+  .wf-name { font-size: 26px; font-weight: 700; }
+  .wf-for { color: var(--ink); font-size: 17px; }
+  .wf-share { margin-left: auto; font-size: 15.5px; color: var(--ink); white-space: nowrap; }
+
+  .w-blue .wf-name { color: var(--blue); }
+  .w-teal .wf-name { color: var(--teal); }
+  .w-pink .wf-name { color: var(--pink); }
+
+  .flow { display: flex; align-items: stretch; margin-top: 18px; }
+  .box {
+    flex: 1;
+    border: 1px solid var(--ink);
+    border-top: 3px solid var(--ink);
+    background: var(--bg);
+    padding: 14px 15px;
+    min-height: 118px;
+  }
+  .box .label { color: var(--ink); font-size: 15.5px; }
+  .box .cmd { font-size: 17px; font-weight: 600; margin-top: 8px; line-height: 1.45; word-break: keep-all; }
+
+  .arrow {
+    width: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink);
+    font-size: 21px;
+    flex: none;
+  }
+  .arrow .check { font-size: 15px; line-height: 1; margin-bottom: 3px; visibility: hidden; }
+  .arrow.gated { color: var(--yellow); }
+  .arrow.gated .check { visibility: visible; color: var(--yellow); }
+
+  .c-blue   { border-top-color: var(--blue); }   .c-blue .cmd   { color: var(--blue); }
+  .c-pink   { border-top-color: var(--pink); }   .c-pink .cmd   { color: var(--pink); }
+  .c-teal   { border-top-color: var(--teal); }   .c-teal .cmd   { color: var(--teal); }
+  .c-yellow { border-top-color: var(--yellow); } .c-yellow .cmd { color: var(--yellow); }
+  .c-accent { border-top-color: var(--accent); } .c-accent .cmd { color: var(--accent); }
+  .c-fg     { border-top-color: var(--ink); }    .c-fg .cmd     { color: var(--ink); }
+
+  .wf-note { color: var(--ink); font-size: 16px; margin-top: 14px; }
+  .wf-note .gate-mark { color: var(--yellow); }
+
+  /* ---- footer notes ---- */
+  .foot { margin-top: auto; border-top: 1px solid var(--ink); padding-top: 24px; display: flex; gap: 52px; }
+  .foot-col { flex: 1; }
+  .foot-h { color: var(--teal); font-size: 18px; font-weight: 600; margin-bottom: 12px; }
+  .foot-col ul { margin: 0; padding-left: 18px; }
+  .foot-col li { color: var(--ink); font-size: 15.5px; line-height: 1.7; }
+  .foot-col li code { color: var(--accent); }
+</style>
+</head>
+<body>
+<div id="c">
+  <div class="title">HUMANLAYER WORKFLOW CHEAT SHEET</div>
+  <div class="subtitle">pick a workflow when you create the task — every phase is a slash command (/rpi:&lt;name&gt;) you can also run by hand</div>
+
+  <!-- ONESHOT -->
+  <div class="wf w-blue">
+    <div class="wf-head">
+      <span class="wf-name">Oneshot</span>
+      <span class="wf-for">small and clear — the ticket already says enough to start</span>
+      <span class="wf-share">~40% of tasks</span>
+    </div>
+    <div class="flow">
+      <div class="box c-accent">
+        <div class="label">build from the ticket</div>
+        <div class="cmd">implement-plan</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-accent">
+        <div class="label">apply feedback (optional)</div>
+        <div class="cmd">iterate-implementation</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-fg">
+        <div class="label">open the pull request</div>
+        <div class="cmd">describe-pr</div>
+      </div>
+    </div>
+    <div class="wf-note">no plan artifact — copy tweaks, one-off scripts, bugs with an obvious repro</div>
+  </div>
+
+  <!-- RPI -->
+  <div class="wf w-teal">
+    <div class="wf-head">
+      <span class="wf-name">RPI</span>
+      <span class="wf-for">medium — research the codebase, settle the design, then build</span>
+      <span class="wf-share">the default</span>
+    </div>
+    <div class="flow">
+      <div class="box c-blue">
+        <div class="label">questions</div>
+        <div class="cmd">create-<br>research-<br>questions</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-blue">
+        <div class="label">current state</div>
+        <div class="cmd">create-<br>research</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-pink">
+        <div class="label">decisions</div>
+        <div class="cmd">create-<br>design-<br>discussion</div>
+      </div>
+      <div class="arrow gated"><span class="check">✓</span>→</div>
+      <div class="box c-yellow">
+        <div class="label">vertical slices</div>
+        <div class="cmd">create-<br>structure-<br>outline</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-accent">
+        <div class="label">build slice by slice</div>
+        <div class="cmd">implement-<br>outline</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-fg">
+        <div class="label">pull request</div>
+        <div class="cmd">describe-pr</div>
+      </div>
+    </div>
+    <div class="wf-note"><span class="gate-mark">✓</span> you approve each design decision before the slices — worktree timing "Later" adds setup-worktree before build</div>
+  </div>
+
+  <!-- PRD-ORIENTED -->
+  <div class="wf w-pink">
+    <div class="wf-head">
+      <span class="wf-name">PRD-Oriented</span>
+      <span class="wf-for">large — product design and technical design each get a document</span>
+      <span class="wf-share">big features</span>
+    </div>
+    <div class="flow">
+      <div class="box c-blue">
+        <div class="label">questions</div>
+        <div class="cmd">create-<br>research-<br>questions</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-blue">
+        <div class="label">current state</div>
+        <div class="cmd">create-<br>research</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-pink">
+        <div class="label">what + why, mockups</div>
+        <div class="cmd">create-prd</div>
+      </div>
+      <div class="arrow gated"><span class="check">✓</span>→</div>
+      <div class="box c-teal">
+        <div class="label">system + program design</div>
+        <div class="cmd">create-tdd</div>
+      </div>
+      <div class="arrow gated"><span class="check">✓</span>→</div>
+      <div class="box c-yellow">
+        <div class="label">vertical slices</div>
+        <div class="cmd">create-<br>structure-<br>outline</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-accent">
+        <div class="label">build slice by slice</div>
+        <div class="cmd">implement-<br>outline</div>
+      </div>
+      <div class="arrow"><span class="check">✓</span>→</div>
+      <div class="box c-fg">
+        <div class="label">pull request</div>
+        <div class="cmd">describe-pr</div>
+      </div>
+    </div>
+    <div class="wf-note"><span class="gate-mark">✓</span> you approve the PRD, then the TDD, before any code — skip the PRD for work with no product surface, like a big refactor</div>
+  </div>
+
+  <div class="foot">
+    <div class="foot-col">
+      <div class="foot-h">every create- has an iterate-</div>
+      <ul>
+        <li><code>create-*</code> writes a new artifact</li>
+        <li><code>iterate-*</code> revises it in place, keeping the filename</li>
+        <li>e.g. <code>/rpi:iterate-prd</code>, <code>/rpi:iterate-tdd</code></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <div class="foot-h">anytime</div>
+      <ul>
+        <li><code>/rpi:review-artifact-comments</code> — reply to doc comments</li>
+        <li><code>/rpi:setup-worktree</code> — create the task worktree</li>
+        <li><code>/rpi:ci-commit</code> — focused commits</li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <div class="foot-h">why plan at all</div>
+      <ul>
+        <li>the agent builds in minutes; review still takes hours</li>
+        <li>30 minutes of planning saves hours of review</li>
+        <li>every skipped decision gets made during code review instead</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

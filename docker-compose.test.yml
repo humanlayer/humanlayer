@@ -1,0 +1,77 @@
+name: ${HUMANLAYER_TEST_COMPOSE_PROJECT:-humanlayer_test}
+
+services:
+  postgres:
+    image: docker.io/postgres:18
+    environment:
+      POSTGRES_DB: electric
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DEVSTACK_TEST_POSTGRES_PASSWORD:-humanlayer_test_password}
+    ports:
+      - "${DEVSTACK_TEST_POSTGRES_PORT:-55432}:5432"
+    command:
+      - -c
+      - listen_addresses=*
+      - -c
+      - wal_level=logical
+      - -c
+      - max_connections=500
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d electric"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - humanlayer_test_postgres_data:/var/lib/postgresql
+
+  electric:
+    image: docker.io/electricsql/electric:1.7.12
+    environment:
+      DATABASE_URL: postgresql://postgres:${DEVSTACK_TEST_POSTGRES_PASSWORD:-humanlayer_test_password}@postgres:5432/electric?sslmode=disable
+      ELECTRIC_SECRET: ${DEVSTACK_TEST_ELECTRIC_SECRET:-humanlayer_test_secret}
+      ELECTRIC_REPLICATION_STREAM_ID: ${DEVSTACK_TEST_ELECTRIC_REPLICATION_STREAM_ID:-stable}
+    ports:
+      - "${DEVSTACK_TEST_ELECTRIC_PORT:-13030}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  durable-streams:
+    image: humanlayer/durable-streams-server:0.3.0-cebb50e
+    build:
+      context: ./docker/durable-streams-server
+      args:
+        DURABLE_STREAMS_SOURCE_COMMIT: cebb50e49c62c534dd714ef84a8a4572e66724b2
+    ports:
+      # Keep using the already-allocated test Durable Streams port in existing manifests.
+      - "${DEVSTACK_TEST_DURABLE_STREAMS_PORT:-18642}:4437"
+    environment:
+      DS_SERVER__BIND_ADDRESS: 0.0.0.0:4437
+      DS_STORAGE__MODE: file-fast
+      DS_STORAGE__DATA_DIR: /var/lib/durable-streams
+      DS_LIMITS__MAX_MEMORY_BYTES: "187904819200"
+      DS_LIMITS__MAX_STREAM_BYTES: "104857600"
+      DS_LIMITS__MAX_STREAM_NAME_SEGMENTS: "256"
+      DS_HTTP__ALLOW_WILDCARD_CORS: "true"
+    volumes:
+      - humanlayer_test_durable_streams_data:/var/lib/durable-streams
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:4437/readyz"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  redis:
+    image: docker.io/redis:8.4-alpine
+    ports:
+      - "${DEVSTACK_TEST_REDIS_PORT:-17000}:6379"
+    volumes:
+      - humanlayer_test_redis_data:/data
+
+volumes:
+  humanlayer_test_postgres_data:
+    name: ${DEVSTACK_TEST_POSTGRES_VOLUME:-humanlayer_test_postgres_data}
+  humanlayer_test_durable_streams_data:
+    name: ${DEVSTACK_TEST_DURABLE_STREAMS_VOLUME:-humanlayer_test_durable_streams_data}
+  humanlayer_test_redis_data:
+    name: ${DEVSTACK_TEST_REDIS_VOLUME:-humanlayer_test_redis_data}

@@ -1,0 +1,6 @@
+# Ignore compiled daemon binary (62MB+)
+riptided
+daemon
+
+# Keep this directory in git
+!.gitignore

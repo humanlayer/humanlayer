@@ -1,0 +1,35 @@
+# After CI passes on a push to main, asks HumanLayer's release repo to build, sign, publish, and
+# deploy the dev channel from this commit. Runs only where the RELEASE_REPO variable and the
+# RELEASE_DISPATCH_PAT secret are set, so forks skip it. It checks out no code.
+name: Notify release repo
+
+on:
+  workflow_run:
+    workflows: ["Check, Build, Test"]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  notify:
+    # head_branch alone would also match a fork PR from a branch named main
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      vars.RELEASE_REPO != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the release repo's main workflow
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_DISPATCH_PAT }}
+          RELEASE_REPO: ${{ vars.RELEASE_REPO }}
+          RELEASE_REF: ${{ vars.RELEASE_REF || 'main' }}
+          DRY_RUN: ${{ vars.RELEASE_DRY_RUN || 'false' }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          PUBLIC_REPO: ${{ github.repository }}
+        run: |
+          gh workflow run main.yml --repo "$RELEASE_REPO" --ref "$RELEASE_REF" \
+            -f sha="$SHA" -f public_repo="$PUBLIC_REPO" -f dry_run="$DRY_RUN"
+          echo "Dispatched $RELEASE_REPO main.yml on $RELEASE_REF for $PUBLIC_REPO@$SHA (dry_run=$DRY_RUN)"

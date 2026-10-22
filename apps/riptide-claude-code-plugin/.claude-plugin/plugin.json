@@ -1,0 +1,13 @@
+{
+	"name": "humanlayer",
+	"version": "0.1.0",
+	"description": "Mirror your Claude Code sessions to HumanLayer, and reply, stop and approve from the web app.",
+	"author": { "name": "HumanLayer", "email": "support@humanlayer.dev" },
+	"license": "Apache-2.0",
+	"mcpServers": {
+		"mirror": {
+			"command": "node",
+			"args": ["${CLAUDE_PLUGIN_ROOT}/src/server.ts"]
+		}
+	}
+}

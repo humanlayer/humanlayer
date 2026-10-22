@@ -1,0 +1,8 @@
+{
+	"jsPlugins": [{ "name": "automation", "specifier": "./index.ts" }],
+	"rules": {
+		"automation/no-manual-effect-error-tag": "error",
+		"automation/no-manual-tag-comparison": "error",
+		"automation/no-manual-tagged-construction": "error"
+	}
+}

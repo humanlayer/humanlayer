@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-dialog",
+  "description": "Folder picker access for the main task composer",
+  "windows": ["main"],
+  "permissions": ["dialog:allow-open"]
+}

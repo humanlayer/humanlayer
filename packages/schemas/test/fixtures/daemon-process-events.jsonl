@@ -1,0 +1,3 @@
+{"type":"daemon_ready"}
+{"type":"daemon_already_running","message":"A daemon is already running for this user, organization, host, and stage"}
+{"type":"auth_failure","message":"Authentication failed (401). Please sign in again."}

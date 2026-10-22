@@ -1,0 +1,127 @@
+/* Import global terminal-themed styles from UI package */
+@import "@humanlayer/ui/globals.css";
+
+/* Import VSCode theme overrides */
+@import "@humanlayer/ui/vscode-themes.generated.css";
+
+/* Streamdown's default components ship Tailwind utility classes; its dist is outside
+   the default scan roots, so the classes only compile with an explicit source. */
+@source "../node_modules/streamdown/dist/*.js";
+
+/* App-specific overrides */
+html,
+body,
+#app {
+	height: 100%;
+	margin: 0;
+	/* Fixed app shell: inner panels scroll, the document never does. Without this,
+	   an absolutely-positioned overflow (e.g. the workflow graph's react-flow viewport)
+	   makes <html> taller than the viewport, and trackpad overscroll chains from an
+	   inner scroller into the document, scrolling the whole shell up and exposing blank. */
+	overflow: hidden;
+}
+
+#app {
+	display: flex;
+	flex-direction: column;
+	min-height: 100dvh;
+}
+
+body:has(.rounded-corners) {
+	--radius-sm: 0.25rem;
+	--radius-md: 0.25rem;
+	--radius-lg: 0.25rem;
+	--radius-xl: 0.25rem;
+}
+
+body:has(.rounded-corners) :where(.rounded, .rounded-none, .rounded-sm, .rounded-md, .rounded-lg, .rounded-xl) {
+	border-radius: 0.25rem !important;
+}
+
+body:has(.rounded-corners)
+	:where(
+		.update-flasher,
+		.update-details-dialog [data-slot='button'],
+		.update-details-dialog [data-slot='dialog-close']
+	) {
+	border-radius: 0.25rem !important;
+}
+
+body:has(.rounded-corners) :where([data-slot='tabs-list'], [data-slot='tabs-trigger'])[data-variant='underline'] {
+	border-radius: 0 !important;
+}
+
+/* Fallback titlebar strip for desktop routes that don't integrate the drag
+   region into their own top row (settings, auth/callback, mobile). The main
+   `_app` shell instead marks its top rows with data-tauri-drag-region and
+   insets for the macOS traffic lights — see lib/tauri-chrome.ts. */
+.tauri-titlebar-drag-region {
+	/* Tall enough to fully contain the traffic lights pinned at y 18-30. */
+	height: 40px;
+	flex-shrink: 0;
+	background: var(--terminal-bg);
+	background: color-mix(in oklab, var(--terminal-bg) 90%, black);
+	cursor: default;
+}
+
+[data-tauri-drag-region] {
+	-webkit-app-region: drag;
+}
+
+[data-tauri-drag-region] :is(a, button, input, select, textarea, [role='button']) {
+	-webkit-app-region: no-drag;
+}
+
+body > .mermaidTooltip {
+	position: fixed !important;
+	top: 0 !important;
+	left: 0 !important;
+}
+
+/* The read-only ProseMirror content overflows inside ArtifactDocument's own
+ * scroller. Keep the editor's hit-test box within the viewport so a direct
+ * document click resolves inside RIGHT_PANE instead of an offscreen midpoint. */
+.artifact-viewer-v2 .tiptap.ProseMirror[contenteditable='false'] {
+	max-height: 100vh;
+}
+
+.session-composer-artifact-delivery button,
+.session-composer-comment-delivery button,
+button.session-composer-primary-action,
+.session-composer-primary-action > button {
+	height: 1.625rem;
+}
+
+@container (max-width: 44.875rem) {
+	.session-composer-artifact-delivery .artifact-viewer-v2-bulk-delivery-label,
+	.session-composer-artifact-delivery .artifact-viewer-v2-bulk-delivery-count,
+	.session-composer-artifact-delivery .artifact-viewer-v2-bulk-delivery-shortcut {
+		display: none;
+	}
+}
+
+@container (max-width: 40rem) {
+	.session-composer-primary-action-label,
+	.session-composer-primary-action-shortcut {
+		display: none;
+	}
+
+	.session-composer-primary-action-icon {
+		margin-right: 0;
+	}
+
+	button.session-composer-primary-action,
+	.session-composer-primary-action > button:first-child {
+		width: 2rem;
+		padding: 0;
+	}
+}
+
+/* Hide scrollbar while maintaining scroll functionality */
+.scrollbar-hide {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+	display: none;
+}

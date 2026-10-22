@@ -1,0 +1,2 @@
+ALTER TABLE "online_hosts" ADD COLUMN "ephemeral" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+CREATE INDEX "online_hosts_ephemeral_last_seen_idx" ON "online_hosts" USING btree ("last_seen") WHERE "online_hosts"."ephemeral";

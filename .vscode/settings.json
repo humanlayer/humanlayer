@@ -1,0 +1,33 @@
+{
+    "editor.codeActionsOnSave": {
+        "source.format.oxc": "always", // run formatter first
+        "source.fixAll.oxc": "explicit",
+        "source.removeUnusedImports": "explicit",
+        "source.addMissingImports.ts": "explicit",
+    },
+    "editor.formatOnSave": true,
+    "editor.formatOnPaste": true,
+    "editor.tabSize": 4,
+    "js/ts.referencesCodeLens.enabled": true,
+    "html.format.indentInnerHtml": true,
+    "html.format.wrapAttributes": "auto",
+    "js/ts.preferences.importModuleSpecifier": "non-relative",
+    "js/ts.updateImportsOnFileMove.enabled": "always",
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSaveMode": "file", // tell oxfmt to format the whole file, not only the modified lines
+    "files.associations": {
+        "*.mdx": "markdown",
+        "unistd.h": "c"
+    },
+    "files.watcherExclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "search.exclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "files.readonlyInclude": {
+        "**/routeTree.gen.ts": true
+    },
+    "js/ts.tsdk": "node_modules/typescript/lib",
+    "js/ts.tsdk.path": "node_modules/typescript/lib"
+}

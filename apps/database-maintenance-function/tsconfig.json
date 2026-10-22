@@ -1,0 +1,24 @@
+{
+	"compilerOptions": {
+		"types": ["node"],
+		"noUncheckedIndexedAccess": true,
+		"strict": true,
+		"outDir": "bin",
+		"lib": ["ESNext"],
+		"target": "ESNext",
+		"module": "Preserve",
+		"moduleResolution": "bundler",
+		"esModuleInterop": true,
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"sourceMap": true,
+		"experimentalDecorators": true,
+		"pretty": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"include": ["index.ts", "test/**/*.ts"]
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "HumanLayer",
+  "version": "0.200.0",
+  "identifier": "com.humanlayer.riptide",
+  "build": {
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "bun run --cwd ../riptide-ui build:stable && ([ -f ./bin/riptided ] || (bun run --cwd ../riptide-daemon build:stable && cp ../riptide-daemon/dist/daemon ./bin/riptided))",
+    "frontendDist": "../riptide-ui/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "HumanLayer",
+        "width": 1440,
+        "height": 900,
+        "center": true,
+        "minWidth": 800,
+        "minHeight": 600,
+        "zoomHotkeysEnabled": true,
+        "titleBarStyle": "Overlay",
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 21
+        },
+        "transparent": true,
+        "hiddenTitle": true,
+        "dragDropEnabled": true
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "withGlobalTauri": true
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "bin/riptided"
+    ],
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/HumanLayer.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "linux/HumanLayer.desktop"
+      }
+    },
+    "macOS": {
+      "entitlements": "entitlements.plist",
+      "hardenedRuntime": true,
+      "infoPlist": "Info.plist",
+      "minimumSystemVersion": "11.0"
+    }
+  },
+  "plugins": {
+    "fs": {
+      "requireLiteralLeadingDot": false
+    },
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "riptide"
+        ]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1QzFDQTIyMEYwRjU5MkQKUldRdFdROFBJc3JCTllIZEhnN3g0MktPVEEyN3lNc2ZhV2UxZFVjaXVTaGkwUFM2Y21lTUdPQTkK",
+      "endpoints": [
+        "https://update.humanlayer.com/stable/{{target}}-{{arch}}/{{current_version}}"
+      ]
+    }
+  }
+}

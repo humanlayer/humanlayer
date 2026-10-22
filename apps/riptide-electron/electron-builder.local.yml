@@ -1,0 +1,5 @@
+extends: electron-builder.yml
+protocols:
+  - name: HumanLayer Electron Local
+    schemes:
+      - humanlayer-electron-local

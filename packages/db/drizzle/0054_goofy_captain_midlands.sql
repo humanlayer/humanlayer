@@ -1,0 +1,2 @@
+ALTER TABLE "user_settings" ADD COLUMN "sidebar_variant" text DEFAULT 'flat' NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD COLUMN "show_task_phase_labels" boolean DEFAULT false NOT NULL;
