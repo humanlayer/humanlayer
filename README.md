@@ -41,6 +41,10 @@ A build from source sends nothing to us: Sentry, PostHog, and the WorkOS client 
 
 HumanLayer Cloud runs this code. Guides for running it yourself are in progress.
 
+
+⚠️ note - If you use the Docker Compose file as a starter for self hosting, please note that it uses default/simple passwords that should be updated before you deploy.
+
+
 ## License
 
 [Apache License 2.0](LICENSE). A few vendored folders keep their MIT licenses; [NOTICE](NOTICE) lists them.
