@@ -11,8 +11,8 @@ export const DAEMON_CAPABILITIES = ['reportsRepositories', 'providerLogin', 'res
 export type DaemonCapability = (typeof DAEMON_CAPABILITIES)[number]
 
 /**
- * Sent in `capabilities` by a host that only runs sessions a user started on it, such as the pi
- * extension (apps/riptide-pi-extension). The app offers such a host for no launch or sign-in.
+ * Sent in `capabilities` by a host that only runs sessions a user started on it, such as the
+ * Claude Code plugin (apps/riptide-claude-code-plugin). The app offers such a host for no launch or sign-in.
  * riptide-daemon never sends it.
  */
 export const ATTACHED_SESSIONS_ONLY = 'attachedSessionsOnly'

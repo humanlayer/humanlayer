@@ -26,10 +26,7 @@
         "noPropertyAccessFromIndexSignature": false,
         "plugins": [
             {
-                "name": "@effect/language-service",
-                // @opencode/* (used only by apps/riptide-opencode-plugin through its promise client)
-                // pins its own effect 4.0.0-rc.112, so a second effect copy is installed on purpose.
-                "allowedDuplicatedPackages": ["effect"]
+                "name": "@effect/language-service"
             }
         ]
     }

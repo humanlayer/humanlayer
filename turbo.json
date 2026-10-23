@@ -58,21 +58,6 @@
 			"outputs": ["dist/**"],
 			"cache": false
 		},
-		"@humanlayer/rpi#build": {
-			"dependsOn": ["^build"],
-			"outputs": ["dist/**"],
-			"cache": false
-		},
-		"@humanlayer/rpi#build:linux": {
-			"dependsOn": ["^build:linux"],
-			"outputs": ["dist/**"],
-			"cache": false
-		},
-		"@humanlayer/rpi#build:macos": {
-			"dependsOn": ["^build:macos"],
-			"outputs": ["dist/**"],
-			"cache": false
-		},
 		"@humanlayer/riptide-daemon#build:stable": {
 			"env": ["BUILD_TYPE", "BUILD_VERSION", "RIPTIDE_DAEMON_API_ORIGIN", "RIPTIDE_DAEMON_SYNC_ORIGIN", "RIPTIDE_DAEMON_CLOUD_ORIGIN", "RIPTIDE_DAEMON_APP_ORIGIN", "NODE_ENV", "SENTRY_ENVIRONMENT", "RIPTIDE_DAEMON_SENTRY_DSN"],
 			"dependsOn": ["^build"],

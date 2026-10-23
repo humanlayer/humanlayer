@@ -8,7 +8,6 @@ There are three package directories / workspaces in this project:
 * `apps/` which are top-level applications. It contains
     * `cli` (`@humanlayer/cli`), HumanLayer CLI for daemon management and authentication
     * `linear-cli` (`@humanlayer/linear-cli`), Linear CLI tool
-    * `rpi-cli` (`@humanlayer/rpi`), CLI tool implementing the Research-Plan-Implement workflow with Linear CLI integration
     * `updater-server` (`@humanlayer/updater-server`), AWS Lambda server for app update distribution via S3
 
     RIPTIDE is the codename for the new version of codelayer. The packages are contained within apps, but are de-coupled from the previous packages:

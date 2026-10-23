@@ -42,8 +42,6 @@ if (agentlayerVersions.size !== 1) {
 const allowedLockfileResolutions = new Map([
 	['zod', expectedVersion],
 	['chromium-bidi/zod', '3.25.76'],
-	// riptide-opencode-plugin uses @opencode/plugin only for types; opencode supplies it at run time
-	['@opencode/plugin/zod', '4.1.8'],
 ])
 const lockfile = await Bun.file(new URL('../bun.lock', import.meta.url)).text()
 const resolutionPattern = /^\s+"([^"]*zod)": \["zod@([^"]+)"/gm
@@ -69,5 +67,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-	`Zod version alignment passed (${expectedVersion}; isolated copies are limited to chromium-bidi and @opencode/plugin)`,
+	`Zod version alignment passed (${expectedVersion}; isolated copies are limited to chromium-bidi)`,
 )

@@ -11,7 +11,7 @@
 //   daemon/events/create.ts
 //   daemon/sessions/repositories/report.ts
 //   daemon/artifacts/upsert.ts and create-upload.ts, with lib/filename-validation.ts
-//   daemon/heartbeat.ts (only the fields pi sends; the rest are optional there)
+//   daemon/heartbeat.ts (only the fields the plugin sends; the rest are optional there)
 //   daemon/agent-commands/report.ts, with packages/db/src/tables/agent-slash-commands.ts (repo root)
 //   daemon/approvals/create.ts and api/approvals/resolve.ts (appliedSuggestions left out)
 //   api/sessions/update.ts and api/tasks/update.ts (only the name fields; the rest pass through)
@@ -47,7 +47,7 @@ const workspaceState = z.object({
 })
 
 /** TaskWorkspaceAndWorkflowConfigurationSchema. workspaceSpec and workspaceSetupState are not
- *  copied (the extension never sends them); only their presence matters, to the refine below. */
+ *  copied (the plugin never sends them); only their presence matters, to the refine below. */
 export const taskConfigInput = z
 	.object({
 		name: z.string().min(1),

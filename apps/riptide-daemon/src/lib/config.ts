@@ -2,14 +2,7 @@ import { access, readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-import {
-	type CollectionConfig,
-	expandPath,
-	getActiveCollection,
-	migrateConfig,
-	type RpiConfig,
-} from '@humanlayer/rpi/config'
-
+import { type CollectionConfig, expandPath, getActiveCollection, migrateConfig, type RpiConfig } from '@/lib/rpi-config'
 import logger from '@/logger'
 
 // Re-export for convenience

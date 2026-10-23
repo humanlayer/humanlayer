@@ -178,14 +178,6 @@
 			},
 		},
 		{
-			// @opencode/* pins its own Effect 4.0.0-rc.112; the plugin talks to it only through its
-			// promise client, so the second copy never meets ours.
-			"files": ["apps/riptide-opencode-plugin/**"],
-			"rules": {
-				"effecttsgo/duplicate-package": "off",
-			},
-		},
-		{
 			// Keep migration-oriented diagnostics focused on production code.
 			"files": ["**/test/**", "**/tests/**", "**/*.test.ts*", "packages/test-fixtures/**"],
 			"rules": {

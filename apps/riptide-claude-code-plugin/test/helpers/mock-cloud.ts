@@ -11,10 +11,9 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 
+import { decodeJwtPayload, type Plane } from '@humanlayer/session-sdk-base'
 import { z } from 'zod'
 
-import type { Plane } from '../../src/rpc.ts'
-import { decodeJwtPayload } from '../../src/util.ts'
 import {
 	artifactCreateUploadInput,
 	artifactUpsertInput,
@@ -34,9 +33,6 @@ import {
 	type taskConfigInput,
 	tokenRefreshInput,
 } from './contracts.ts'
-
-// A login against the mock must not open its example.invalid device page in a real browser.
-process.env.HUMANLAYER_PI_NO_BROWSER = '1'
 
 /** A PAT the mock accepts out of the box (see MockState.pats), e.g. HUMANLAYER_PAT for e2e runs. */
 export const MOCK_PAT = 'hl-pat-mock'
@@ -853,7 +849,7 @@ export async function startMockCloud(port = 0, opts: MockCloudOptions = {}): Pro
 			sessionName: input.sessionName,
 			status: 'ready_for_launch',
 		}
-		// The server writes the prompt as the session's first event, so the extension must not send it.
+		// The server writes the prompt as the session's first event, so the plugin must not send it.
 		const first: MockEvent = {
 			eventId: randomUUID(),
 			sessionId: session.id,

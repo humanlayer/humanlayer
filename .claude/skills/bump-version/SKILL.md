@@ -1,6 +1,6 @@
 ---
 name: bump-version
-description: Bump the base version of one or more packages (riptide-native, cli, linear-cli, rpi-cli, rpi-plugin) on a PR - updates every synced file, verifies, commits, pushes. Use when cutting a release or asked to bump versions.
+description: Bump the base version of one or more packages (riptide-native, cli, linear-cli, rpi-plugin) on a PR - updates every synced file, verifies, commits, pushes. Use when cutting a release or asked to bump versions.
 user-invocable: true
 ---
 
@@ -17,7 +17,6 @@ Set the identical version in every file listed. Leave `Cargo.lock`/`bun.lock` al
 | riptide-native | `apps/riptide-native/tauri.conf.json` `"version"` · `apps/riptide-native/package.json` `"version"` · `apps/riptide-native/Cargo.toml` `version =` |
 | cli | `apps/cli/package.json` `"version"` |
 | linear-cli | `apps/linear-cli/package.json` `"version"` |
-| rpi-cli | `apps/rpi-cli/package.json` `"version"` |
 | rpi-plugin | `apps/riptide-rpi-claude-plugin/.claude-plugin/plugin.json` `"version"` · `marketplace.json` (same dir) top-level `"version"` **and** `plugins[0].version` |
 
 Plugin patch versions derive per release like everything else (`ci-scripts/stamp-plugin-versions.ts`) — plugin content ships without bumps; bump a plugin base only for minor/major intent.
