@@ -1,0 +1,32 @@
+{
+  "name": "@humanlayer/billing",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun --env-file=../../.env vitest run --project unit --project integration",
+    "test:learning": "bun vitest run --project learning"
+  },
+  "exports": {
+    "./billing-kv": "./src/billing-kv/index.ts",
+    "./keys": "./src/keys.ts",
+    "./redis": "./src/redis/index.ts",
+    "./types": "./src/types.ts",
+    "./visibility": "./src/visibility.ts"
+  },
+  "dependencies": {
+    "effect": "catalog:",
+    "ioredis": "5.10.1"
+  },
+  "peerDependencies": {
+    "typescript": "catalog:"
+  },
+  "devDependencies": {
+    "@humanlayer/vitest-config": "workspace:*",
+    "@effect/vitest": "catalog:",
+    "@types/bun": "1.3.12",
+    "@types/ioredis": "5.0.0",
+    "@types/node": "25.6.0",
+    "vitest": "catalog:"
+  }
+}

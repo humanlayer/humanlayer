@@ -1,0 +1,23 @@
+{
+  "name": "@humanlayer/logger",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun vitest run",
+    "test:watch": "bun vitest"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@humanlayer/vitest-config": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "exports": {
+    ".": "./src/logger/index.ts",
+    "./browser": "./src/browser/index.ts",
+    "./node": "./src/node/index.ts"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDc4NzcyRTM0ODk1M0ZBRDgKUldUWStsT0pOQzUzZVB2R0E2eFJhVjEzdGtzOUQxUThpR1NuaG9iWjlaK2dwQzBXSzR0QkdSMjgK",
+      "dangerousInsecureTransportProtocol": true,
+      "endpoints": [
+        "http://localhost:8976/localtest/{{target}}-{{arch}}/{{current_version}}"
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# Demo workflow columns for "In Progress" state
+columns:
+  - name: questions-in-progress
+    color: "#5DADE2"
+    description: Code complete, awaiting 
+  - name: ready-for-research
+    color: "#A4D03F"
+    description: Currently being reviewed

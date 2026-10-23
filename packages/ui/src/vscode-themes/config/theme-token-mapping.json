@@ -1,0 +1,41 @@
+{
+  "colorMappings": {
+    "--terminal-bg": "editor.background",
+    "--terminal-bg-alt": "terminal.background",
+    "--terminal-fg": "editor.foreground",
+    "--terminal-fg-alt": "terminal.foreground",
+    "--terminal-fg-dim": "descriptionForeground",
+    "--terminal-selection": "editor.selectionBackground",
+    "--terminal-accent": "button.background",
+    "--terminal-border": "panel.border",
+    "--terminal-input-bg": "input.background",
+    "--terminal-input-border": "input.border",
+    "--terminal-success": "editorInfo.foreground",
+    "--terminal-warning": "editorWarning.foreground",
+    "--terminal-error": "editorError.foreground",
+    "--terminal-color-0": "terminal.ansiBlack",
+    "--terminal-color-1": "terminal.ansiRed",
+    "--terminal-color-2": "terminal.ansiGreen",
+    "--terminal-color-3": "terminal.ansiYellow",
+    "--terminal-color-4": "terminal.ansiBlue",
+    "--terminal-color-5": "terminal.ansiMagenta",
+    "--terminal-color-6": "terminal.ansiCyan",
+    "--terminal-color-7": "terminal.ansiWhite",
+    "--terminal-color-8": "terminal.ansiBrightBlack",
+    "--terminal-color-9": "terminal.ansiBrightRed",
+    "--terminal-color-10": "terminal.ansiBrightGreen",
+    "--terminal-color-11": "terminal.ansiBrightYellow",
+    "--terminal-color-12": "terminal.ansiBrightBlue",
+    "--terminal-color-13": "terminal.ansiBrightMagenta",
+    "--terminal-color-14": "terminal.ansiBrightCyan",
+    "--terminal-color-15": "terminal.ansiBrightWhite"
+  },
+  "fallbacks": {
+    "dark": {
+      "icon": "Moon"
+    },
+    "light": {
+      "icon": "Sun"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+	"name": "@humanlayer/vitest-config",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./base": "./src/base.ts",
+		"./dom": "./src/dom.ts",
+		"./projects": "./src/projects.ts"
+	},
+	"scripts": {
+		"build": "echo 'No build required - library package'",
+		"build:macos": "bun run build",
+		"build:linux": "bun run build",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.0",
+		"vitest": "catalog:"
+	},
+	"devDependencies": {
+		"@humanlayer/typescript-config": "workspace:*",
+		"@types/node": "catalog:",
+		"@types/react": "catalog:",
+		"react": "catalog:",
+		"react-dom": "catalog:"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
+}

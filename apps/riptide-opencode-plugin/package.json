@@ -1,0 +1,41 @@
+{
+	"name": "@humanlayer/opencode-humanlayer",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Mirror opencode (v2) sessions, task files and HumanLayer tools to HumanLayer",
+	"bin": {
+		"humanlayer-opencode": "./src/cli.ts"
+	},
+	"files": [
+		"src",
+		"README.md"
+	],
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts",
+		"./tui": "./src/tui.tsx"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"test": "node --test \"test/**/*.test.ts\"",
+		"check": "bun run typecheck && bun run test",
+		"build": "bun scripts/build.ts"
+	},
+	"dependencies": {
+		"@humanlayer/session-sdk-artifacts": "workspace:*",
+		"@humanlayer/session-sdk-auth": "workspace:*",
+		"@humanlayer/session-sdk-base": "workspace:*",
+		"@humanlayer/session-sdk-diffs": "workspace:*",
+		"@humanlayer/session-sdk-sessions": "workspace:*",
+		"@humanlayer/session-sdk-tools": "workspace:*"
+	},
+	"devDependencies": {
+		"@opencode/client": "2.0.20",
+		"@opencode/plugin": "2.0.20",
+		"@opentui/core": "0.5.11",
+		"@opentui/solid": "0.5.11",
+		"@types/node": "^24.0.0",
+		"solid-js": "1.9.15",
+		"typescript": "^5.9.0"
+	}
+}

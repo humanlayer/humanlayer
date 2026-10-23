@@ -1,0 +1,19 @@
+{
+	"name": "@humanlayer/session-sdk-tools",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Session-side client: the HumanLayer tools riptide-daemon gives its agents (artifact and diff comments, library research), as agent-neutral specs",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/session-sdk-base": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0"
+	}
+}

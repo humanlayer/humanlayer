@@ -1,0 +1,1 @@
+CREATE INDEX "tasks_org_resource_owner_idx" ON "tasks" USING btree ("organization_id","resource_owner_user_id");

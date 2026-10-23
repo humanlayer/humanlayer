@@ -1,0 +1,19 @@
+{
+	"name": "@humanlayer/session-sdk-auth",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Session-side client auth: device login, the saved login kept fresh, the daemon token, and calls that carry them",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/session-sdk-base": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0"
+	}
+}

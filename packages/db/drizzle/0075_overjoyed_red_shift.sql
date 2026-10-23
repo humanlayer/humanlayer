@@ -1,0 +1,2 @@
+ALTER TABLE "organization_settings" ADD COLUMN "default_task_share_level" text DEFAULT 'read' NOT NULL;--> statement-breakpoint
+ALTER TABLE "organization_settings" ADD CONSTRAINT "organization_settings_default_task_share_level_check" CHECK ("organization_settings"."default_task_share_level" IN ('read', 'edit'));

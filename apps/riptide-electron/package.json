@@ -1,0 +1,51 @@
+{
+  "name": "@humanlayer/riptide-electron",
+  "version": "0.1.12",
+  "description": "Secure Electron host for the Riptide UI",
+  "author": "HumanLayer",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "bun run build:main",
+    "build:main": "bun run prepare-node-pty && tsup --config tsup.config.ts",
+    "prepare-node-pty": "chmod +x node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
+    "dev": "bun run scripts/dev.ts",
+    "stage-daemon:local": "bun run scripts/stage-daemon.ts local",
+    "stage-daemon:dev": "bun run scripts/stage-daemon.ts dev",
+    "stage-daemon:beta": "bun run scripts/stage-daemon.ts beta",
+    "stage-daemon:prod": "bun run scripts/stage-daemon.ts prod",
+    "dev:compiled-daemon": "bun run stage-daemon:local && RIPTIDE_ELECTRON_DAEMON_MODE=staged RIPTIDE_ELECTRON_STAGED_DAEMON_PATH=$PWD/resources/bin/riptided bun run dev",
+    "package:local": "bun run stage-daemon:local && RIPTIDE_ELECTRON_PACKAGE_BUILD=true bun run --cwd ../riptide-ui build:electron:local && bun run build:main && electron-builder --mac dir --arm64 --config electron-builder.local.yml --config.mac.identity=null",
+    "build:dev-package": "bun run stage-daemon:dev && RIPTIDE_ELECTRON_PACKAGE_BUILD=true bun run --cwd ../riptide-ui build:electron:dev && bun run build:main",
+    "build:beta-package": "bun run stage-daemon:beta && RIPTIDE_ELECTRON_PACKAGE_BUILD=true bun run --cwd ../riptide-ui build:electron:beta && bun run build:main",
+    "build:prod-package": "bun run stage-daemon:prod && RIPTIDE_ELECTRON_PACKAGE_BUILD=true bun run --cwd ../riptide-ui build:electron:prod && bun run build:main",
+    "package:dev:dir": "bun run build:dev-package && electron-builder --mac dir --arm64 --config electron-builder.dev.yml --config.mac.identity=null",
+    "package:dev:unsigned": "bun run build:dev-package && electron-builder --mac --arm64 --config electron-builder.dev.yml --config.mac.identity=null --publish never",
+    "package:dev": "bun run build:dev-package && electron-builder --mac --arm64 --config electron-builder.dev.yml",
+    "package:beta": "bun run build:beta-package && electron-builder --mac dir --arm64 --config electron-builder.beta.yml --config.mac.identity=null",
+    "package:prod": "bun run build:prod-package && electron-builder --mac dir --arm64 --config electron-builder.prod.yml --config.mac.identity=null",
+    "test": "bun run build:main && bun vitest run",
+    "test:watch": "bun vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@effect/platform-node": "catalog:",
+    "@humanlayer/riptide-electron-rpc": "workspace:*",
+    "@humanlayer/schemas": "workspace:*",
+    "@sentry/effect": "catalog:",
+    "@sentry/electron": "7.15.0",
+    "effect": "catalog:",
+    "electron-updater": "6.8.9",
+    "node-pty": "1.1.0"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@types/node": "catalog:",
+    "electron": "43.0.0",
+    "electron-builder": "26.15.3",
+    "tsup": "8.5.1",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

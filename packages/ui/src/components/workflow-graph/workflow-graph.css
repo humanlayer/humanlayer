@@ -1,0 +1,25 @@
+@keyframes dash-flow {
+	to {
+		stroke-dashoffset: -20;
+	}
+}
+
+/* Edge label hover highlight — base transitions so un-hover fades smoothly */
+.wf-graph .react-flow__node,
+.wf-graph .react-flow__edge path,
+.wf-graph .react-flow__edgelabel-renderer button {
+	transition: opacity 0.15s ease;
+}
+
+/* Baseline opacity for artifact edge paths (set in CSS so hover-highlight can override) */
+.wf-graph .react-flow__edge-artifact path {
+	opacity: 0.7;
+}
+
+.auto-advance-edge {
+	stroke: var(--terminal-accent-alt, var(--terminal-accent));
+	stroke-width: 2;
+	opacity: 0.7;
+	stroke-dasharray: 6 4;
+	animation: dash-flow 0.6s linear infinite;
+}

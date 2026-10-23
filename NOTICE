@@ -1,0 +1,10 @@
+HumanLayer
+Copyright 2025-2026 QueryTale, Inc. d/b/a HumanLayer
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It includes the following code under the MIT License. Each folder keeps its own LICENSE file.
+
+  vendor/effect-orpc           Copyright (c) 2026 Matteo Scotto (Utopy)
+  packages/y-durable-streams   Copyright (c) 2025 durable-stream
+  tools/oxlint/anti-slop       Copyright (c) 2026 Dillon Mulroy

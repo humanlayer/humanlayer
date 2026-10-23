@@ -1,0 +1,19 @@
+**/node_modules
+**/dist
+**/.turbo
+**/coverage
+**/test-results
+**/playwright-report
+**/storybook-static
+**/target
+
+.git
+.gitignore
+.humanlayer
+*.md
+**/.env*
+**/*.log
+**/.DS_Store
+
+# sst
+**/.sst

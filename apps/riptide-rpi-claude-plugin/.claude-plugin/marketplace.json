@@ -1,0 +1,23 @@
+{
+	"$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+	"name": "humanlayer-riptide-rpi",
+	"description": "Research-Plan-Implement workflow for Linear and Jira tickets",
+	"owner": {
+		"name": "HumanLayer",
+		"email": "support@humanlayer.dev"
+	},
+	"plugins": [
+		{
+			"name": "riptide-rpi",
+			"description": "Research-Plan-Implement workflow for Linear and Jira tickets.",
+			"version": "0.50.0",
+			"author": {
+				"name": "HumanLayer",
+				"email": "support@humanlayer.dev"
+			},
+			"source": "./",
+			"category": "development"
+		}
+	],
+	"version": "0.50.0"
+}

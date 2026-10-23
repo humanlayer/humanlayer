@@ -1,0 +1,269 @@
+/* Pretty Markdown Styles
+ * Beautiful, readable typography for markdown documents
+ */
+
+/* Base settings */
+.prose-pretty {
+	font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+	font-size: 1rem;
+	font-weight: 300;
+	letter-spacing: 0.03em;
+	line-height: 1.9;
+	color: var(--terminal-fg);
+}
+
+/* Reset margins */
+.prose-pretty * {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+/* Typography - headings with modular scale */
+.prose-pretty h1 {
+	font-size: 2em;
+	font-weight: 700;
+	line-height: 1.2;
+	margin-top: 1.5em;
+	margin-bottom: 0.8em;
+	color: var(--terminal-accent);
+	letter-spacing: -0.025em;
+}
+
+.prose-pretty h2 {
+	font-size: 1.5em;
+	font-weight: 600;
+	line-height: 1.3;
+	margin-top: 1.75em;
+	margin-bottom: 0.6em;
+	color: var(--terminal-fg);
+	letter-spacing: -0.02em;
+}
+
+.prose-pretty h3 {
+	font-size: 1.25em;
+	font-weight: 600;
+	line-height: 1.4;
+	margin-top: 1.5em;
+	margin-bottom: 0.5em;
+	color: var(--terminal-accent-alt);
+}
+
+.prose-pretty h4,
+.prose-pretty h5,
+.prose-pretty h6 {
+	font-size: 1em;
+	font-weight: 600;
+	line-height: 1.5;
+	margin-top: 1.25em;
+	margin-bottom: 0.4em;
+	color: var(--terminal-fg);
+}
+
+/* First heading has no top margin */
+.prose-pretty > h1:first-child,
+.prose-pretty > h2:first-child,
+.prose-pretty > h3:first-child,
+.prose-pretty > h4:first-child,
+.prose-pretty > h5:first-child,
+.prose-pretty > h6:first-child {
+	margin-top: 0;
+}
+
+/* Paragraphs */
+.prose-pretty p {
+	margin-bottom: 1.75em;
+	line-height: 1.9;
+}
+
+.prose-pretty > p:last-child,
+.prose-pretty li > p:last-child {
+	margin-bottom: 0;
+}
+
+/* Strong and emphasis - let styling speak, not color */
+.prose-pretty strong {
+	font-weight: 600;
+}
+
+.prose-pretty em {
+	font-style: italic;
+}
+
+/* Links */
+.prose-pretty a {
+	color: var(--terminal-accent);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	transition: color 0.15s ease;
+}
+
+.prose-pretty a:hover {
+	color: var(--terminal-accent-alt);
+}
+
+/* Lists */
+.prose-pretty ul,
+.prose-pretty ol {
+	margin-top: 1em;
+	margin-bottom: 1.75em;
+	padding-left: 1.75em;
+}
+
+.prose-pretty > ul:last-child,
+.prose-pretty > ol:last-child {
+	margin-bottom: 0;
+}
+
+.prose-pretty li {
+	margin: 0;
+	padding: 0;
+	line-height: 1.9;
+}
+
+.prose-pretty li + li {
+	margin-top: 0.5em;
+}
+
+.prose-pretty li > p {
+	margin: 0;
+	display: inline;
+}
+
+/* Unordered list bullets */
+.prose-pretty ul {
+	list-style: disc;
+}
+
+.prose-pretty ul ul {
+	list-style: circle;
+}
+
+.prose-pretty ul ul ul {
+	list-style: square;
+}
+
+.prose-pretty ul > li::marker {
+	color: var(--terminal-fg-dim);
+}
+
+/* Ordered list numbers */
+.prose-pretty ol {
+	list-style-type: decimal;
+}
+
+.prose-pretty ol > li {
+	list-style-position: outside;
+	display: list-item;
+}
+
+.prose-pretty ol li::marker {
+	color: var(--terminal-fg-dim);
+	font-weight: 500;
+}
+
+/* Nested lists */
+.prose-pretty li > ul,
+.prose-pretty li > ol {
+	margin-top: 0.5em;
+	margin-bottom: 0;
+	padding-left: 1.5em;
+}
+
+/* Code - inline */
+.prose-pretty code {
+	font-family: var(--font-mono);
+	font-size: 0.875em;
+	background: var(--terminal-bg-alt);
+	padding: 0.1em 0.3em;
+}
+
+/* Code blocks - use monospace, inherit syntax highlighting.
+   Streamdown pres are excluded: their chrome lives on the [data-streamdown="code-block"]
+   container (see markdown-terminal.css), and this rule's border/margins would stack a
+   second box inside it. */
+.prose-pretty pre:not(.rsh-code-block):not([data-streamdown="code-block"] pre) {
+	font-family: var(--font-mono);
+	font-size: 0.875rem;
+	line-height: 1.6;
+	margin-top: 2em;
+	margin-bottom: 2em;
+	padding: 1em;
+	overflow-x: auto;
+	background: var(--terminal-bg-alt);
+	border: 1px solid var(--terminal-border);
+}
+
+/* Syntax-highlighted code blocks get margins from prose */
+.prose-pretty .rsh-code-block {
+	margin-top: 2em;
+	margin-bottom: 2em;
+}
+
+.prose-pretty pre code {
+	background: transparent;
+	padding: 0;
+	font-size: inherit;
+	color: inherit;
+}
+
+/* Blockquotes */
+.prose-pretty blockquote {
+	border-left: 3px solid var(--terminal-accent);
+	padding-left: 1.25em;
+	margin-top: 1.75em;
+	margin-bottom: 1.75em;
+	color: var(--terminal-fg-dim);
+	font-style: italic;
+}
+
+.prose-pretty blockquote p {
+	margin-bottom: 0.5em;
+}
+
+.prose-pretty blockquote p:last-child {
+	margin-bottom: 0;
+}
+
+/* Tables */
+.prose-pretty table {
+	width: 100%;
+	margin-top: 1.75em;
+	margin-bottom: 1.75em;
+	border-collapse: collapse;
+	font-size: 0.9em;
+}
+
+.prose-pretty th {
+	padding: 0.75em 1em;
+	text-align: left;
+	font-weight: 600;
+	border-bottom: 2px solid var(--terminal-border);
+	background: var(--terminal-bg-alt);
+}
+
+.prose-pretty td {
+	padding: 0.75em 1em;
+	border-bottom: 1px solid var(--terminal-border);
+}
+
+.prose-pretty tr:last-child td {
+	border-bottom: none;
+}
+
+/* Horizontal rules */
+.prose-pretty hr {
+	margin-top: 2em;
+	margin-bottom: 2em;
+	border: none;
+	border-top: 1px solid var(--terminal-border);
+}
+
+/* Images */
+.prose-pretty img {
+	max-width: 100%;
+	height: auto;
+	margin-top: 1.75em;
+	margin-bottom: 1.75em;
+	border-radius: 0.375em;
+}

@@ -1,0 +1,1 @@
+../../../../riptide-humanlayer-claude-plugin/skills/show-me/SKILL.md

@@ -1,0 +1,37 @@
+{
+  "name": "@humanlayer/riptide-native",
+  "private": true,
+  "version": "0.200.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run build:daemon && if [ -f ../../.devstack.json ]; then set -a && source ../../.env && set +a && bun run tauri dev --config tauri.stack.json; else bun run tauri dev --config tauri.local.conf.json; fi",
+    "dev:update-test": "bun run build:daemon && bun run tauri dev --config tauri.localtest.conf.json",
+    "build:daemon": "cd ../.. && set -a && source .env && turbo run build:local --filter @humanlayer/riptide-daemon && cp apps/riptide-daemon/dist/daemon apps/riptide-native/bin/riptided",
+    "build": "bun run tauri build",
+    "build:stable": "bun run tauri build",
+    "build:local": "bun run tauri build --config tauri.local.conf.json",
+    "build:dev": "bun run tauri build --config tauri.dev.conf.json",
+    "build:beta": "bun run tauri build --config tauri.beta.conf.json",
+    "build:prod": "bun run tauri build --config tauri.prod.conf.json",
+    "preview": "vite preview",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@tauri-apps/api": "2.11.0",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-deep-link": "^2",
+    "@tauri-apps/plugin-updater": "^2",
+    "@tauri-apps/plugin-process": "^2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.11.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "sharp": "^0.34.5",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
+  }
+}

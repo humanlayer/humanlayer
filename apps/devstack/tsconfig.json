@@ -1,0 +1,9 @@
+{
+  "extends": "../../packages/typescript-config/base.json",
+  "compilerOptions": {
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "types": ["bun", "node", "vitest/globals"]
+  },
+  "include": ["src/**/*.ts"]
+}

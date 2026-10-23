@@ -1,0 +1,20 @@
+{
+	"name": "@humanlayer/session-sdk-diffs",
+	"version": "0.0.0",
+	"description": "Session-side client: task diff rows, git diff output parsing, private paths, diff stream messages, and the diff build and publish",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/session-sdk-base": "workspace:*",
+		"@humanlayer/streams": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0"
+	}
+}

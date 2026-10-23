@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "prefer_batch_queue_delivery" boolean DEFAULT true NOT NULL;

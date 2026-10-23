@@ -1,30 +1,246 @@
 {
 	"$schema": "https://turborepo.com/schema.json",
-	"ui": "tui",
+	"ui": "stream",
+	"concurrency": "20",
+	"envMode": "loose",
 	"tasks": {
 		"build": {
+			"env": ["VITE_*"],
 			"dependsOn": ["^build"],
-			"inputs": ["$TURBO_DEFAULT$", ".env*"],
-			"outputs": [".next/**", "!.next/cache/**"]
+			"inputs": ["$TURBO_DEFAULT$", ".env*", "!**/*.stories.{tsx,jsx,mdx}"],
+			"outputs": ["dist/**", "build/**", ".next/**", "lib/**"],
+			"cache": false
 		},
-		"lint": {
-			"dependsOn": ["^lint"]
+		"build:linux": {
+			"env": ["VITE_*"],
+			"dependsOn": ["^build:linux"],
+			"inputs": ["$TURBO_DEFAULT$", ".env*", "!**/*.stories.{tsx,jsx,mdx}"],
+			"outputs": ["dist/**", "build/**", ".next/**", "lib/**", "*-linux-x64"],
+			"cache": false
 		},
-		"check-types": {
-			"dependsOn": ["^check-types"]
+		"build:macos": {
+			"env": ["VITE_*"],
+			"dependsOn": ["^build:macos"],
+			"inputs": ["$TURBO_DEFAULT$", ".env*", "!**/*.stories.{tsx,jsx,mdx}"],
+			"outputs": ["dist/**", "build/**", ".next/**", "lib/**", "*-darwin-arm64"],
+			"cache": false
+		},
+		"build:stable": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "BUILD_VERSION"],
+			"dependsOn": ["^build:macos"],
+			"outputs": ["dist/**", "build/**", "lib/**", "*-darwin-arm64", "bin/**"],
+			"cache": false
+		},
+		"build:local": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "BUILD_VERSION"],
+			"dependsOn": ["^build:local"],
+			"outputs": ["dist/**", "build/**", "lib/**", "*-darwin-arm64", "bin/**"],
+			"cache": false
+		},
+		"build:pro": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "BUILD_VERSION"],
+			"dependsOn": ["^build:pro"],
+			"outputs": ["dist/**", "build/**", "lib/**", "*-darwin-arm64", "bin/**"],
+			"cache": false
+		},
+		"@humanlayer/linear-cli#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/linear-cli#build:linux": {
+			"dependsOn": ["^build:linux"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/linear-cli#build:macos": {
+			"dependsOn": ["^build:macos"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/rpi#build": {
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/rpi#build:linux": {
+			"dependsOn": ["^build:linux"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/rpi#build:macos": {
+			"dependsOn": ["^build:macos"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-daemon#build:stable": {
+			"env": ["BUILD_TYPE", "BUILD_VERSION", "RIPTIDE_DAEMON_API_ORIGIN", "RIPTIDE_DAEMON_SYNC_ORIGIN", "RIPTIDE_DAEMON_CLOUD_ORIGIN", "RIPTIDE_DAEMON_APP_ORIGIN", "NODE_ENV", "SENTRY_ENVIRONMENT", "RIPTIDE_DAEMON_SENTRY_DSN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "../riptide-native/bin/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-daemon#build:local": {
+			"env": ["BUILD_TYPE", "BUILD_VERSION", "RIPTIDE_DAEMON_API_ORIGIN", "RIPTIDE_DAEMON_SYNC_ORIGIN", "RIPTIDE_DAEMON_CLOUD_ORIGIN", "RIPTIDE_DAEMON_APP_ORIGIN", "NODE_ENV", "SENTRY_ENVIRONMENT", "RIPTIDE_DAEMON_SENTRY_DSN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "../riptide-native/bin/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-daemon#build:dev": {
+			"env": ["BUILD_TYPE", "BUILD_VERSION", "RIPTIDE_DAEMON_API_ORIGIN", "RIPTIDE_DAEMON_SYNC_ORIGIN", "RIPTIDE_DAEMON_CLOUD_ORIGIN", "RIPTIDE_DAEMON_APP_ORIGIN", "NODE_ENV", "SENTRY_ENVIRONMENT", "RIPTIDE_DAEMON_SENTRY_DSN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "../riptide-native/bin/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-daemon#build:beta": {
+			"env": ["BUILD_TYPE", "BUILD_VERSION", "RIPTIDE_DAEMON_API_ORIGIN", "RIPTIDE_DAEMON_SYNC_ORIGIN", "RIPTIDE_DAEMON_CLOUD_ORIGIN", "RIPTIDE_DAEMON_APP_ORIGIN", "NODE_ENV", "SENTRY_ENVIRONMENT", "RIPTIDE_DAEMON_SENTRY_DSN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "../riptide-native/bin/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-daemon#build:prod": {
+			"env": ["BUILD_TYPE", "BUILD_VERSION", "RIPTIDE_DAEMON_API_ORIGIN", "RIPTIDE_DAEMON_SYNC_ORIGIN", "RIPTIDE_DAEMON_CLOUD_ORIGIN", "RIPTIDE_DAEMON_APP_ORIGIN", "NODE_ENV", "SENTRY_ENVIRONMENT", "RIPTIDE_DAEMON_SENTRY_DSN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**", "../riptide-native/bin/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-ui#build:stable": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "NODE_ENV", "VITE_PUBLIC_SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "VITE_PUBLIC_DEEP_LINK_SCHEME", "VITE_PUBLIC_CLOUD_ORIGIN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-ui#build:local": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "NODE_ENV", "VITE_PUBLIC_SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "VITE_PUBLIC_DEEP_LINK_SCHEME", "VITE_PUBLIC_CLOUD_ORIGIN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-ui#build:dev": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "NODE_ENV", "VITE_PUBLIC_SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "VITE_PUBLIC_DEEP_LINK_SCHEME", "VITE_PUBLIC_CLOUD_ORIGIN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-ui#build:beta": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "NODE_ENV", "VITE_PUBLIC_SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "VITE_PUBLIC_DEEP_LINK_SCHEME", "VITE_PUBLIC_CLOUD_ORIGIN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-ui#build:prod": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "NODE_ENV", "VITE_PUBLIC_SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "VITE_PUBLIC_DEEP_LINK_SCHEME", "VITE_PUBLIC_CLOUD_ORIGIN"],
+			"dependsOn": ["^build"],
+			"outputs": ["dist/**"],
+			"cache": false
+		},
+		"@humanlayer/riptide-native#build:stable": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "RIPTIDE_NATIVE_SENTRY_DSN"],
+			"dependsOn": ["@humanlayer/riptide-daemon#build:stable"],
+			"outputs": [
+				"src-tauri/target/release/bundle/**",
+				"src-tauri/target/release/*.app",
+				"src-tauri/target/release/*.dmg",
+				"bin/**"
+			],
+			"cache": false
+		},
+		"@humanlayer/riptide-native#build:local": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "RIPTIDE_NATIVE_SENTRY_DSN"],
+			"dependsOn": ["@humanlayer/riptide-daemon#build:local"],
+			"outputs": [
+				"src-tauri/target/release/bundle/**",
+				"src-tauri/target/release/*.app",
+				"src-tauri/target/release/*.dmg",
+				"bin/**"
+			],
+			"cache": false
+		},
+		"@humanlayer/riptide-native#build:dev": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "RIPTIDE_NATIVE_SENTRY_DSN"],
+			"dependsOn": ["@humanlayer/riptide-daemon#build:dev"],
+			"outputs": [
+				"src-tauri/target/release/bundle/**",
+				"src-tauri/target/release/*.app",
+				"src-tauri/target/release/*.dmg",
+				"bin/**"
+			],
+			"cache": false
+		},
+		"@humanlayer/riptide-native#build:beta": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "RIPTIDE_NATIVE_SENTRY_DSN"],
+			"dependsOn": [],
+			"outputs": [
+				"src-tauri/target/release/bundle/**",
+				"src-tauri/target/release/*.app",
+				"src-tauri/target/release/*.dmg",
+				"bin/**"
+			],
+			"cache": false
+		},
+		"@humanlayer/riptide-native#build:prod": {
+			"env": ["VITE_PUBLIC_BUILD_TYPE", "VITE_PUBLIC_BUILD_VERSION", "VITE_PUBLIC_SYNC_ORIGIN", "VITE_PUBLIC_RIPTIDE_API_ORIGIN", "VITE_PUBLIC_WORKOS_CLIENT_ID", "VITE_PUBLIC_POSTHOG_KEY", "VITE_PUBLIC_POSTHOG_HOST", "SENTRY_AUTH_TOKEN", "SENTRY_ORG", "SENTRY_PROJECT", "SENTRY_ENVIRONMENT", "VITE_PUBLIC_SENTRY_DSN", "RIPTIDE_NATIVE_SENTRY_DSN"],
+			"dependsOn": ["@humanlayer/riptide-daemon#build:prod"],
+			"outputs": [
+				"src-tauri/target/release/bundle/**",
+				"src-tauri/target/release/*.app",
+				"src-tauri/target/release/*.dmg",
+				"bin/**"
+			],
+			"cache": false
+		},
+		"//#lint": {
+			"cache": false,
+			"inputs": ["$TURBO_DEFAULT$", ".oxlintrc.jsonc"]
+		},
+		"//#format": {
+			"cache": false,
+			"inputs": ["$TURBO_DEFAULT$", ".oxfmtrc.jsonc"]
 		},
 		"dev": {
 			"cache": false,
 			"persistent": true
 		},
-		"db:generate": {
-			"outputs": []
+		"dev:node-proxy": {
+			"cache": false,
+			"persistent": true
 		},
-		"db:migrate": {
-			"outputs": []
+		"storybook": {
+			"cache": false,
+			"persistent": true
 		},
-		"db:seed": {
-			"outputs": []
-		}
+		"build:storybook": {
+			"cache": false,
+			"outputs": ["storybook-static/**"]
+		},
+		"test": {
+			"cache": false,
+			"outputs": ["coverage/**"]
+		},
+		"test:llm": {
+			"cache": false,
+			"outputs": ["coverage/**"]
+		},
+		"test:integration": {
+			"cache": false,
+			"outputs": ["coverage/**"]
+		},
+		"@humanlayer/test-fixtures#test": {
+			"cache": false,
+			"outputs": ["coverage/**"]
+		},
+		"@humanlayer/riptide-electric-proxy#test": {
+			"cache": false,
+			"outputs": ["coverage/**"],
+			"dependsOn": ["@humanlayer/test-fixtures#test"]
+		},
+		"typecheck": {
+			"cache": false,
+			"dependsOn": ["^build"]
+		},
+		"@humanlayer/cli#typecheck": {
+			"cache": false,
+			"dependsOn": []
+		},
+		"swagger": {"cache": false}
 	}
 }

@@ -1,0 +1,274 @@
+# This workflow runs the checks, builds and tests on PRs, pushes to main, and dispatch.
+# It uses no secrets and only GitHub-hosted runners, so fork PRs get the full run.
+name: Check, Build, Test
+
+on:
+  workflow_dispatch: # Allow manual triggering for testing
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# Bun dependency caching intentionally omitted: repeated 1.4.2 runner trials
+# measured 4-6s uncached vs 13-15s restore/install/post-cache. Cargo and Docker
+# caches remain independent.
+env:
+  DO_NOT_TRACK: "1"
+  TURBO_UI: stream
+  CI: "true"
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run type check
+        run: bun run typecheck
+
+      - name: Check Zod version alignment
+        run: bun run check:zod
+
+      - name: Run quality checks
+        if: ${{ !cancelled() }}
+        run: bun run quality
+
+  # Compatibility check: retain the existing required check name without a
+  # second checkout / runtime setup / install. No branch-rule migration needed.
+  quality:
+    runs-on: ubuntu-latest
+    needs: typecheck
+    if: always()
+    steps:
+      - name: Confirm combined checks passed
+        env:
+          RESULT: ${{ needs.typecheck.result }}
+        run: test "$RESULT" = success
+
+  rust-inputs:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      required: ${{ steps.inputs.outputs.required }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Detect Rust check inputs (unknown changes run the full check)
+        id: inputs
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node ci-scripts/rust-check-inputs.mjs
+
+  rust-check:
+    needs: rust-inputs
+    # Always run for main, manual and reusable non-PR invocations. Detection
+    # failures (including checkout failures) must never silently skip Rust.
+    if: >-
+      always() && (github.event_name != 'pull_request' ||
+      needs.rust-inputs.result != 'success' || needs.rust-inputs.outputs.required != 'false')
+    runs-on: macos-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/riptide-native
+
+      - name: Create placeholder resources for Tauri
+        working-directory: apps/riptide-native
+        run: |
+          mkdir -p bin
+          touch bin/riptided
+
+      - name: Check riptide-native
+        working-directory: apps/riptide-native
+        run: cargo check
+
+      # `cargo check` never runs the crate's tests, so anything asserted in Rust — the PTY env
+      # merge rules and their real-git end-to-end coverage — was previously verified only on
+      # whichever machine last ran it by hand. --lib keeps this to the unit/integration tests in
+      # the crate (no bundling, no signing).
+      - name: Test riptide-native
+        working-directory: apps/riptide-native
+        run: cargo test --lib
+
+  # build / test-unit / test-services run in parallel with typecheck + quality
+  # rather than gating on them. typecheck and quality retain their required
+  # check names, so a type/lint error still blocks merge — we do not serialize
+  # the ~45-60s gate ahead of the long-pole test jobs on every passing PR. The
+  # tradeoff: a PR that fails typecheck/quality still burns the heavier runners.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt,clippy
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            apps/riptide-native
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Build everything via Turbo
+      - name: Build all packages
+        run: bun turbo run build:linux
+
+  test-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Claude Code
+        run: bun install -g @anthropic-ai/claude-code
+
+      - name: Run script tests
+        run: bun run test:scripts
+
+      - name: Run unit test suite
+        env:
+          VITE_PUBLIC_SYNC_ORIGIN: http://localhost:8888
+          DATABASE_URL: postgresql://postgres:notarealpassword@localhost:5432/postgres
+          READ_REPLICA_DATABASE_URL: postgresql://postgres:notarealpassword@localhost:5432/postgres
+          RIPTIDE_DAEMON_SKIP_AUTH: "true"
+          HUMANLAYER_TEST_POSTGRES_ADMIN_URL: postgresql://postgres:humanlayer_test_password@127.0.0.1:55432/postgres
+          HUMANLAYER_TEST_POSTGRES_DATABASE_URL_TEMPLATE: postgresql://postgres:humanlayer_test_password@127.0.0.1:55432/{database}
+          HUMANLAYER_TEST_ELECTRIC_URL: http://127.0.0.1:13030
+          HUMANLAYER_TEST_ELECTRIC_SECRET: humanlayer_test_secret
+        run: bun run test:ci:unit
+
+      - name: Check for test result artifacts
+        id: test-artifacts
+        if: always()
+        run: |
+          shopt -s globstar nullglob
+          paths=(**/coverage/ **/test-results/)
+          if [ ${#paths[@]} -gt 0 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload test results
+        if: always() && steps.test-artifacts.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-unit-results
+          path: |
+            **/coverage/
+            **/test-results/
+          retention-days: 7
+
+  test-services:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install Claude Code
+        run: bun install -g @anthropic-ai/claude-code
+
+      - name: Run service-sensitive test suite
+        env:
+          VITE_PUBLIC_SYNC_ORIGIN: http://localhost:8888
+          DATABASE_URL: postgresql://postgres:notarealpassword@localhost:5432/postgres
+          READ_REPLICA_DATABASE_URL: postgresql://postgres:notarealpassword@localhost:5432/postgres
+          RIPTIDE_DAEMON_SKIP_AUTH: "true"
+          HUMANLAYER_TEST_POSTGRES_ADMIN_URL: postgresql://postgres:humanlayer_test_password@127.0.0.1:55432/postgres
+          HUMANLAYER_TEST_POSTGRES_DATABASE_URL_TEMPLATE: postgresql://postgres:humanlayer_test_password@127.0.0.1:55432/{database}
+          HUMANLAYER_TEST_ELECTRIC_URL: http://127.0.0.1:13030
+          HUMANLAYER_TEST_ELECTRIC_SECRET: humanlayer_test_secret
+        run: bun run test:ci:services
+
+      - name: Check for test result artifacts
+        id: test-artifacts
+        if: always()
+        run: |
+          shopt -s globstar nullglob
+          paths=(**/coverage/ **/test-results/)
+          if [ ${#paths[@]} -gt 0 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload test results
+        if: always() && steps.test-artifacts.outputs.found == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-services-results
+          path: |
+            **/coverage/
+            **/test-results/
+          retention-days: 7
+
+  # Aggregate gate: keeps a single stable `test` status check (required by
+  # branch protection) green only when both the parallel
+  # test-unit and test-services jobs pass. Does no work itself.
+  test:
+    runs-on: ubuntu-latest
+    needs: [test-unit, test-services]
+    steps:
+      - name: Confirm split test jobs passed
+        run: echo "test-unit and test-services passed"

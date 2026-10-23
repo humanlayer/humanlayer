@@ -1,0 +1,1354 @@
+/* Artifact Viewer V2 — shell, document, outline, and keyboard-focus styles.
+ * Later slices add comment/review styles; keep this file scoped to what the
+ * current slices actually render. */
+
+.artifact-viewer-v2 {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	container-type: inline-size;
+	background-color: var(--terminal-bg);
+	color: var(--terminal-fg);
+}
+
+.artifact-viewer-v2-workspace {
+	position: relative;
+	flex: 1;
+	min-height: 0;
+}
+
+.artifact-viewer-v2-document {
+	height: 100%;
+	min-width: 0;
+	overflow-y: auto;
+	padding: 1rem;
+}
+
+.artifact-viewer-v2-search {
+	position: sticky;
+	top: 0;
+	z-index: 30;
+	display: flex;
+	justify-content: flex-end;
+	height: 0;
+	pointer-events: none;
+}
+
+.artifact-viewer-v2-search > * {
+	pointer-events: auto;
+}
+
+@container (max-width: 30rem) {
+	.artifact-viewer-v2-search > * {
+		width: 100%;
+	}
+}
+
+/* There is no header bar: viewer controls (the outline toggle) float in the
+ * document's top-left padding gutter. The wrapper is sticky with zero height
+ * so the control pins to the corner while the document scrolls without
+ * displacing content. */
+.artifact-viewer-v2-document-corner {
+	position: sticky;
+	top: 0;
+	height: 0;
+	z-index: 20;
+}
+
+/* Centered in the left gutter: the document's 1rem padding plus the tiptap
+ * 1em padding form a ~2rem lane between the panel edge and the text, so the
+ * 1.5rem control is pulled left to sit 0.25rem from each side, and pulled up
+ * by the same amount so the top gap matches (the sticky corner sits at the
+ * container's 1rem padding edge). The vertical pull is a relative offset, not
+ * a margin — a top margin would collapse through the zero-height sticky
+ * wrapper instead of moving the button inside it. Near-opaque backdrop keeps
+ * it legible over text scrolling underneath. */
+.artifact-viewer-v2-outline-toggle {
+	position: relative;
+	top: -0.75rem;
+	margin-left: -0.75rem;
+	background-color: color-mix(in srgb, var(--terminal-bg) 88%, transparent);
+}
+
+.artifact-viewer-v2-document-corner-right {
+	text-align: right;
+}
+
+.artifact-viewer-v2-comment-toggle {
+	position: relative;
+	top: -0.75rem;
+	margin-right: -0.75rem;
+	background-color: color-mix(in srgb, var(--terminal-bg) 88%, transparent);
+}
+
+.artifact-viewer-v2-outline {
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+	padding: 0.75rem 0.5rem;
+	background-color: color-mix(in srgb, var(--terminal-accent) 5%, transparent);
+}
+
+/* No drawn divider between outline and document — the outline's tinted
+ * background edge is the boundary. The separator's 1rem hit area is pulled
+ * left to overlap the outline so the panels abut seamlessly and the drag grip
+ * sits on the outline side of that edge. */
+.artifact-viewer-v2-workspace-handle {
+	margin-left: -1rem;
+	z-index: 10;
+	/* Nudge the drag grip off the outline edge and toward the document: the 16px
+	 * handle centers a 2px bar in 14px of free space, so split it 11/3 to shift
+	 * the bar ~4px right without changing the hit area. The rail handle mirrors
+	 * this to shift its bar left. */
+	padding-left: 11px;
+	padding-right: 3px;
+}
+
+.artifact-viewer-v2-outline-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.artifact-viewer-v2-outline-list .artifact-viewer-v2-outline-list {
+	padding-left: 0.75rem;
+}
+
+.artifact-viewer-v2-outline-row {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	width: 100%;
+	text-align: left;
+	font-size: 0.8125rem;
+	line-height: 1.25rem;
+	padding: 0.125rem 0.5rem;
+	color: var(--terminal-fg-dim);
+	cursor: pointer;
+	background: transparent;
+	border: 0;
+	border-left: 2px solid transparent;
+}
+
+.artifact-viewer-v2-outline-row-text {
+	min-width: 0;
+	flex: 1;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.artifact-viewer-v2-outline-comment-count {
+	display: inline-flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: 0.1875rem;
+	font-size: 0.6875rem;
+	font-variant-numeric: tabular-nums;
+	color: var(--terminal-fg-dim);
+}
+
+.artifact-viewer-v2-outline-comment-count svg {
+	width: 0.75rem;
+	height: 0.75rem;
+}
+
+.artifact-viewer-v2-outline-row:hover {
+	color: var(--terminal-fg);
+	background-color: color-mix(in srgb, var(--terminal-accent) 10%, transparent);
+}
+
+/* Suppress the browser's rounded default focus ring — it can appear after a
+ * plain click whenever the keyboard was recently used (j/k). The rows draw
+ * their own hover/active treatments; keyboard (Tab) focus reuses the hover
+ * colors instead of the ring. */
+.artifact-viewer-v2-outline-row:focus {
+	outline: none;
+}
+
+.artifact-viewer-v2-outline-row:focus-visible {
+	outline: none;
+	color: var(--terminal-fg);
+	background-color: color-mix(in srgb, var(--terminal-accent) 10%, transparent);
+}
+
+.artifact-viewer-v2-outline-row[aria-current='location'] {
+	color: var(--terminal-fg);
+	border-left-color: var(--terminal-accent);
+	background-color: color-mix(in srgb, var(--terminal-accent) 15%, transparent);
+}
+
+.artifact-viewer-v2-section-hidden {
+	display: none !important;
+}
+
+/* `font: inherit` pulls the heading's font-size and line-height onto the button
+ * so `height: 1lh` resolves to *this* heading's line height (h1 1.2 … h4–6 1.5),
+ * giving a hit/hover target as tall as the line rather than a cramped 1.25rem
+ * box. `vertical-align: top` makes that full-height box sit flush in the line box
+ * without growing it; the icon stays a fixed 0.75rem, centered by place-items.
+ * Width stays fixed so the heading-text indent is uniform across levels. */
+.artifact-viewer-v2-heading-disclosure {
+	display: inline-grid;
+	width: 1.25rem;
+	height: 1lh;
+	margin-right: 0.375rem;
+	padding: 0;
+	place-items: center;
+	font: inherit;
+	vertical-align: top;
+	color: var(--terminal-fg-dim);
+	background: transparent;
+	border: 0;
+	border-radius: 0.25rem;
+	cursor: pointer;
+}
+
+/* The chevron points right when the section is collapsed and rotates to point
+ * down when expanded (matches the sidebar task-tree disclosure convention). */
+.artifact-viewer-v2-heading-disclosure svg {
+	display: block;
+	width: 0.75rem;
+	height: 0.75rem;
+	transition: transform 120ms ease;
+}
+
+.artifact-viewer-v2-heading-disclosure[aria-expanded='true'] svg {
+	transform: rotate(90deg);
+}
+
+.artifact-viewer-v2-heading-disclosure:hover,
+.artifact-viewer-v2-heading-disclosure:focus-visible {
+	color: var(--terminal-accent);
+	background-color: color-mix(in srgb, var(--terminal-accent) 14%, transparent);
+	outline: none;
+}
+
+/* Keyboard block focus (Phase 2): a `j/k` cursor over commentable blocks,
+ * rendered as a ProseMirror node decoration. Paint the wash on the focused
+ * block so it moves with the decoration in every browser. */
+/* `.tiptap-comment-wrapper` sets `overflow-x: hidden`, which would clip the
+ * focus wash bleed at the wrapper's own edge — 1rem short of the panel edge
+ * (and makes the wrapper an accidental scroll container:
+ * `hidden` + unset overflow-y computes to `hidden auto`). V2 wants the clip at
+ * the document panel instead, so the wrapper is restored to visible; the
+ * document's scrolling box trims the bleed at the panel edge. The
+ * `.artifact-viewer-v2-document` prefix outranks the single-class tiptap rule
+ * regardless of stylesheet import order. */
+.artifact-viewer-v2-document .artifact-viewer-v2-markdown {
+	position: relative;
+	overflow: visible;
+}
+
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-focused {
+	--artifact-viewer-v2-focus-color: color-mix(in srgb, var(--terminal-accent) 10%, transparent);
+	box-shadow:
+		inset 0 0 0 100vw var(--artifact-viewer-v2-focus-color),
+		-100vw 0 0 100vw var(--artifact-viewer-v2-focus-color),
+		100vw 0 0 100vw var(--artifact-viewer-v2-focus-color);
+	clip-path: inset(0 -100vw);
+}
+
+/* Scope the anchor used by the shortcut legend so the sidebar and fullscreen
+ * viewer instances cannot capture each other's focused block. */
+@supports (anchor-scope: --a) {
+	.artifact-viewer-v2-markdown {
+		anchor-scope: --artifact-viewer-v2-focused-block;
+	}
+
+	.artifact-viewer-v2-markdown .artifact-viewer-v2-block-focused {
+		anchor-name: --artifact-viewer-v2-focused-block;
+	}
+}
+
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-focused code:not(pre *) {
+	background: transparent !important;
+}
+
+/* Keyboard hotkey legend: a small reminder of the review keys. It
+ * rides the right margin — a vertical strip pinned to the reading column's right
+ * edge and vertically centred on the keyboard-focused block — so it never sits
+ * over the text the reader is on. Mount is gated in React, and it tracks the focused block's band via the
+ * same CSS anchor the focus rail uses — an anchor-positioning progressive
+ * enhancement that simply does not render where anchor positioning is
+ * unavailable. */
+.artifact-viewer-v2-focus-hotkeys {
+	display: none;
+}
+
+@supports (anchor-scope: --a) {
+	.artifact-viewer-v2-focus-hotkeys {
+		display: flex;
+		flex-direction: column;
+		position: absolute;
+		position-anchor: --artifact-viewer-v2-focused-block;
+		top: anchor(--artifact-viewer-v2-focused-block center, 50%);
+		/* Nudge into the document's right padding gutter (1rem) so the strip clears
+		 * the text column without reaching the panel edge / comment rail. */
+		right: -0.5rem;
+		transform: translateY(-50%);
+		align-items: flex-end;
+		gap: 0.1875rem;
+		padding: 0.25rem 0.3125rem;
+		background-color: color-mix(in srgb, var(--terminal-bg) 82%, transparent);
+		box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+		backdrop-filter: blur(2px);
+		color: var(--terminal-fg-dim);
+		line-height: 1;
+		white-space: nowrap;
+		pointer-events: auto;
+		user-select: none;
+		z-index: 15;
+	}
+
+	.artifact-viewer-v2-focus-hotkey {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.artifact-viewer-v2-focus-hotkey-key {
+		font-family: var(--font-mono, ui-monospace, monospace);
+		font-size: 0.625rem;
+		font-weight: 600;
+		color: var(--terminal-fg);
+		background-color: color-mix(in srgb, var(--terminal-fg) 12%, transparent);
+		padding: 0 0.1875rem;
+		min-width: 0.75rem;
+		text-align: center;
+	}
+
+	.artifact-viewer-v2-focus-hotkey-icon {
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	.artifact-viewer-v2-focus-hotkey-label {
+		font-size: 0.5625rem;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
+
+	.artifact-viewer-v2-focus-hotkey-toggle {
+		border: 0;
+		padding: 0;
+		background: transparent;
+		color: var(--terminal-fg-dim);
+		cursor: pointer;
+	}
+
+	.artifact-viewer-v2-focus-hotkey-toggle:hover {
+		color: var(--terminal-fg);
+	}
+
+	.artifact-viewer-v2-focus-hotkey-toggle:focus-visible {
+		outline: 2px solid var(--terminal-accent);
+	}
+
+	.artifact-viewer-v2-focus-hotkey-toggle-collapsed {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.25rem;
+		height: 1.25rem;
+		border: 1px solid var(--terminal-border);
+		background: var(--terminal-bg);
+		color: var(--terminal-fg);
+	}
+
+	.artifact-viewer-v2-focus-hotkey-toggle-collapsed:hover {
+		background: var(--terminal-bg-alt);
+	}
+}
+
+/* Code blocks keep syntax colors readable with an outline instead of a wash. */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-focused:has(.code-block),
+.artifact-viewer-v2-markdown .code-block.artifact-viewer-v2-block-focused {
+	background-color: transparent;
+	box-shadow: none;
+	clip-path: none;
+	outline: 2px solid color-mix(in srgb, var(--terminal-accent) 40%, transparent);
+	outline-offset: -2px;
+}
+
+/* Comment styling wins over the keyboard focus wash so warning highlights keep
+ * their full strength when the focused block contains a ranged comment. */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-focused:has(.artifact-viewer-v2-range-commented),
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-focused:has(.artifact-viewer-v2-range-pending),
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-focused.artifact-viewer-v2-range-pending {
+	box-shadow: none;
+	clip-path: none;
+}
+
+/* Suppress every shared tiptap block-hover affordance (tiptap.css, the V1 "any
+ * block is hoverable" wash/outline) inside the V2 document: V2 shows hover
+ * intent through the continuous focus bar, and any per-block wash fights that
+ * full-width bar. Anchored on the `.artifact-viewer-v2-markdown` +
+ * `.tiptap-comment-wrapper` compound (both live on the same element as the
+ * `.tiptap` host, so this is always present) which lifts each selector to four
+ * classes — outranking the shared two-class rules regardless of stylesheet
+ * import order. Covers plain blocks, list paragraphs, task-list paragraphs, and
+ * commented blocks; `cursor: pointer` is intentionally left intact. */
+.artifact-viewer-v2-markdown.tiptap-comment-wrapper
+	.tiptap
+	> :is(p, h1, h2, h3, h4, h5, h6, blockquote):hover,
+.artifact-viewer-v2-markdown.tiptap-comment-wrapper
+	.tiptap
+	li:hover:not(:has(li:hover))
+	> p:not(.has-comments),
+.artifact-viewer-v2-markdown.tiptap-comment-wrapper
+	.tiptap
+	li[data-type='taskItem']:hover:not(:has(li:hover))
+	> div
+	> [data-node-view-content]
+	> [data-node-view-content-react]
+	> p:not(.has-comments),
+.artifact-viewer-v2-markdown.tiptap-comment-wrapper .tiptap .has-comments:hover {
+	background-color: transparent;
+}
+
+.artifact-viewer-v2-markdown.tiptap-comment-wrapper .tiptap .code-block:hover {
+	outline: none;
+}
+
+/* ── Whole-block comments (Phase 4) ─────────────────────────────────────────
+ * Comment state is a ProseMirror node decoration; it must stay visually
+ * distinct from the keyboard block focus wash. Comments use
+ * the warning hue with a right-edge rail. The tint sits at a higher opacity so
+ * the yellow reads bright rather than muddy/brown over the dark background. */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-commented {
+	/* Fill via an INSET box-shadow, not `background-color`. Focus-follows-mouse
+	 * plus the block-hover suppression (and tiptap's V1 hover wash) set
+	 * `background-color` on the hovered block, which would blank a background-color
+	 * comment fill out from under the pointer — the reported "yellow disappears on
+	 * hover" bug. An inset shadow can't be overridden that way and paints above any
+	 * background, so the comment hue survives hover. The right rail is listed first
+	 * so it paints on top of the fill. */
+	box-shadow:
+		inset -2px 0 0 0 color-mix(in srgb, var(--terminal-warning) 75%, transparent),
+		inset 0 0 0 100vw color-mix(in srgb, var(--terminal-warning) 20%, transparent);
+	border-radius: 0;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-commented.artifact-viewer-v2-comment-active {
+	box-shadow:
+		inset -2px 0 0 0 var(--terminal-warning),
+		inset 0 0 0 100vw color-mix(in srgb, var(--terminal-warning) 35%, transparent);
+}
+
+/* Code blocks: keep syntax colors readable with an outline and right rail.
+ * Reset the fill box-shadow to the rail only so the opaque code background is
+ * never tinted. */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-commented:has(.code-block),
+.artifact-viewer-v2-markdown .code-block.artifact-viewer-v2-block-commented {
+	background-color: transparent;
+	box-shadow: inset -2px 0 0 0 color-mix(in srgb, var(--terminal-warning) 75%, transparent);
+	outline: 2px solid color-mix(in srgb, var(--terminal-warning) 60%, transparent);
+	outline-offset: -2px;
+}
+
+.artifact-viewer-v2-markdown
+	.artifact-viewer-v2-block-commented.artifact-viewer-v2-comment-active:has(.code-block),
+.artifact-viewer-v2-markdown .code-block.artifact-viewer-v2-block-commented.artifact-viewer-v2-comment-active {
+	box-shadow: inset -2px 0 0 0 var(--terminal-warning);
+	outline-color: var(--terminal-warning);
+}
+
+/* ── Precise ranged comments (Phase 5) ──────────────────────────────────────
+ * Inline range highlights are ProseMirror inline decorations, so overlapping
+ * comments naturally stack their translucent spans. There is a single comment
+ * highlight state: a bright warning-yellow tint (no underline), shared with the
+ * whole-block treatment so committed comments read as one consistent hue. */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-range-commented {
+	background-color: color-mix(in srgb, var(--terminal-warning) 35%, transparent);
+	border-radius: 0;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-markdown .artifact-viewer-v2-range-commented.artifact-viewer-v2-comment-active {
+	background-color: color-mix(in srgb, var(--terminal-warning) 55%, transparent);
+}
+
+/* Pending (in-flight, not yet persisted) selection: the SAME bright warning
+ * tint and square edges as a committed comment, so selecting → committing never
+ * changes the highlight. Both inline and whole-block/atom pending shapes share
+ * the class. */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-range-pending {
+	background-color: color-mix(in srgb, var(--terminal-warning) 42%, transparent);
+	border-radius: 0;
+}
+
+/* Code blocks: a whole-block pending highlight lands on the node-view wrapper,
+ * whose opaque code background would hide the translucent wash. Match the
+ * committed code treatment — transparent fill + outline — so clicking a code
+ * block lights up immediately and stays identical once committed. */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-range-pending:has(.code-block),
+.artifact-viewer-v2-markdown .code-block.artifact-viewer-v2-range-pending {
+	background-color: transparent;
+	outline: 2px solid color-mix(in srgb, var(--terminal-warning) 60%, transparent);
+	outline-offset: -2px;
+}
+
+/* ── Typed verdict kinds (Phase 6) ──────────────────────────────────────────
+ * Delete and Approve verdicts recolor the shared comment/range treatment so the
+ * machine-readable `kind` is visible at a glance: deletion uses a red tint plus
+ * strikethrough, approval uses a green tint. These override the neutral warning
+ * hue only for verdict-kinded decorations; normal comments, focus, and pending
+ * styles are unchanged. They never mutate the underlying markdown or editor
+ * document — they are view-only decoration classes layered on the existing
+ * comment classes (higher specificity wins). */
+
+/* Deletion — whole block */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-commented.artifact-viewer-v2-comment-deletion {
+	box-shadow:
+		inset -2px 0 0 0 color-mix(in srgb, var(--terminal-error) 75%, transparent),
+		inset 0 0 0 100vw color-mix(in srgb, var(--terminal-error) 20%, transparent);
+	text-decoration: line-through;
+	text-decoration-color: color-mix(in srgb, var(--terminal-error) 80%, transparent);
+}
+
+.artifact-viewer-v2-markdown
+	.artifact-viewer-v2-block-commented.artifact-viewer-v2-comment-deletion.artifact-viewer-v2-comment-active {
+	box-shadow:
+		inset -2px 0 0 0 var(--terminal-error),
+		inset 0 0 0 100vw color-mix(in srgb, var(--terminal-error) 35%, transparent);
+}
+
+/* Deletion — precise inline range */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-range-commented.artifact-viewer-v2-comment-deletion {
+	background-color: color-mix(in srgb, var(--terminal-error) 32%, transparent);
+	text-decoration: line-through;
+	text-decoration-color: color-mix(in srgb, var(--terminal-error) 80%, transparent);
+}
+
+.artifact-viewer-v2-markdown
+	.artifact-viewer-v2-range-commented.artifact-viewer-v2-comment-deletion.artifact-viewer-v2-comment-active {
+	background-color: color-mix(in srgb, var(--terminal-error) 52%, transparent);
+}
+
+/* Approval — whole block */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-block-commented.artifact-viewer-v2-comment-approval {
+	box-shadow:
+		inset -2px 0 0 0 color-mix(in srgb, var(--terminal-success) 75%, transparent),
+		inset 0 0 0 100vw color-mix(in srgb, var(--terminal-success) 20%, transparent);
+}
+
+.artifact-viewer-v2-markdown
+	.artifact-viewer-v2-block-commented.artifact-viewer-v2-comment-approval.artifact-viewer-v2-comment-active {
+	box-shadow:
+		inset -2px 0 0 0 var(--terminal-success),
+		inset 0 0 0 100vw color-mix(in srgb, var(--terminal-success) 35%, transparent);
+}
+
+/* Approval — precise inline range */
+.artifact-viewer-v2-markdown .artifact-viewer-v2-range-commented.artifact-viewer-v2-comment-approval {
+	background-color: color-mix(in srgb, var(--terminal-success) 32%, transparent);
+}
+
+.artifact-viewer-v2-markdown
+	.artifact-viewer-v2-range-commented.artifact-viewer-v2-comment-approval.artifact-viewer-v2-comment-active {
+	background-color: color-mix(in srgb, var(--terminal-success) 52%, transparent);
+}
+
+/* Suppress the native browser selection highlight inside the document. The
+ * pending decoration above tracks the selection live and hugs the text, so the
+ * native line-box selection rectangle would just paint a second, wider box
+ * behind it. Hiding it leaves exactly one highlight rectangle, matching a
+ * committed range. */
+.artifact-viewer-v2-markdown ::selection {
+	background-color: transparent;
+}
+
+.artifact-viewer-v2-markdown ::-moz-selection {
+	background-color: transparent;
+}
+
+/* ── Floating selection toolbar (Phase 5) ───────────────────────────────────
+ * Positioned in JS from the selection rect (see SelectionToolbar); the class
+ * only carries the animation entry so the bar does not flash on reposition. */
+.artifact-viewer-v2-selection-toolbar {
+	animation: artifact-viewer-v2-toolbar-in 90ms ease-out;
+}
+
+@keyframes artifact-viewer-v2-toolbar-in {
+	from {
+		opacity: 0;
+		transform: translateX(-50%) translateY(2px);
+	}
+}
+
+/* Document layer: positioning context for the gutter overlay around the
+ * rendered markdown. */
+.artifact-viewer-v2-comment-layer {
+	position: relative;
+}
+
+/* Gutter overlay: avatar chips pinned beside each commented block, in the
+ * right padding gutter of the document column. The overlay itself never
+ * intercepts pointer events; only its items do. */
+.artifact-viewer-v2-comment-gutter {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 15;
+}
+
+/* `top` is set to the commented block's vertical midpoint; the translate
+ * centers the chip on it. */
+.artifact-viewer-v2-comment-gutter-item {
+	position: absolute;
+	right: -0.5rem;
+	transform: translateY(-50%);
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+/* Range-comment rail overlay: a whole-block comment shows a right-edge rail via
+ * its node decoration's `inset -2px` box-shadow, but an inline range only tints
+ * its text run. This overlay draws the matching rail — one 2px bar per visual
+ * line the range covers, pinned to the column's right edge — so ranged comments
+ * read the same beside the gutter avatars. Sits just under the avatar chips and
+ * never intercepts pointer events. */
+.artifact-viewer-v2-comment-rail-overlay {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 14;
+}
+
+.artifact-viewer-v2-comment-rail {
+	position: absolute;
+	width: 2px;
+	background-color: color-mix(in srgb, var(--terminal-warning) 75%, transparent);
+}
+
+.artifact-viewer-v2-comment-rail-active {
+	background-color: var(--terminal-warning);
+}
+
+/* Approximate markers: Outdated comments placed from surviving neighbor text.
+ * A dashed line at the neighbor block's edge plus a small pill in the gutter.
+ * The line never tints document text, so it can't read as an exact highlight. */
+.artifact-viewer-v2-approximate-marker-overlay {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 15;
+}
+
+.artifact-viewer-v2-approximate-marker {
+	position: absolute;
+	height: 0;
+	border-top: 1px dashed color-mix(in srgb, var(--terminal-warning) 70%, transparent);
+	transform: translateY(-0.5px);
+}
+
+.artifact-viewer-v2-approximate-marker-pill {
+	position: absolute;
+	right: -0.5rem;
+	top: 0;
+	transform: translateY(-50%);
+	display: inline-flex;
+	align-items: center;
+	gap: 0.125rem;
+	padding: 0.125rem 0.25rem;
+	font-size: 0.625rem;
+	line-height: 1;
+	color: var(--terminal-warning);
+	background-color: var(--terminal-bg);
+	border: 1px dashed color-mix(in srgb, var(--terminal-warning) 70%, transparent);
+	pointer-events: auto;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-approximate-marker-pill:hover {
+	background-color: color-mix(in srgb, var(--terminal-warning) 15%, var(--terminal-bg));
+}
+
+.artifact-viewer-v2-approximate-marker-pill:focus-visible {
+	outline: 2px solid var(--terminal-accent);
+	outline-offset: 1px;
+}
+
+/* Review rail: thread list beside the document. */
+.artifact-viewer-v2-review-rail {
+	container-type: inline-size;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+	padding: 0.75rem 0.5rem;
+	background-color: color-mix(in srgb, var(--terminal-accent) 5%, transparent);
+}
+
+.artifact-viewer-v2-review-rail-empty {
+	margin: 0;
+	padding: 0.125rem 0.5rem;
+	font-size: 0.8125rem;
+	color: var(--terminal-fg-dim);
+}
+
+/* Mirror the outline handle: the rail's tinted edge is the boundary; pull the
+ * 1rem handle hit area right to overlap the rail. */
+.artifact-viewer-v2-rail-handle {
+	margin-right: -1rem;
+	z-index: 10;
+	/* Mirror of the outline handle (see it for the math): 3/11 split shifts the
+	 * grip bar ~4px left, off the rail edge and toward the document. */
+	padding-left: 3px;
+	padding-right: 11px;
+}
+
+.artifact-viewer-v2-comment-thread {
+	position: relative;
+	display: block;
+	padding: 0.5rem;
+	border: 1px solid transparent;
+	border-radius: 0;
+	background-color: color-mix(in srgb, var(--terminal-bg) 70%, transparent);
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-comment-thread:hover,
+.artifact-viewer-v2-comment-thread:focus-visible {
+	outline: none;
+	border-color: color-mix(in srgb, var(--terminal-accent) 35%, transparent);
+}
+
+.artifact-viewer-v2-comment-thread-active,
+.artifact-viewer-v2-comment-thread-active:hover {
+	border-color: var(--terminal-warning);
+}
+
+.artifact-viewer-v2-comment-thread-header {
+	display: flex;
+	align-items: center;
+	gap: 0.375rem;
+	margin-bottom: 0.25rem;
+}
+
+.artifact-viewer-v2-comment-thread-has-actions .artifact-viewer-v2-comment-thread-header {
+	padding-right: 5.25rem;
+}
+
+.artifact-viewer-v2-comment-thread-author {
+	font-size: 0.75rem;
+	font-weight: 500;
+	color: var(--terminal-fg);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* Typed verdict chip in the rail thread header (Phase 6). Neutral `comment`
+ * threads render no chip; deletion/approval get a colored square badge with no
+ * radius, matching the session label badges (`rounded-md` → 0px in this theme). */
+.artifact-viewer-v2-comment-thread-kind {
+	flex-shrink: 0;
+	font-size: 0.625rem;
+	line-height: 1;
+	font-weight: 600;
+	padding: 0.1875rem 0.375rem;
+	border-radius: 0;
+	border: 1px solid transparent;
+	white-space: nowrap;
+	text-transform: uppercase;
+	letter-spacing: 0.03em;
+}
+
+.artifact-viewer-v2-comment-thread-kind-deletion {
+	color: var(--terminal-error);
+	border-color: color-mix(in srgb, var(--terminal-error) 50%, transparent);
+	background-color: color-mix(in srgb, var(--terminal-error) 15%, transparent);
+}
+
+.artifact-viewer-v2-comment-thread-kind-approval {
+	color: var(--terminal-success);
+	border-color: color-mix(in srgb, var(--terminal-success) 50%, transparent);
+	background-color: color-mix(in srgb, var(--terminal-success) 15%, transparent);
+}
+
+.artifact-viewer-v2-comment-thread-time {
+	font-size: 0.6875rem;
+	color: var(--terminal-fg-dim);
+	white-space: nowrap;
+}
+
+.artifact-viewer-v2-comment-thread-outdated {
+	margin-left: auto;
+	font-size: 0.625rem;
+	line-height: 1;
+	padding: 0.1875rem 0.3125rem;
+	border-radius: 0;
+	border: 1px solid color-mix(in srgb, var(--terminal-fg-dim) 50%, transparent);
+	color: var(--terminal-fg-dim);
+	white-space: nowrap;
+}
+
+.artifact-viewer-v2-comment-thread-body {
+	margin: 0;
+	font-size: 0.8125rem;
+	line-height: 1.35;
+	color: var(--terminal-fg);
+	overflow-wrap: anywhere;
+}
+
+.artifact-viewer-v2-comment-thread-body p {
+	margin: 0;
+}
+
+.artifact-viewer-v2-comment-thread-body p + p {
+	margin-top: 0.5em;
+}
+
+.artifact-viewer-v2-comment-thread-body a {
+	color: var(--terminal-accent);
+	text-decoration: underline;
+}
+
+.artifact-viewer-v2-comment-thread-body ul,
+.artifact-viewer-v2-comment-thread-body ol {
+	margin: 0.25em 0;
+	padding-left: 1.25em;
+}
+
+/* The clickable root region inside the thread card. Kept as a distinct element
+ * so replies and the reply composer can render beneath it without nesting
+ * interactive controls inside a button. */
+.artifact-viewer-v2-comment-thread-root {
+	display: block;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-comment-thread-root:focus-visible {
+	outline: none;
+}
+
+/* Flattened replies beneath a root card: a single-level indented column with a
+ * quiet left rule tying them to the root. */
+.artifact-viewer-v2-comment-thread-replies {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	margin-top: 0.375rem;
+	padding-left: 0.5rem;
+	border-left: 1px solid color-mix(in srgb, var(--terminal-accent) 20%, transparent);
+}
+
+.artifact-viewer-v2-comment-reply {
+	position: relative;
+	display: block;
+	padding: 0.25rem 0.375rem;
+	border: 1px solid transparent;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-comment-reply-target {
+	display: block;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-comment-reply-target:focus-visible {
+	outline: none;
+}
+
+.artifact-viewer-v2-comment-actions-slot {
+	position: absolute;
+	top: 0.25rem;
+	right: 0.25rem;
+	display: flex;
+	align-items: center;
+	gap: 0.25rem;
+	z-index: 2;
+}
+
+.artifact-viewer-v2-comment-actions-trigger {
+	width: 1.5rem;
+	height: 1.5rem;
+	color: var(--terminal-fg-dim);
+}
+
+.artifact-viewer-v2-comment-actions-trigger:hover,
+.artifact-viewer-v2-comment-actions-trigger[data-state='open'] {
+	color: var(--terminal-fg);
+	background-color: color-mix(in srgb, var(--terminal-accent) 12%, transparent);
+}
+
+.artifact-viewer-v2-comment-actions-trigger svg {
+	width: 0.875rem;
+	height: 0.875rem;
+}
+
+.artifact-viewer-v2-comment-actions-menu {
+	min-width: 7rem;
+}
+
+.artifact-viewer-v2-comment-delete-error {
+	margin: 0;
+	font-size: 0.75rem;
+	color: var(--terminal-error);
+}
+
+.artifact-viewer-v2-comment-edit-draft {
+	display: block;
+	margin-top: 0.25rem;
+	padding: 0;
+	border: 0;
+	font-size: 0.625rem;
+	font-style: italic;
+	color: var(--terminal-warning);
+	background: none;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-comment-edit-form {
+	display: flex;
+	flex-direction: column;
+	gap: 0.375rem;
+	margin-top: 0.375rem;
+	cursor: default;
+}
+
+.artifact-viewer-v2-comment-edit-textarea {
+	width: 100%;
+	min-height: 4.5rem;
+	resize: vertical;
+	border: 1px solid color-mix(in srgb, var(--terminal-accent) 35%, transparent);
+	padding: 0.375rem 0.5rem;
+	font: inherit;
+	font-size: 0.75rem;
+	line-height: 1.35;
+	color: var(--terminal-fg);
+	background-color: var(--terminal-bg);
+}
+
+.artifact-viewer-v2-comment-edit-textarea:focus-visible {
+	outline: 1px solid var(--terminal-accent);
+	outline-offset: -1px;
+}
+
+.artifact-viewer-v2-comment-edit-textarea:disabled {
+	opacity: 0.6;
+	cursor: wait;
+}
+
+.artifact-viewer-v2-comment-edit-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.25rem;
+}
+
+.artifact-viewer-v2-comment-edit-error {
+	margin: 0;
+	font-size: 0.6875rem;
+	color: var(--terminal-error);
+}
+
+.artifact-viewer-v2-comment-reply:focus-visible {
+	outline: none;
+	border-color: color-mix(in srgb, var(--terminal-accent) 30%, transparent);
+}
+
+.artifact-viewer-v2-comment-reply-active,
+.artifact-viewer-v2-comment-reply-active:hover {
+	border-color: color-mix(in srgb, var(--terminal-warning) 60%, transparent);
+}
+
+.artifact-viewer-v2-comment-reply-header {
+	display: flex;
+	align-items: center;
+	gap: 0.3125rem;
+	margin-bottom: 0.1875rem;
+}
+
+.artifact-viewer-v2-comment-reply-author {
+	font-size: 0.6875rem;
+	font-weight: 500;
+	color: var(--terminal-fg);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.artifact-viewer-v2-comment-reply-time {
+	font-size: 0.625rem;
+	color: var(--terminal-fg-dim);
+	white-space: nowrap;
+}
+
+.artifact-viewer-v2-comment-reply-body {
+	margin: 0;
+	font-size: 0.75rem;
+	line-height: 1.35;
+	color: var(--terminal-fg);
+	overflow-wrap: anywhere;
+}
+
+.artifact-viewer-v2-comment-reply-body p {
+	margin: 0;
+}
+
+.artifact-viewer-v2-comment-reply-body p + p {
+	margin-top: 0.5em;
+}
+
+.artifact-viewer-v2-comment-reply-body a {
+	color: var(--terminal-accent);
+	text-decoration: underline;
+}
+
+.artifact-viewer-v2-comment-reply-body ul,
+.artifact-viewer-v2-comment-reply-body ol {
+	margin: 0.25em 0;
+	padding-left: 1.25em;
+}
+
+/* Quiet inline action row beneath a thread card (Reply / Resolve / Reopen /
+   per-thread delivery). Wraps so the compact delivery split button can drop to
+   its own line inside a narrow rail. */
+.artifact-viewer-v2-comment-thread-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.25rem;
+	margin-top: 0.375rem;
+}
+
+/* Per-thread delivery control slot, pushed to the row's trailing edge. */
+.artifact-viewer-v2-comment-thread-delivery {
+	margin-left: auto;
+	min-width: 0;
+}
+
+.artifact-viewer-v2-comment-thread-action {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	padding: 0.125rem 0.375rem;
+	font-size: 0.6875rem;
+	font-weight: 500;
+	color: var(--terminal-fg-dim);
+	background: none;
+	border: 1px solid transparent;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-comment-thread-action:hover {
+	color: var(--terminal-fg);
+	border-color: color-mix(in srgb, var(--terminal-accent) 30%, transparent);
+}
+
+.artifact-viewer-v2-comment-thread-action:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+@container (max-width: 15rem) {
+	.artifact-viewer-v2-bulk-delivery-label {
+		display: none;
+	}
+}
+
+/* Resolved thread card in the collapsed Resolved section: dimmed, no highlight. */
+.artifact-viewer-v2-comment-thread-resolved {
+	opacity: 0.72;
+	cursor: default;
+}
+
+.artifact-viewer-v2-comment-thread-resolved .artifact-viewer-v2-comment-thread-body {
+	color: var(--terminal-fg-dim);
+}
+
+.artifact-viewer-v2-review-rail-resolved-only .artifact-viewer-v2-comment-thread-resolved {
+	opacity: 1;
+}
+
+.artifact-viewer-v2-review-rail-resolved-only .artifact-viewer-v2-comment-thread-resolved .artifact-viewer-v2-comment-thread-body {
+	color: var(--terminal-fg);
+}
+
+/* Saved quote on Outdated cards: plain text, clamped to three lines until
+ * expanded. The clamp is visual only; the full text stays in the DOM. */
+.artifact-viewer-v2-comment-original-text {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.125rem;
+	margin-top: 0.375rem;
+	padding: 0.25rem 0.5rem;
+	border-left: 2px solid color-mix(in srgb, var(--terminal-fg-dim) 40%, transparent);
+	background-color: color-mix(in srgb, var(--terminal-fg-dim) 6%, transparent);
+}
+
+.artifact-viewer-v2-comment-original-text-label {
+	font-size: 0.625rem;
+	color: var(--terminal-fg-dim);
+}
+
+.artifact-viewer-v2-comment-original-text-quote {
+	margin: 0;
+	font-size: 0.75rem;
+	line-height: 1.35;
+	color: var(--terminal-fg-dim);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 3;
+	line-clamp: 3;
+	overflow: hidden;
+}
+
+.artifact-viewer-v2-comment-original-text-quote-expanded {
+	display: block;
+	-webkit-line-clamp: unset;
+	line-clamp: none;
+	overflow: visible;
+}
+
+/* Narrow three-state completion filter at the top of the review rail. */
+.artifact-viewer-v2-visibility-toggle {
+	display: flex;
+	align-items: stretch;
+	gap: 0;
+	margin-bottom: 0.25rem;
+	border: 1px solid color-mix(in srgb, var(--terminal-accent) 25%, transparent);
+}
+
+.artifact-viewer-v2-visibility-toggle-option {
+	flex: 1;
+	padding: 0.1875rem 0.375rem;
+	font-size: 0.6875rem;
+	font-weight: 500;
+	color: var(--terminal-fg-dim);
+	background: none;
+	border: none;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.artifact-viewer-v2-visibility-toggle-option:not(:last-child) {
+	border-right: 1px solid color-mix(in srgb, var(--terminal-accent) 25%, transparent);
+}
+
+.artifact-viewer-v2-visibility-toggle-option:hover {
+	color: var(--terminal-fg);
+}
+
+.artifact-viewer-v2-visibility-toggle-option:focus-visible {
+	outline: 2px solid var(--terminal-accent);
+	outline-offset: -2px;
+}
+
+.artifact-viewer-v2-visibility-toggle-option-active,
+.artifact-viewer-v2-visibility-toggle-option-active:hover {
+	color: var(--terminal-fg);
+	background-color: color-mix(in srgb, var(--terminal-accent) 12%, transparent);
+}
+
+/* Inline reply composer wrapper (the reusable CommentEditor lives inside). */
+.artifact-viewer-v2-reply-composer {
+	margin-top: 0.375rem;
+}
+
+.artifact-viewer-v2-inline-reply-editor {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.375rem 0;
+}
+
+.artifact-viewer-v2-inline-reply-input {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+}
+
+.artifact-viewer-v2-inline-reply-textarea {
+	min-width: 0;
+	min-height: 2rem;
+	max-height: 8rem;
+	flex: 1;
+	resize: none;
+	overflow-y: auto;
+	field-sizing: content;
+	border: 0;
+	background: transparent;
+	padding: 0.375rem 0;
+	font-size: 0.8125rem;
+	line-height: 1.35;
+	color: var(--terminal-fg);
+}
+
+.artifact-viewer-v2-inline-reply-textarea::placeholder {
+	color: color-mix(in srgb, var(--terminal-fg-dim) 60%, transparent);
+}
+
+.artifact-viewer-v2-inline-reply-textarea:focus {
+	outline: none;
+}
+
+.artifact-viewer-v2-inline-reply-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.375rem;
+}
+
+.artifact-viewer-v2-outline-empty {
+	padding: 0.125rem 0.5rem;
+	font-size: 0.8125rem;
+	color: var(--terminal-fg-dim);
+}
+
+/* Narrow containers (e.g. the session sidebar): the outline floats over the
+ * document instead of squeezing it, so toggling it keeps the document usable.
+ * The resizable-panel inline flex sizing is overridden while floating, and the
+ * drag handle is hidden because the panel is out of the resizable flow. */
+@container (max-width: 31.249rem) {
+	.artifact-viewer-v2-outline-panel {
+		position: absolute;
+		inset-block: 0;
+		left: 0;
+		z-index: 10;
+		width: 14rem;
+		flex: none !important;
+		min-width: 0 !important;
+		max-width: none !important;
+	}
+
+	.artifact-viewer-v2-outline {
+		background-color: var(--terminal-bg);
+		box-shadow: 4px 0 12px color-mix(in srgb, var(--terminal-bg) 60%, transparent);
+	}
+
+	.artifact-viewer-v2-workspace-handle {
+		display: none;
+	}
+}
+
+/* The review rail does not fit beside the document below the existing 30rem
+ * breakpoint. Keep this separate from the outline's 500px default. */
+@container (max-width: 30rem) {
+	.artifact-viewer-v2-rail-panel,
+	.artifact-viewer-v2-rail-handle {
+		display: none;
+	}
+}
+
+/* ---------------------------------------------------------------------------
+ * Deep-link reveal emphasis (Phase 4)
+ *
+ * One short pulse on the linked document block or rail card. The revealing
+ * caller removes the class after DEEP_LINK_EMPHASIS_MS, so neither form ever
+ * becomes a lasting selected style. Reduced motion replaces the animation with
+ * a static accent outline for the same bounded duration.
+ * ------------------------------------------------------------------------- */
+
+.artifact-viewer-v2-deep-link-emphasis {
+	animation: artifact-viewer-v2-deep-link-pulse 1.8s ease-out 1 both;
+}
+
+@keyframes artifact-viewer-v2-deep-link-pulse {
+	0% {
+		box-shadow: 0 0 0 2px color-mix(in srgb, var(--terminal-accent) 85%, transparent);
+		background-color: color-mix(in srgb, var(--terminal-accent) 16%, transparent);
+	}
+	100% {
+		box-shadow: 0 0 0 2px transparent;
+		background-color: transparent;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.artifact-viewer-v2-deep-link-emphasis {
+		animation: none;
+		outline: 2px solid var(--terminal-accent);
+		outline-offset: 1px;
+	}
+}
+
+/* ---------------------------------------------------------------------------
+ * Thread dismissal
+ *
+ * When a resolved thread leaves the rail (send-and-resolve, resolve all, or a
+ * single Resolve), the consuming rail keeps a snapshot of the card wrapped in
+ * this class until the animation ends. Grid-row interpolation collapses the
+ * unknown card height; the negative end margin swallows the rail's flex gap.
+ * Reduced motion swaps in a quick 200ms motion-free variant instead of
+ * removing the animation, so animationend still fires and the snapshot is
+ * cleaned up.
+ * ------------------------------------------------------------------------- */
+
+.artifact-viewer-v2-comment-thread-dismissal {
+	display: grid;
+	pointer-events: none;
+	animation: artifact-viewer-v2-comment-thread-dismissal 700ms ease-in-out forwards;
+}
+
+.artifact-viewer-v2-comment-thread-dismissal > div {
+	min-height: 0;
+	overflow: hidden;
+}
+
+/* The row height collapses while the card translates up inside its clipped
+ * row, so the card slides off the top as its space closes. */
+.artifact-viewer-v2-comment-thread-dismissal .artifact-viewer-v2-comment-thread {
+	animation: artifact-viewer-v2-comment-thread-slide-out 700ms ease-in-out forwards;
+}
+
+@keyframes artifact-viewer-v2-comment-thread-dismissal {
+	0% {
+		grid-template-rows: 1fr;
+	}
+	100% {
+		grid-template-rows: 0fr;
+		/* Cancel the rail's 0.5rem flex gap once the card has no height. */
+		margin-block-end: -0.5rem;
+	}
+}
+
+@keyframes artifact-viewer-v2-comment-thread-slide-out {
+	0% {
+		transform: translateY(0);
+	}
+	100% {
+		transform: translateY(-100%);
+	}
+}
+
+/* Reduced motion keeps the dismissal legible but motion-free: the card fades
+ * in place at full height and the space collapses in one step at the end.
+ * The animation still runs (never `none`) so animationend fires and the
+ * consuming rail can remove the snapshot. */
+@media (prefers-reduced-motion: reduce) {
+	.artifact-viewer-v2-comment-thread-dismissal {
+		animation-name: artifact-viewer-v2-comment-thread-dismissal-reduced;
+		/* Quick exit: reduced motion should not linger, just dismiss. */
+		animation-duration: 200ms;
+	}
+
+	.artifact-viewer-v2-comment-thread-dismissal .artifact-viewer-v2-comment-thread {
+		animation: none;
+	}
+}
+
+@keyframes artifact-viewer-v2-comment-thread-dismissal-reduced {
+	0% {
+		grid-template-rows: 1fr;
+		opacity: 1;
+	}
+	99% {
+		grid-template-rows: 1fr;
+		opacity: 0;
+	}
+	100% {
+		grid-template-rows: 0fr;
+		opacity: 0;
+		margin-block-end: -0.5rem;
+	}
+}

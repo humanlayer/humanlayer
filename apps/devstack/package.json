@@ -1,0 +1,28 @@
+{
+  "name": "@humanlayer/devstack",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "devstack": "bun src/cli.ts",
+    "test": "bun vitest run --project unit",
+    "test:learning": "bun vitest run --project learning",
+    "test:llm": "bun run ../../scripts/run-silent.ts 'tests passed' bun run test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@humanlayer/vitest-config": "workspace:*",
+    "@effect/vitest": "catalog:",
+    "@types/bun": "catalog:",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1073.0",
+    "@inquirer/prompts": "8.5.2",
+    "commander": "^14.0.3",
+    "effect": "catalog:",
+    "ioredis": "5.10.1",
+    "postgres": "^3.4.8"
+  }
+}

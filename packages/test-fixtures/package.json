@@ -1,0 +1,39 @@
+{
+  "name": "@humanlayer/test-fixtures",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+	"scripts": {
+		"test": "bun --env-file=../../.env vitest run",
+		"test:watch": "bun vitest",
+		"test:llm": "bun run ../../scripts/run-silent.ts 'tests passed' bun run test"
+	},
+  "exports": {
+    ".": "./src/index.ts",
+    "./assertions": "./src/collection-assertions.ts",
+    "./collections": "./src/collection-factories.ts",
+    "./context": "./src/electric-test-context.ts",
+    "./docker": "./src/docker.ts",
+    "./external-test-services": "./src/external-test-services.ts",
+    "./external-services": "./src/external-test-services.ts",
+    "./project-workspaces": "./src/project-workspace.ts"
+  },
+  "dependencies": {
+    "@humanlayer/db": "workspace:*",
+    "@humanlayer/schemas": "workspace:*",
+    "@tanstack/db": "catalog:",
+    "@tanstack/electric-db-collection": "catalog:",
+    "drizzle-orm": "catalog:",
+    "ioredis": "5.10.1",
+    "ohash": "^2.0.11",
+    "postgres": "^3.4.8"
+  },
+	"devDependencies": {
+		"@humanlayer/vitest-config": "workspace:*",
+		"@types/bun": "latest",
+		"vitest": "catalog:"
+	},
+  "peerDependencies": {
+    "typescript": "catalog:"
+  }
+}

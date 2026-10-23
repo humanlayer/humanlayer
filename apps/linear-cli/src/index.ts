@@ -1,0 +1,11 @@
+// Library exports only - no side effects
+export { fetchIssueAsString } from './commands/getIssue'
+export { initializeLinearClient } from './utils/client'
+export { maybeGetLinearClient, type LinearClientResult } from './utils/client'
+export { fetchIssueData, type IssueData, type IssueComment, type ParentIssue } from './commands/fetchIssueData'
+export { updateIssueStatus } from './commands/updateIssueStatus'
+export { createIssueComment } from './commands/createIssueComment'
+export { addLinkToIssue } from './commands/addLink'
+export { ensureLinkToIssue } from './commands/ensureLink'
+export { uploadAttachmentToIssue } from './commands/uploadAttachment'
+export { extractIssueId, getStagedTaskFiles } from './utils/git'

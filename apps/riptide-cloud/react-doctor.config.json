@@ -1,0 +1,7 @@
+{
+  "ignore": {
+    "files": [
+      "pulumi.ts"
+    ]
+  }
+}

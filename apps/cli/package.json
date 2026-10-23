@@ -1,0 +1,54 @@
+{
+  "name": "@humanlayer/cli",
+  "license": "Apache-2.0",
+  "version": "0.40.0",
+  "description": "HumanLayer CLI — daemon management and authentication",
+  "type": "module",
+  "bin": {
+    "humanlayer": "bin/humanlayer"
+  },
+  "files": [
+    "bin/humanlayer",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun run ./build.ts",
+    "build:all": "bun run ./build.ts --all",
+    "start": "NODE_USE_SYSTEM_CA=1 bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun vitest run"
+  },
+  "optionalDependencies": {
+    "@humanlayer/cli-darwin-arm64": "0.3.0",
+    "@humanlayer/cli-darwin-x64": "0.3.0",
+    "@humanlayer/cli-linux-arm64": "0.3.0",
+    "@humanlayer/cli-linux-x64": "0.3.0",
+    "@humanlayer/cli-win32-x64": "0.3.0"
+  },
+  "dependencies": {
+    "@humanlayer/riptide-api-contract": "workspace:*",
+    "@humanlayer/riptide-daemon": "workspace:*",
+    "@humanlayer/agentlayer-provider-auth": "catalog:",
+    "@humanlayer/agentlayer-provider-github-copilot": "catalog:",
+    "@humanlayer/agentlayer-provider-openai-codex": "catalog:",
+    "@humanlayer/codelayer": "catalog:",
+    "@humanlayer/fold-codex": "0.1.32",
+    "@humanlayer/fold-xai": "0.1.32",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/openapi-client": "catalog:",
+    "@orpc/server": "catalog:",
+    "commander": "^14.0.0",
+    "effect": "catalog:",
+    "trpc-cli": "^0.14.0",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@humanlayer/vitest-config": "workspace:*",
+    "@effect/platform-node": "catalog:",
+    "@effect/vitest": "catalog:",
+    "@humanlayer/effect-proper-lockfile": "workspace:*",
+    "@types/bun": "^1.3.4",
+    "vitest": "catalog:"
+  }
+}

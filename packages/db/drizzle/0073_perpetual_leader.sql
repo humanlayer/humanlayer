@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "applied_usage_report_keys" jsonb;

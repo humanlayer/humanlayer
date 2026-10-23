@@ -1,0 +1,20 @@
+{
+	"name": "@humanlayer/session-sdk-artifacts",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Session-side client: task files: which sync, their MIME types and frontmatter, the task folder and its hint, and the sync itself",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/session-sdk-base": "workspace:*",
+		"@humanlayer/session-sdk-sessions": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0"
+	}
+}

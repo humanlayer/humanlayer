@@ -1,0 +1,2 @@
+packages/db/drizzle/meta/*_snapshot.json linguist-generated=true
+apps/**/src/routeTree.gen.ts linguist-generated=true

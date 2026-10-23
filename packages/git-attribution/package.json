@@ -1,0 +1,28 @@
+{
+	"name": "@humanlayer/git-attribution",
+	"module": "src/index.ts",
+	"type": "module",
+	"private": true,
+	"scripts": {
+		"test": "bun vitest run",
+		"typecheck": "tsc --noEmit",
+		"test:watch": "bun vitest"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./git-env": "./src/git-env.ts",
+		"./testing": "./src/testing.ts"
+	},
+	"devDependencies": {
+		"@humanlayer/vitest-config": "workspace:*",
+		"@types/bun": "catalog:",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@humanlayer/schemas": "workspace:*",
+		"zod": "catalog:"
+	}
+}

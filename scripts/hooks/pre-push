@@ -1,0 +1,5 @@
+#!/bin/bash
+# Pre-push checks
+# Version: 1
+
+bun run hook:prepush

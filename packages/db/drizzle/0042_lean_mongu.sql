@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "default_model" text DEFAULT 'opus-1m' NOT NULL;

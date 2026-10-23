@@ -1,0 +1,59 @@
+{
+  "name": "@humanlayer/ai",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./config": "./src/config/index.ts",
+    "./classify-task-intent": "./src/agents/classify-task-intent/index.ts",
+    "./context-shards": "./src/agents/context-shards/index.ts",
+    "./doc-researcher": "./src/agents/doc-researcher/orchestrator.ts",
+    "./extract-next-step": "./src/agents/extract-next-step/extract-next-step.ts",
+    "./design-doc-open-questions": "./src/agents/design-doc-open-questions/index.ts",
+    "./generate-session-title": "./src/agents/generate-session-title/generate-session-title.ts",
+    "./generate-task-summary": "./src/agents/generate-task-summary/generate-task-summary.ts",
+    "./providers": "./src/providers/models.ts",
+    "./reliable-language-model": "./src/reliable-language-model/index.ts",
+    "./generate-learn-questions": "./src/agents/generate-learn-questions/generate-learn-questions.ts",
+    "./extract-next-step/effect": "./src/agents/extract-next-step/extract-next-step.effect.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "eval": "bun vitest run --project eval",
+    "eval:context-shards": "bun vitest run --project eval eval/context-shards",
+    "eval:classify-task-intent": "bun vitest run --project eval eval/classify-task-intent",
+    "eval:extract-next-step": "bun vitest run --project eval eval/extract-next-step",
+    "eval:design-doc-open-questions": "bun vitest run --project eval eval/design-doc-open-questions",
+    "eval:doc-research": "bun vitest run --project eval eval/doc-researcher",
+    "eval:generate-session-title": "bun vitest run --project eval eval/generate-session-title",
+    "eval:generate-task-summary": "bun vitest run --project eval eval/generate-task-summary",
+    "eval:generate-learn-questions": "bun vitest run --project eval eval/generate-learn-questions",
+    "test": "bun vitest run --project unit",
+    "test:learning": "bun vitest run --project learning",
+    "test:watch": "bun vitest",
+    "test:eval": "bun vitest run --project eval"
+  },
+  "devDependencies": {
+    "@effect/vitest": "catalog:",
+    "@humanlayer/typescript-config": "workspace:*",
+    "@humanlayer/vitest-config": "workspace:*",
+    "@types/bun": "latest",
+    "vitest": "catalog:",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.7",
+    "@ai-sdk/openai": "3.0.46",
+    "@ai-sdk/provider": "3.0.10",
+    "@humanlayer/db": "workspace:*",
+    "@humanlayer/logger": "workspace:*",
+    "@humanlayer/schemas": "workspace:*",
+    "@sentry/core": "10.47.0",
+    "ai": "^6.0.14",
+    "effect": "catalog:",
+    "zod": "catalog:"
+  }
+}

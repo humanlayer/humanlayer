@@ -1,0 +1,7 @@
+ALTER TABLE "organization_settings" ALTER COLUMN "experimental_subagents_enabled" SET DEFAULT true;--> statement-breakpoint
+ALTER TABLE "organization_settings" ADD COLUMN "sync_version" bigint DEFAULT 2 NOT NULL;--> statement-breakpoint
+ALTER TABLE "organization_settings" ADD COLUMN "sync_visibility" text DEFAULT 'user_choice' NOT NULL;--> statement-breakpoint
+ALTER TABLE "organization_settings" ADD COLUMN "v1_backend" text;--> statement-breakpoint
+ALTER TABLE "organization_settings" ADD CONSTRAINT "organization_settings_sync_visibility_check" CHECK ("organization_settings"."sync_visibility" IN ('v1', 'v2', 'user_choice'));--> statement-breakpoint
+ALTER TABLE "organization_settings" ADD CONSTRAINT "organization_settings_v1_backend_check" CHECK ("organization_settings"."v1_backend" IN ('stable', 'beta') OR "organization_settings"."v1_backend" IS NULL);--> statement-breakpoint
+ALTER TABLE "organization_settings" ADD CONSTRAINT "organization_settings_sync_visibility_v1_backend_consistency_check" CHECK (("organization_settings"."sync_visibility" = 'v1' AND "organization_settings"."v1_backend" IS NOT NULL) OR ("organization_settings"."sync_visibility" IN ('v2', 'user_choice') AND "organization_settings"."v1_backend" IS NULL));

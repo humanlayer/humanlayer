@@ -1,0 +1,11 @@
+{
+  "name": "@humanlayer/cli-linux-x64",
+  "license": "Apache-2.0",
+  "version": "0.3.0",
+  "description": "HumanLayer CLI binary for Linux x64",
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "preferUnplugged": true,
+  "files": ["bin/humanlayer"],
+  "bin": { "humanlayer": "bin/humanlayer"}
+}

@@ -1,0 +1,28 @@
+{
+	"name": "@humanlayer/claude-code-humanlayer",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Mirror Claude Code sessions, task files and HumanLayer tools to HumanLayer, from a Claude Code plugin",
+	"bin": {
+		"humanlayer-claude": "./src/cli.ts"
+	},
+	"type": "module",
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"test": "node --test \"test/**/*.test.ts\"",
+		"check": "bun run typecheck && bun run test && claude plugin validate .",
+		"build": "bun scripts/build.ts"
+	},
+	"dependencies": {
+		"@humanlayer/session-sdk-artifacts": "workspace:*",
+		"@humanlayer/session-sdk-auth": "workspace:*",
+		"@humanlayer/session-sdk-base": "workspace:*",
+		"@humanlayer/session-sdk-diffs": "workspace:*",
+		"@humanlayer/session-sdk-sessions": "workspace:*",
+		"@humanlayer/session-sdk-tools": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0",
+		"typescript": "^5.9.0"
+	}
+}

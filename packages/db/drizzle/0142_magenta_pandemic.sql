@@ -1,0 +1,1 @@
+ALTER TABLE "organization_settings" ADD COLUMN "commit_session_trailers_allowed" boolean DEFAULT false NOT NULL;

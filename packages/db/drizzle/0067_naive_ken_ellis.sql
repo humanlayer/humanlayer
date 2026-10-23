@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ALTER COLUMN "default_model" SET DEFAULT 'opus';

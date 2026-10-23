@@ -1,0 +1,1 @@
+ALTER TABLE "sessions" ADD COLUMN "resolved_model" text;

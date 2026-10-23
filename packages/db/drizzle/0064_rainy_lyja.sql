@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" DROP COLUMN "use_new_task_form_v2";

@@ -1,0 +1,2 @@
+CREATE INDEX "approvals_session_id_idx" ON "approvals" USING btree ("session_id");--> statement-breakpoint
+CREATE INDEX "conversation_events_session_id_idx" ON "conversation_events" USING btree ("session_id");

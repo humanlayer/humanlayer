@@ -1,0 +1,2 @@
+ALTER TABLE "online_hosts" DROP CONSTRAINT "online_hosts_unique";--> statement-breakpoint
+ALTER TABLE "online_hosts" ADD CONSTRAINT "online_hosts_pk" PRIMARY KEY("host_id","organization_id","user_id");

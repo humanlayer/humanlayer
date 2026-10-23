@@ -1,0 +1,1 @@
+ALTER TABLE "user_settings" ADD COLUMN "use_new_task_form_v2" boolean DEFAULT false NOT NULL;

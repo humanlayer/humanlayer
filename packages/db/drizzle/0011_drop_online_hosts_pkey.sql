@@ -1,0 +1,1 @@
+ALTER TABLE "online_hosts" DROP CONSTRAINT "online_hosts_pkey";--> statement-breakpoint

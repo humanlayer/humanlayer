@@ -1,0 +1,22 @@
+{
+  "disabled": false,
+  "pathTemplate": "~/.humanlayer/workspaces/{{ TASKSLUG }}/{{ REPOBASENAME }}",
+  "branchTemplate": "{{ TASKSLUG }}",
+  "sourceRef": "origin/main",
+  "repos": [
+    {
+      "localPath": ".",
+      "description": "HumanLayer repo",
+      "setupCommand": "bun install --frozen-lockfile",
+      "primary": true,
+      "copyGlobs": [
+        ".env",
+        "packages/db/.env",
+        "CLAUDE.local.md",
+        ".claude/settings.local.json",
+        ".humanlayer/workspace.json",
+        ".humanlayer/workspace.local.json"
+      ]
+    }
+  ]
+}

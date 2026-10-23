@@ -1,1 +1,0 @@
-ALTER TABLE "thoughts_documents" ALTER COLUMN "created_at" SET DATA TYPE bigint;

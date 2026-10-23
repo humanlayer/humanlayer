@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{PR_AREA} — Architecture to Code</title>
+<!--
+  GENERAL CODE-SLIDES TEMPLATE
+
+  Replace every {...} placeholder with verified content from the PR.
+  Add/remove slides to fit the change, but preserve the narrative descent:
+  50,000 ft → 25,000 ft → 10,000 ft → code → resulting foundation.
+  See guide.md for content and validation rules.
+-->
+<style>
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+:root {
+  --bg:#1b1e28; --deep:#141720; --panel:#242834; --ink:#10121a;
+  --border:#3b4050; --text:#a6accd; --bright:#fff; --muted:#747a98;
+  --accent:#add7ff; --mint:#5de4c7; --yellow:#fffac2;
+  --blue:#89ddff; --rose:#d0679d; --pink:#f087bd;
+  --mono:"IBM Plex Mono",Consolas,Monaco,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+* { box-sizing:border-box; border-radius:0; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:var(--sans); overflow:hidden; }
+.slide { display:none; width:100vw; height:100vh; padding:34px 56px 46px; background:radial-gradient(circle at 88% 8%,#30334059,transparent 34%),var(--bg); overflow:hidden; position:relative; }
+.slide.active { display:flex; flex-direction:column; }
+.head { flex:none; margin-bottom:14px; }
+.kicker { font:600 10px var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--mint); margin-bottom:7px; }
+.kicker .alt { color:var(--muted); letter-spacing:.1em; }
+h1,h2 { color:var(--accent); line-height:1.1; margin:0; letter-spacing:-.035em; }
+h1 { font-size:46px; }
+h2 { font-size:29px; }
+.sub { font-size:14px; line-height:1.5; margin:8px 0 0; max-width:125ch; }
+.body { flex:1; min-height:0; display:flex; flex-direction:column; gap:14px; }
+.grow { flex:1; min-height:0; }
+.strong { color:var(--bright); font-weight:600; }
+.mint { color:var(--mint); } .rose { color:var(--rose); } .muted { color:var(--muted); }
+.num { position:absolute; right:24px; bottom:16px; font:10px var(--mono); color:var(--muted); }
+.controls { position:fixed; z-index:10; right:18px; top:16px; display:flex; gap:6px; }
+.controls button { background:#141720e8; color:var(--accent); border:1px solid var(--accent); padding:7px 10px; font:600 9px var(--mono); cursor:pointer; }
+.progress { position:fixed; left:0; bottom:0; height:4px; background:var(--mint); z-index:11; transition:width .15s; }
+.card { border:1px solid var(--border); background:var(--deep); padding:12px 14px; min-width:0; }
+.card .tag { display:block; font:600 9px var(--mono); color:var(--pink); letter-spacing:.12em; text-transform:uppercase; }
+.card p { font-size:12.5px; line-height:1.5; margin:6px 0 0; }
+.card ul { margin:6px 0 0; padding-left:16px; font-size:12.5px; line-height:1.55; }
+.grid2,.grid3,.grid4 { display:grid; gap:12px; min-height:0; }
+.grid2 { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.grid3 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.grid4 { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.split { display:grid; grid-template-columns:1fr 1fr; gap:16px; min-height:0; align-items:start; }
+.flow { display:flex; align-items:stretch; gap:0; min-width:0; }
+.box { border:1px solid var(--accent); background:var(--deep); padding:10px 12px; flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; }
+.box b { color:var(--bright); font:600 10.5px var(--mono); letter-spacing:.04em; }
+.box span { font-size:11.5px; line-height:1.45; margin-top:4px; }
+.box.dim { border-color:var(--border); }
+.box.hot { border-color:var(--mint); background:#5de4c70d; }
+.arrow { flex:none; width:34px; align-self:center; border-top:1px solid var(--accent); position:relative; margin:0 2px; }
+.arrow:after { content:""; position:absolute; right:-1px; top:-4px; border-left:7px solid var(--accent); border-top:4px solid transparent; border-bottom:4px solid transparent; }
+pre.code,pre.tree { margin:0; border:1px solid var(--border); background:var(--ink); padding:12px 14px; overflow:hidden; font:11.5px/1.5 var(--mono); color:var(--text); white-space:pre; tab-size:2; }
+pre.tree { font-size:12px; line-height:1.62; }
+.kw { color:var(--mint); } .fn { color:var(--accent); } .str { color:var(--blue); }
+.cm { color:var(--muted); font-style:italic; } .mark { color:var(--pink); font-weight:600; }
+.annotations { display:grid; grid-template-columns:1.3fr .8fr; gap:16px; min-height:0; align-items:start; }
+.annotation-list { display:flex; flex-direction:column; gap:9px; }
+.annotation { border:1px solid var(--border); border-left:3px solid var(--pink); background:var(--deep); padding:9px 12px; }
+.annotation b { font:600 10px var(--mono); color:var(--pink); }
+.annotation p { margin:4px 0 0; font-size:12px; line-height:1.5; }
+.callout { border-left:3px solid var(--rose); background:#d0679d12; padding:10px 14px; font-size:12.5px; line-height:1.5; }
+.architecture { display:grid; grid-template-columns:34px 1fr 34px; gap:0 12px; min-height:0; }
+.rail { writing-mode:vertical-rl; display:flex; align-items:center; justify-content:center; font:600 10px var(--mono); letter-spacing:.18em; }
+.rail.down { color:var(--mint); } .rail.up { transform:rotate(180deg); color:var(--pink); }
+.layers { display:flex; flex-direction:column; min-height:0; }
+.layer { border:1px solid var(--border); background:var(--deep); padding:9px 14px; display:grid; grid-template-columns:168px 1fr; gap:12px; align-items:center; flex:1; }
+.layer+.layer { border-top:0; }
+.layer>b { font:600 10px var(--mono); color:var(--accent); letter-spacing:.06em; }
+.module { display:inline-block; border:1px solid var(--border); background:var(--panel); padding:3px 7px; font:10.5px var(--mono); margin:2px 4px 2px 0; }
+.module.hot { border-color:var(--mint); }
+.sequence { --cols:4; border:1px solid var(--border); background:var(--deep); padding:12px 6px 4px; position:relative; min-width:0; }
+.actors { display:grid; grid-template-columns:repeat(var(--cols),1fr); position:relative; z-index:2; }
+.actor { margin:0 8px; border:1px solid var(--accent); background:var(--panel); padding:6px 4px; text-align:center; font:600 10px var(--mono); color:var(--bright); }
+.lifelines { position:relative; margin-top:2px; }
+.life { position:absolute; top:0; bottom:0; width:0; border-left:1px dashed var(--border); }
+.message-row { position:relative; height:40px; }
+.message { position:absolute; top:22px; border-top:1.5px solid var(--mint); }
+.message:after { content:""; position:absolute; right:0; top:-5px; border-left:8px solid var(--mint); border-top:4.5px solid transparent; border-bottom:4.5px solid transparent; }
+.message-label { position:absolute; top:3px; font:10px var(--mono); color:var(--text); white-space:nowrap; }
+.self-call { position:absolute; top:6px; padding:3px 7px; border:1px dashed var(--yellow); color:var(--yellow); font:9.5px var(--mono); white-space:nowrap; background:var(--deep); }
+.mock-layout { display:grid; grid-template-columns:190px 6px 1fr; border:1px solid var(--accent); background:var(--deep); position:relative; min-height:0; }
+.mock-side { background:var(--ink); padding:10px; }
+.mock-handle { background:var(--border); }
+.mock-main { padding:16px 22px; position:relative; }
+.mock-row { font:11px var(--mono); padding:5px 8px; border-left:2px solid transparent; }
+.mock-row.active { background:#add7ff14; border-left-color:var(--mint); color:var(--bright); }
+.skeleton { height:8px; background:#2e3342; margin:7px 0; }
+.mock-focus { border:1.5px solid var(--mint); background:#5de4c70d; padding:8px; margin:12px 0; }
+.pin { position:absolute; z-index:3; width:20px; height:20px; background:var(--pink); color:var(--ink); font:600 11px var(--mono); display:flex; align-items:center; justify-content:center; }
+.keys { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+.key { border:1px solid var(--border); border-bottom:3px solid var(--mint); background:var(--panel); padding:4px 9px; font:600 12px var(--mono); color:var(--bright); }
+@media (max-width:900px) {
+  html,body { overflow:auto; }
+  .slide { padding:58px 28px 48px; overflow:auto; }
+  .grid3,.grid4,.split,.annotations { grid-template-columns:1fr; }
+  .flow { flex-direction:column; }
+  .arrow { width:0; height:24px; border-top:0; border-left:1px solid var(--accent); }
+  .layer { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="controls"><button id="prev">PREV</button><button id="next">NEXT</button></div>
+<main>
+
+<!-- 01 · 50,000 FT — system move -->
+<section class="slide active">
+  <div class="head">
+    <div class="kicker">50,000 ft · {FEATURE_OR_AREA} <span class="alt">· {TICKET} · {SCOPE_MARKER}</span></div>
+    <h1>{ONE_SENTENCE_SYSTEM_MOVE}</h1>
+    <p class="sub">{WHY_THE_PRODUCT_OR_SYSTEM_NEEDS_THIS_CHANGE}. <span class="strong">{THE_KEY_ARCHITECTURAL_DECISION}</span>.</p>
+  </div>
+  <div class="body">
+    <div class="flow grow">
+      <div class="box dim"><b>{HOST_OR_INPUT}</b><span>{WHAT_ENTERS_THE_SYSTEM}</span></div>
+      <div class="arrow"></div>
+      <div class="box"><b>{ROLLOUT_OR_ROUTING_BOUNDARY}</b><span>{REAL_BOUNDARY_CONDITION_AND_OWNER}</span></div>
+      <div class="arrow"></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+        <div class="box dim"><b>{UNCHANGED_PATH}</b><span>{WHY_IT_REMAINS_SAFE}</span></div>
+        <div class="box hot"><b>{NEW_PATH}</b><span>{WHAT_THIS_PR_INTRODUCES}</span></div>
+      </div>
+    </div>
+    <div class="grid4">
+      <div class="card"><span class="tag">{CAPABILITY_1}</span><p>{VISIBLE_RESULT_1}</p></div>
+      <div class="card"><span class="tag">{CAPABILITY_2}</span><p>{VISIBLE_RESULT_2}</p></div>
+      <div class="card"><span class="tag">{ARCHITECTURE}</span><p>{FOUNDATION_CREATED}</p></div>
+      <div class="card"><span class="tag">{SAFETY}</span><p>{UNCHANGED_OR_GATED_BEHAVIOR}</p></div>
+    </div>
+  </div>
+  <span class="num">01 / {TOTAL}</span>
+</section>
+
+<!-- 02 · 50,000 FT — product mock -->
+<section class="slide">
+  <div class="head"><div class="kicker">50,000 ft · Product behavior</div><h2>{WHAT_THE_USER_CAN_NOW_DO}</h2></div>
+  <div class="body">
+    <div class="split grow">
+      <div class="mock-layout">
+        <div class="pin" style="top:-8px;left:55px">1</div>
+        <div class="pin" style="top:42%;left:165px">2</div>
+        <div class="pin" style="top:48%;right:32%">3</div>
+        <div class="mock-side">
+          <div class="mock-row">{SIDEBAR_ITEM}</div>
+          <div class="mock-row active">{ACTIVE_ITEM}</div>
+          <div class="mock-row">{NESTED_ITEM}</div>
+        </div>
+        <div class="mock-handle"></div>
+        <div class="mock-main">
+          <div class="strong">{DOCUMENT_OR_MAIN_HEADING}</div>
+          <div class="skeleton" style="width:88%"></div><div class="skeleton" style="width:70%"></div>
+          <div class="mock-focus"><div class="skeleton" style="width:92%"></div><div class="skeleton" style="width:61%"></div></div>
+          <div class="skeleton" style="width:80%"></div><div class="skeleton" style="width:45%"></div>
+        </div>
+      </div>
+      <div class="annotation-list">
+        <div class="annotation"><b>1 · {UI_REGION}</b><p>{SPATIAL_OR_INTERACTION_BEHAVIOR}</p></div>
+        <div class="annotation"><b>2 · {ACTIVE_STATE}</b><p>{HOW_STATE_IS_DERIVED_OR_RENDERED}</p></div>
+        <div class="annotation"><b>3 · {PRIMARY_ACTION}</b><p>{WHAT_HAPPENS_AND_WHY_IT_MATTERS}</p></div>
+      </div>
+    </div>
+    <div class="keys"><span class="key">{KEY_1}</span><span>{ACTION_1}</span><span class="key">{KEY_2}</span><span>{ACTION_2}</span></div>
+  </div>
+  <span class="num">02 / {TOTAL}</span>
+</section>
+
+<!-- 03 · 25,000 FT — layered architecture -->
+<section class="slide">
+  <div class="head"><div class="kicker">25,000 ft · Program architecture</div><h2>{ONE_SENTENCE_OWNERSHIP_MODEL}</h2></div>
+  <div class="body">
+    <div class="architecture grow">
+      <div class="rail down">MODELS &amp; PROPS ▼</div>
+      <div class="layers">
+        <div class="layer"><b>{HOST_LAYER}</b><div><span class="module">{HOST_FILE}</span><span class="module">{HOST_SURFACE}</span></div></div>
+        <div class="layer"><b>{BOUNDARY_LAYER}</b><div><span class="module hot">{GATE_OR_ADAPTER}</span><span class="module">{SETTING_OR_CONTRACT}</span></div></div>
+        <div class="layer"><b>{APP_LAYER}</b><div><span class="module">{COMPOSITION}</span><span class="module">{HOOK_OR_SERVICE}</span></div></div>
+        <div class="layer"><b>{SHARED_LAYER}</b><div><span class="module hot">{PURE_MODEL}</span><span class="module">{SHARED_COMPONENT}</span><span class="module">{VIEW_OR_DATA_EXTENSION}</span></div></div>
+      </div>
+      <div class="rail up">EVENTS &amp; CALLBACKS ▲</div>
+    </div>
+    <div class="grid3">
+      <div class="card"><span class="tag">{PRINCIPLE_1}</span><p>{WHY_LAYER_1_OWNS_ITS_CODE}</p></div>
+      <div class="card"><span class="tag">{PRINCIPLE_2}</span><p>{WHY_THE_MODEL_IS_PURE_OR_SHARED}</p></div>
+      <div class="card"><span class="tag">{PRINCIPLE_3}</span><p>{HOW_EVENTS_RETURN_TO_THE_OWNER}</p></div>
+    </div>
+  </div>
+  <span class="num">03 / {TOTAL}</span>
+</section>
+
+<!-- 04 · 25,000 FT — component tree and state ownership -->
+<section class="slide">
+  <div class="head"><div class="kicker">25,000 ft · Composition &amp; state ownership</div><h2>{WHAT_THE_RENDERED_TREE_REVEALS}</h2></div>
+  <div class="body">
+    <div class="split grow">
+<pre class="tree"><span class="cm">// {REAL_COMPOSITION_FILE}</span>
+<span class="fn">&lt;{ROOT_COMPONENT}&gt;</span>                   <span class="mint">← {ROOT_LIFECYCLE}</span>
+└─ <span class="fn">&lt;{STATEFUL_COMPOSITION}&gt;</span>             <span class="mint">owns {LOCAL_STATE}</span>
+   └─ <span class="fn">&lt;{SHARED_SHELL}&gt;</span>                  <span class="mint">{SHELL_RESPONSIBILITY}</span>
+      ├─ <span class="fn">&lt;{FEATURE_CHILD}/&gt;</span>              <span class="mint">{FEATURE_INPUTS}</span>
+      └─ <span class="fn">&lt;{MAIN_REGION}&gt;</span>                 <span class="mint">{REF_OR_SUBSCRIPTION}</span>
+         └─ <span class="fn">&lt;{RENDERER}/&gt;</span>
+            └─ {PLUGIN_OR_DATA_LAYER}        <span class="mint">{TRANSIENT_OR_PERSISTED_STATE}</span></pre>
+      <div class="annotation-list">
+        <div class="annotation"><b>{STATE_OWNER_1}</b><p>{STATE_1_AND_RESET_RULE}</p></div>
+        <div class="annotation"><b>{STATE_OWNER_2}</b><p>{DERIVED_OR_EXTERNAL_STATE}</p></div>
+        <div class="annotation"><b>{STATE_OWNER_3}</b><p>{PERSISTED_OR_PLUGIN_STATE}</p></div>
+        <div class="annotation"><b>WHY THIS SPLIT</b><p>{WHY_THE_BOUNDARIES_MATTER_FOR_FUTURE_WORK}</p></div>
+      </div>
+    </div>
+  </div>
+  <span class="num">04 / {TOTAL}</span>
+</section>
+
+<!-- 05 · 10,000 FT — runtime sequence -->
+<section class="slide">
+  <div class="head"><div class="kicker">10,000 ft · Runtime sequence</div><h2>{THE_ORDERING_OR_DATAFLOW_CLAIM}</h2></div>
+  <div class="body">
+    <div class="sequence grow" style="--cols:4">
+      <div class="actors"><div class="actor">{ACTOR_1}</div><div class="actor">{ACTOR_2}</div><div class="actor">{ACTOR_3}</div><div class="actor">{ACTOR_4}</div></div>
+      <div class="lifelines">
+        <div class="life" style="left:12.5%"></div><div class="life" style="left:37.5%"></div><div class="life" style="left:62.5%"></div><div class="life" style="left:87.5%"></div>
+        <div class="message-row"><span class="message-label" style="left:13.5%">{REAL_EVENT_OR_CALL_1}</span><div class="message" style="left:12.5%;width:25%"></div></div>
+        <div class="message-row"><span class="message-label" style="left:38.5%">{REAL_CALLBACK_OR_CALL_2}</span><div class="message" style="left:37.5%;width:25%"></div></div>
+        <div class="message-row"><div class="self-call" style="left:38.5%">{LOCAL_COMPUTATION_OR_STATE_TRANSITION}</div></div>
+        <div class="message-row"><span class="message-label" style="left:63.5%">{REAL_CALL_3_WITH_ARGUMENTS}</span><div class="message" style="left:62.5%;width:25%"></div></div>
+      </div>
+    </div>
+    <div class="callout"><span class="strong">{WHY_ORDERING_MATTERS}:</span> {RACE_CONDITION_FALLBACK_OR_CORRECTNESS_EXPLANATION}</div>
+  </div>
+  <span class="num">05 / {TOTAL}</span>
+</section>
+
+<!-- 06 · CODE — annotated implementation -->
+<section class="slide">
+  <div class="head"><div class="kicker">Code · {REAL_FILE_PATH} <span class="alt">· {WHY_THIS_IS_THE_DECISIVE_FILE}</span></div><h2>{WHAT_THE_ALGORITHM_OR_MECHANISM_DOES}</h2></div>
+  <div class="body">
+    <div class="annotations grow">
+<pre class="code"><span class="kw">export function</span> <span class="fn">{realFunction}</span>({REAL_PARAMETERS}) {
+  <span class="kw">const</span> {state} = {INITIAL_STATE}                         <span class="mark">①</span>
+
+  <span class="kw">for</span> (<span class="kw">const</span> item <span class="kw">of</span> items) {
+    <span class="kw">if</span> ({REAL_GUARD}) <span class="kw">continue</span>                         <span class="mark">②</span>
+    {REAL_TRANSFORMATION_OR_STATE_UPDATE}                  <span class="mark">③</span>
+  }
+
+  <span class="kw">return</span> {REAL_OUTPUT}                                  <span class="mark">④</span>
+}</pre>
+      <div class="annotation-list">
+        <div class="annotation"><b>① {ANNOTATION_TITLE}</b><p>{WHY_INITIAL_STATE_HAS_THIS_SHAPE}</p></div>
+        <div class="annotation"><b>② {ANNOTATION_TITLE}</b><p>{EDGE_CASE_OR_SCOPE_RULE}</p></div>
+        <div class="annotation"><b>③ {ANNOTATION_TITLE}</b><p>{CORE_INVARIANT_OR_ORDERING}</p></div>
+        <div class="annotation"><b>④ WORKED EXAMPLE</b><p><code>{REALISTIC_INPUT} → {EXPECTED_OUTPUT}</code><br>{WHY_THIS_EXAMPLE_PROVES_CORRECTNESS}</p></div>
+      </div>
+    </div>
+  </div>
+  <span class="num">06 / {TOTAL}</span>
+</section>
+
+<!-- 07 · LANDING — resulting foundation -->
+<section class="slide">
+  <div class="head"><div class="kicker">The resulting foundation</div><h2>{WHAT_IS_TRUE_AFTER_THIS_PR}</h2></div>
+  <div class="body">
+    <div class="grid2 grow">
+      <div class="card"><span class="tag">Product</span><p>{USER_VISIBLE_FOUNDATION}</p></div>
+      <div class="card"><span class="tag">Architecture</span><p>{REUSABLE_SEAMS_CREATED}</p></div>
+      <div class="card"><span class="tag">Deliberately absent</span><p>{NON_GOALS_AND_UNCHANGED_PATHS}</p></div>
+      <div class="card"><span class="tag">Next capability</span><p>{HOW_LATER_WORK_REUSES_THIS_FOUNDATION}</p></div>
+    </div>
+    <div class="callout"><span class="strong">The structural question:</span> {THE_ONE_DESIGN_QUESTION_REVIEWERS_SHOULD_LEAVE_ANSWERED}</div>
+  </div>
+  <span class="num">07 / {TOTAL}</span>
+</section>
+
+</main>
+<div class="progress" id="progress"></div>
+<script>
+const slides=[...document.querySelectorAll('.slide')];
+let current=0;
+function show(index){
+  current=Math.max(0,Math.min(slides.length-1,index));
+  slides.forEach((slide,i)=>slide.classList.toggle('active',i===current));
+  document.getElementById('progress').style.width=((current+1)/slides.length*100)+'%';
+  history.replaceState(null,'','#slide-'+(current+1));
+}
+document.getElementById('prev').addEventListener('click',()=>show(current-1));
+document.getElementById('next').addEventListener('click',()=>show(current+1));
+document.addEventListener('keydown',event=>{
+  if(['ArrowRight','PageDown',' '].includes(event.key)){event.preventDefault();show(current+1)}
+  if(['ArrowLeft','PageUp'].includes(event.key)){event.preventDefault();show(current-1)}
+  if(event.key==='Home')show(0);
+  if(event.key==='End')show(slides.length-1);
+});
+const requested=Number(location.hash.replace('#slide-',''));
+show(Number.isFinite(requested)&&requested>0?requested-1:0);
+</script>
+</body>
+</html>

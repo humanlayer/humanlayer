@@ -1,0 +1,1 @@
+DROP TABLE "staged_uploads" CASCADE;

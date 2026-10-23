@@ -1,0 +1,15 @@
+{
+	"name": "@humanlayer/pulumi-helpers",
+	"type": "module",
+	"private": true,
+	"dependencies": {
+		"@pulumi/aws": "catalog:",
+		"@pulumi/command": "catalog:",
+		"@pulumi/pulumi": "catalog:"
+	},
+	"exports": {
+		"./cloudfront": "./src/cloudfront.ts",
+		"./s3": "./src/s3.ts",
+		"./static-site-assets": "./src/static-site-assets.ts"
+	}
+}

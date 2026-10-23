@@ -1,0 +1,23 @@
+{
+  "name": "@humanlayer/riptide-migrator",
+  "module": "index.js",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "bun build ./index.js --outdir ./dist --target node --format cjs --minify"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "^3.700.0",
+    "@sentry/node": "^10.32.1",
+    "drizzle-orm": "catalog:",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "organization_settings" ADD COLUMN "advanced_metrics_visible_to_all_members" boolean DEFAULT false NOT NULL;

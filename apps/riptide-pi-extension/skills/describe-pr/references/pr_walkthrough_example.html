@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{Package/Area} — PR Walkthrough — {One-line Theme}</title>
+<!--
+  MINIMAL EXAMPLE of a PR walkthrough artifact.
+
+  Structure to preserve when generating a real one:
+  - Sticky topbar: title + expand/collapse controls
+  - Intro card: 2-3 paragraph narrative of the change + headline stats
+  - Badge legend
+  - A collapsible tree (rendered from the NODES array below) read TOP TO BOTTOM:
+      problem/context nodes -> principle nodes -> numbered step nodes
+      -> "deliberately NOT changed" nodes -> verify/ship nodes
+  - Nodes nest like a filesystem; each has badge, title, one-line summary,
+    and an expanded body (HTML: lists, <pre> code, before/after pairs)
+  - File nodes carry a `diff` URL that deep-links into the GitHub PR
+    "Files changed" view. GitHub's per-file anchor is the SHA-256 of the
+    file path: {pr_url}/files#diff-{sha256(file_path)}
+    Compute it with (printf '%s', NOT echo — a trailing newline changes the hash):
+      printf '%s' 'path/to/file.ts' | shasum -a 256
+    Append R{line} to target a specific right-side (new) line, L{line} for left.
+    Body HTML can use the same URLs in plain <a target="_blank"> links.
+  - File nodes ALSO inline the real diff: a node sets `diffFile: "path/to/x.ts"`
+    and the raw `gh pr diff` hunk for that file is pasted into a matching
+    <script type="text/plain" data-diff="path/to/x.ts"> tag in the #diffs stash
+    near the bottom of <body>. The renderer reads it and colorizes it into a
+    collapsible "Full diff" block inside the open node, so the change is
+    readable in place without leaving the artifact. The `diff` pill stays as
+    the escape hatch to GitHub's full-context view.
+    WHY a <script> stash and not a JS string: diffs contain backticks (markdown
+    fences) and ${...} that would break a template literal, plus < > & " that
+    would need escaping. Inside <script type="text/plain"> NOTHING is escaped or
+    executed. Two rules only:
+      (1) paste the hunk FLUSH-LEFT — do not indent it to match surrounding
+          HTML, since leading spaces corrupt the +/-/context column;
+      (2) the one sequence that still can't appear literally is the closing
+          script tag — if a diff contains it (e.g. an HTML/markdown file that
+          talks about script tags), write it as <\/script> and the renderer
+          restores it. Everything else goes in verbatim.
+
+  Replace ALL placeholder content with specifics from the actual diff.
+  Scale the number of nodes to the size of the PR - a small PR may only
+  need a handful of nodes and no children.
+
+  The <style> block mirrors the app design system (packages/ui): poimandres
+  terminal palette, square corners, artifact-viewer prose typography
+  (system-ui sans, weight 300, generous line-height), with IBM Plex Mono
+  reserved for code and chrome (buttons, badges, stats, diff pills).
+  Keep it as-is so walkthroughs look like the product.
+
+  In intro stats, keep value and label as one readable unit — e.g.
+  <b class="ok">typecheck ✓ · quality ✓</b>pre-push gates — never bare
+  glyphs over a list of names they don't visually align with.
+-->
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap");
+
+  /* Visual style follows packages/ui + the artifact viewer (tiptap.css):
+     poimandres terminal palette, square corners (radius 0 everywhere).
+     Prose typography matches the artifact viewer's rendered tab exactly:
+     system-ui sans, weight 300, generous line-height (1.9 for prose),
+     0.03em tracking, accent headings with negative tracking, underlined
+     accent links. IBM Plex Mono is reserved for code and for chrome
+     (buttons, badges, stats, diff pills) like the rest of the app. */
+  :root {
+    --bg: #1b1e28; --bg-deep: #171922; --bg-alt: #303340;
+    --row-hover: #717cb425; --row-open: #717cb418;
+    --border: #303340; --guide: #303340;
+    --text: #a6accd; --bright: #ffffff;
+    --muted: rgba(166, 172, 205, 0.55);
+    --accent: #add7ff; --accent-dim: rgba(173, 215, 255, 0.3);
+    --mint: #5de4c7; --yellow: #fffac2; --blue: #89ddff;
+    --rose: #d0679d; --pink: #f087bd;
+    --mono: "IBM Plex Mono", Consolas, Monaco, "Courier New", monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; border-radius: 0; }
+  ::selection { background: #717cb425; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  body {
+    background: var(--bg); color: var(--text); font-family: var(--sans); margin: 0;
+    font-size: 15px; font-weight: 300; line-height: 1.7; letter-spacing: 0.03em;
+    -webkit-font-smoothing: antialiased; scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+
+  #topbar {
+    position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 22px; background: rgba(27,30,40,0.95); backdrop-filter: blur(6px); border-bottom: 1px solid var(--border);
+  }
+  #topbar h1 { font-family: var(--mono); font-size: 11.5px; margin: 0 10px 0 0; color: var(--accent); white-space: nowrap; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+  #topbar .sub { font-size: 12.5px; color: var(--muted); margin-right: auto; }
+  #topbar button {
+    background: rgba(173,215,255,0.125); color: var(--accent); border: 1px solid var(--accent);
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500; padding: 5px 12px; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.05em; transition: background 0.15s, color 0.15s;
+  }
+  #topbar button:hover { background: var(--accent); color: var(--bg); }
+  #topbar button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(173,215,255,0.5); }
+
+  #wrap { max-width: 1120px; margin: 0 auto; padding: 26px 22px 120px; }
+
+  #intro { border: 1px solid var(--border); padding: 24px 28px 20px; margin-bottom: 24px; background: var(--bg-deep); }
+  #intro h2 { margin: 0 0 12px; font-size: 22px; color: var(--accent); font-weight: 600; letter-spacing: -0.02em; line-height: 1.3; }
+  #intro p { color: var(--text); margin: 0 0 1em; max-width: 80ch; line-height: 1.9; }
+  #intro p:last-of-type { margin-bottom: 0; }
+  #intro p strong { color: var(--bright); font-weight: 600; }
+  .stat-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+  .stat {
+    background: var(--bg); border: 1px solid var(--border); padding: 8px 14px;
+    font-family: var(--mono); font-size: 9.5px; color: var(--muted); letter-spacing: 0.06em;
+    text-transform: uppercase; line-height: 1.6;
+  }
+  .stat b { display: block; font-size: 14px; font-weight: 500; color: var(--accent); text-transform: none; letter-spacing: 0; margin-bottom: 2px; }
+  .stat b.ok { color: var(--mint); }
+
+  .node > .row { display: flex; align-items: baseline; gap: 10px; padding: 8px 10px; cursor: pointer; user-select: none; border: 1px solid transparent; }
+  .node > .row:hover { background: var(--row-hover); }
+  .node.open > .row { background: var(--row-open); border-color: var(--border); }
+  .chev { flex: none; width: 13px; color: var(--muted); font-size: 9px; font-family: var(--mono); transition: transform 0.1s; transform: translateY(-1px); display: inline-block; }
+  .node.open > .row .chev { transform: rotate(90deg); }
+  .title { font-weight: 600; font-size: 14.5px; white-space: nowrap; color: var(--bright); letter-spacing: 0; }
+  .depth-0 > .row .title { font-size: 16px; letter-spacing: -0.01em; }
+  .summary-inline { color: var(--muted); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .node.open > .row .summary-inline { display: none; }
+
+  .difflink {
+    flex: none; font-family: var(--mono); font-size: 9.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--accent); text-decoration: none; border: 1px solid var(--accent-dim);
+    padding: 1px 6px; transform: translateY(-1px); transition: background 0.15s, border-color 0.15s;
+  }
+  .difflink:hover { background: rgba(173,215,255,0.1); border-color: var(--accent); }
+
+  .content { display: none; padding: 4px 12px 14px 36px; }
+  .node.open > .content { display: block; }
+  .content .summary-full { color: var(--muted); font-size: 13.5px; margin: 2px 0 10px; max-width: 84ch; line-height: 1.7; }
+  .body { font-size: 14px; max-width: 80ch; line-height: 1.8; }
+  .body p { margin: 0.6em 0; }
+  .body strong { color: var(--bright); font-weight: 600; }
+  .body ul { margin: 0.5em 0 0.9em; padding-left: 1.6em; }
+  .body li { margin: 0; line-height: 1.8; }
+  .body li + li { margin-top: 0.35em; }
+  .body li::marker { color: var(--muted); }
+  .body a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; transition: color 0.15s ease; }
+  .body a:hover { color: var(--blue); }
+
+  .children { display: none; margin: 0 0 6px 14px; padding-left: 14px; border-left: 1px solid var(--guide); }
+  .node.open > .children { display: block; }
+
+  /* badges: 1px border + color/10 fill; solid fill marks terminal states (deleted, ship) */
+  .badge {
+    flex: none; font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: 0.08em; padding: 2px 6px;
+    text-transform: uppercase; border: 1px solid; transform: translateY(-1px);
+  }
+  .b-step      { color: var(--accent); border-color: var(--accent-dim);          background: rgba(173,215,255,0.1); }
+  .b-why       { color: var(--rose);   border-color: rgba(208,103,157,0.4);      background: rgba(208,103,157,0.1); }
+  .b-principle { color: var(--pink);   border-color: rgba(240,135,189,0.4);      background: rgba(240,135,189,0.1); }
+  .b-new       { color: var(--mint);   border-color: rgba(93,228,199,0.4);       background: rgba(93,228,199,0.1); }
+  .b-rewritten { color: var(--yellow); border-color: rgba(255,250,194,0.4);      background: rgba(255,250,194,0.08); }
+  .b-modified  { color: var(--blue);   border-color: rgba(137,221,255,0.4);      background: rgba(137,221,255,0.1); }
+  .b-deleted   { color: var(--bg);     border-color: var(--rose);                background: var(--rose); }
+  .b-kept      { color: var(--text);   border-color: var(--border);              background: rgba(166,172,205,0.08); }
+  .b-verify    { color: var(--mint);   border-color: rgba(93,228,199,0.4);       background: transparent; }
+  .b-ship      { color: var(--bg);     border-color: var(--mint);                background: var(--mint); }
+
+  code { font-family: var(--mono); font-size: 0.875em; background: var(--bg-alt); padding: 0.1em 0.35em 0; letter-spacing: normal; }
+  pre {
+    font-family: var(--mono); font-size: 12px; line-height: 1.7; background: var(--bg-deep); border: 1px solid var(--border);
+    padding: 12px 14px; overflow-x: auto; color: var(--text); margin: 0.8em 0; white-space: pre; tab-size: 2; letter-spacing: normal;
+  }
+  pre .k { color: var(--mint); } pre .s { color: var(--blue); } pre .c { color: rgba(166,172,205,0.5); font-style: italic; } pre .fn { color: var(--accent); }
+
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0.8em 0; }
+  @media (max-width: 900px) { .ba { grid-template-columns: 1fr; } }
+  .ba > div { min-width: 0; }
+  .ba .label { font-family: var(--mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; margin-bottom: 4px; text-transform: uppercase; }
+  .ba .before .label { color: var(--rose); }
+  .ba .after .label { color: var(--mint); }
+  .ba .before pre { border-color: rgba(208,103,157,0.35); }
+  .ba .after pre { border-color: rgba(93,228,199,0.35); }
+  .ba pre { margin: 0; height: calc(100% - 18px); }
+
+  /* inline unified diff: collapsible, GitHub-style add/del line coloring,
+     built by the renderer from node.diffText so escaping is automatic */
+  .diff-details { margin: 0.7em 0 0.2em; border: 1px solid var(--border); background: var(--bg-deep); }
+  .diff-details > summary {
+    cursor: pointer; user-select: none; list-style: none; padding: 7px 12px;
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px;
+  }
+  .diff-details > summary::-webkit-details-marker { display: none; }
+  .diff-details > summary::before { content: "▶"; font-size: 8px; color: var(--muted); transition: transform 0.1s; }
+  .diff-details[open] > summary::before { transform: rotate(90deg); }
+  .diff-details > summary:hover { color: var(--accent); }
+  .diff-details > summary .meta { color: var(--mint); font-weight: 500; }
+  pre.diff {
+    margin: 0; border: none; border-top: 1px solid var(--border); background: var(--bg-deep);
+    font-family: var(--mono); font-size: 11px; line-height: 1.55; tab-size: 2;
+    overflow-x: auto; padding: 8px 0; max-height: 60vh; overflow-y: auto; white-space: pre;
+  }
+  pre.diff .ln { display: block; padding: 0 14px; }
+  pre.diff .d-add  { background: rgba(93,228,199,0.1);  color: #b8f0e3; }
+  pre.diff .d-del  { background: rgba(208,103,157,0.12); color: #f0b3cf; }
+  pre.diff .d-hunk { color: var(--accent); background: rgba(173,215,255,0.06); }
+  pre.diff .d-meta { color: var(--muted); }
+  pre.diff .d-ctx  { color: var(--text); }
+
+  #legend { display: flex; gap: 7px; flex-wrap: wrap; margin: 0 0 16px; font-family: var(--mono); font-size: 10px; align-items: center; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>{package} · “{short theme}” {change type}</h1>
+  <span class="sub">click any row to expand it fully · subtrees nest like a filesystem</span>
+  <button id="btn-expand-1">Expand top level</button>
+  <button id="btn-expand-all">Expand everything</button>
+  <button id="btn-collapse">Collapse all</button>
+</div>
+
+<div id="wrap">
+  <div id="intro">
+    <h2>The change, top to bottom</h2>
+    <p>{Two or three sentences: what this PR does, in what package, and the shape of the change —
+    e.g. from what state to what state. Bold the <strong>destination state</strong>.}</p>
+    <p><strong>Read top to bottom.</strong> {One or two sentences telling the reader how the tree is
+    organized — e.g. each numbered step is one phase of the work, applied in order.}</p>
+    <div class="stat-row">
+      <div class="stat"><b>{N → M}</b>{headline before/after metric}</div>
+      <div class="stat"><b>{+X / −Y}</b>diff ({N} files)</div>
+      <div class="stat"><b class="ok">{N} ✓</b>tests passing</div>
+      <div class="stat"><b>{sha}</b>shipped commit</div>
+    </div>
+  </div>
+
+  <div id="legend">
+    <span>badges:</span>
+    <span class="badge b-step">step</span>
+    <span class="badge b-why">problem</span>
+    <span class="badge b-principle">principle</span>
+    <span class="badge b-new">new file</span>
+    <span class="badge b-rewritten">rewritten</span>
+    <span class="badge b-modified">modified</span>
+    <span class="badge b-deleted">deleted</span>
+    <span class="badge b-kept">kept as-is</span>
+    <span class="badge b-verify">verify</span>
+    <span class="badge b-ship">ship</span>
+  </div>
+
+  <div id="tree"></div>
+</div>
+
+<!-- ════════ DIFF STASH ════════
+  Holds one <script type="text/plain" data-diff="<path>"> per file node with that
+  file's raw `gh pr diff` hunk; the renderer looks these up by the node's
+  `diffFile`. DO NOT hand-fill this. Write it EXACTLY as the empty two-line div
+  below, then run scripts/inject-walkthrough-diffs.sh — it reads every diffFile:
+  path out of the NODES and writes the blocks for you.
+
+  The script wraps what it generates between sentinel comments:
+
+      <div id="diffs" hidden>
+      <!-- inject-walkthrough-diffs:start (auto-generated — re-run the script to refresh) -->
+      <script type="text/plain" data-diff="path/to/file.ts">
+      ...raw hunk, flush-left...
+      </script>
+      <!-- inject-walkthrough-diffs:end -->
+      </div>
+
+  Those markers are how re-runs stay idempotent (the script replaces only what is
+  between them — it never trusts the first </div> it sees, since diff hunks for
+  TSX/HTML files contain </div> lines). Do not edit between the markers by hand;
+  edit the NODES and re-run instead. Rules the script applies: hunks go in
+  FLUSH-LEFT (leading spaces corrupt the +/-/context column); nothing is escaped
+  or executed inside type="text/plain"; the one sequence that can't appear
+  literally is the closing script tag, so it is written as <\/script> and the
+  renderer restores it. -->
+<div id="diffs" hidden>
+</div>
+
+<script>
+/* ════════ DATA — replace every node with content from the actual PR ════════
+   Node shape: { badge, title, summary, body?, diff?, diffFile?, children? }
+   - badge:    one of step|why|principle|new|rewritten|modified|deleted|kept|verify|ship
+   - title:    short; number step nodes ("1 · ...") so order reads top to bottom
+   - summary:  one line, shown inline when collapsed and as a lede when expanded
+   - body:     HTML string — <p>, <ul>, <pre> with .k/.s/.c/.fn spans, and
+               before/after pairs using the .ba structure shown below
+   - diff:     GitHub PR file-diff permalink; renders a "diff ↗" pill next to the
+               title. PR + "/files#diff-" + sha256(file_path), + "R{line}" optional
+   - diffFile: a file path that matches a <script type="text/plain" data-diff="…">
+               tag in the #diffs stash holding that file's raw `gh pr diff` hunk.
+               EVERY file node (new/rewritten/modified/deleted) should set it.
+               Rendered as a collapsible, color-coded "Full diff" block INSIDE
+               the open node so reviewers read the change in place. See the
+               #diffs stash + the header comment for the paste rules.
+   - children: nested nodes, same shape
+*/
+const PR = "https://github.com/{owner}/{repo}/pull/{number}";
+
+const NODES = [
+
+{ badge: "why", title: "0 · Starting point — what was wrong",
+  summary: "{One line: the problem classes this PR addresses.}",
+  body: '<p>{Why the old state was a problem — for users, maintainers, or agents.}</p>',
+  children: [
+    { badge: "why", title: "{Specific problem}",
+      summary: "{file or area} — {what was wrong, with a number if possible}.",
+      body: '<ul><li>{symptom}</li><li>{symptom}</li></ul>\
+      <pre><span class="c">// optional: a snippet showing the old structure</span></pre>' },
+  ]},
+
+{ badge: "principle", title: "Operating principles (applied throughout)",
+  summary: "{The rules that decided what moved where — and what was left alone.}",
+  children: [
+    { badge: "principle", title: "{Principle name}",
+      summary: "{One-line statement of the rule.}",
+      body: '<div class="ba">\
+        <div class="before"><div class="label">BEFORE — {what was wrong}</div>\
+<pre><span class="c">// old code shape</span>\n<span class="k">const</span> x = oldWay()</pre></div>\
+        <div class="after"><div class="label">AFTER — {what is right}</div>\
+<pre><span class="c">// new code shape</span>\n<span class="k">const</span> x = newWay()</pre></div>\
+      </div>\
+      <p>{One sentence on why the after shape wins.}</p>' },
+  ]},
+
+{ badge: "step", title: "1 · {First phase of the work}",
+  summary: "{What this step accomplished, with file names and numbers.}",
+  children: [
+    { badge: "new", title: "{path/to/new-file.ts}",
+      summary: "{What the new file owns.}",
+      diff: PR + "/files#diff-{sha256 of 'path/to/new-file.ts'}",
+      diffFile: "path/to/new-file.ts",
+      body: '<ul><li>{key export / responsibility}</li></ul>' },
+    { badge: "rewritten", title: "{path/to/rewritten-file.ts} — {N → M} lines",
+      summary: "{What changed structurally.}",
+      diff: PR + "/files#diff-{sha256 of 'path/to/rewritten-file.ts'}",
+      diffFile: "path/to/rewritten-file.ts",
+      body: '<pre><span class="c">// the file after, structurally</span></pre>\
+      <p>{Body links can target specific lines:} <a href="' + PR + '/files#diff-{hash}R{line}" target="_blank" rel="noopener">{the new handler, line {line}} ↗</a></p>' },
+    { badge: "modified", title: "{path/to/modified-file.ts}",
+      summary: "{The targeted change made here.}",
+      diff: PR + "/files#diff-{sha256 of 'path/to/modified-file.ts'}",
+      diffFile: "path/to/modified-file.ts" },
+    { badge: "deleted", title: "{path/to/deleted-file.ts}",
+      summary: "{Why it could be deleted.}",
+      diff: PR + "/files#diff-{sha256 of 'path/to/deleted-file.ts'}",
+      diffFile: "path/to/deleted-file.ts" },
+  ]},
+
+{ badge: "step", title: "2 · {Second phase of the work}",
+  summary: "{Repeat the step pattern for each phase, in the order the work happened.}" },
+
+{ badge: "kept", title: "Deliberately NOT changed",
+  summary: "The restraint list — places where the existing design is correct, left alone on purpose.",
+  children: [
+    { badge: "kept", title: "{Thing left alone}",
+      summary: "{Why leaving it alone is the right call.}",
+      body: '<p>{One or two sentences of rationale a reviewer might otherwise question.}</p>' },
+  ]},
+
+{ badge: "verify", title: "Verification & ship",
+  summary: "{Gates run before shipping: typecheck, lint, tests.}",
+  children: [
+    { badge: "verify", title: "Tests",
+      summary: "{test command} → {N} pass.",
+      body: '<p>{Anything notable: new tests, flakes disproven, suites untouched.}</p>' },
+    { badge: "ship", title: "Commit {sha} → pushed",
+      summary: "{commit message}",
+      diff: PR + "/commits/{full-sha}",
+      body: '<p>{N} files, +{X}/−{Y}, pushed to <code>{remote/branch}</code>.</p>' },
+  ]},
+];
+
+/* ════════ RENDER — keep as-is ════════ */
+const treeEl = document.getElementById("tree");
+
+/* pull a file's raw diff out of the #diffs stash. The only sequence that can't
+   live literally in a script element is the closing tag; paste it escaped as
+   "<\/script>" in the stash and we restore it here. */
+function getDiffText(file) {
+  const el = document.querySelector('#diffs [data-diff="' + (window.CSS && CSS.escape ? CSS.escape(file) : file) + '"]');
+  if (!el) return "";
+  return el.textContent.replace(/^\n/, "").replace(/\s+$/, "").replace(/<\\\/script>/g, "<\/script>");
+}
+
+/* colorize a raw unified diff into a <pre> (textContent per line → safe escaping) */
+function renderDiff(text) {
+  const pre = document.createElement("pre");
+  pre.className = "diff";
+  const lines = text.replace(/\n$/, "").split("\n");
+  for (const line of lines) {
+    const span = document.createElement("span");
+    span.className = "ln ";
+    if (line.startsWith("@@")) span.className += "d-hunk";
+    else if (/^(diff |index |--- |\+\+\+ |new file|deleted file|rename |similarity )/.test(line)) span.className += "d-meta";
+    else if (line.startsWith("+")) span.className += "d-add";
+    else if (line.startsWith("-")) span.className += "d-del";
+    else span.className += "d-ctx";
+    span.textContent = line || " ";
+    pre.appendChild(span);
+  }
+  return pre;
+}
+
+/* count +/- (ignoring the +++/--- headers) for the summary label */
+function diffStat(text) {
+  let add = 0, del = 0;
+  for (const line of text.split("\n")) {
+    if (line.startsWith("+") && !line.startsWith("+++")) add++;
+    else if (line.startsWith("-") && !line.startsWith("---")) del++;
+  }
+  return { add, del };
+}
+
+function buildNode(node, depth) {
+  const wrap = document.createElement("div");
+  wrap.className = "node depth-" + depth;
+
+  const row = document.createElement("div");
+  row.className = "row";
+
+  const chev = document.createElement("span");
+  chev.className = "chev";
+  chev.textContent = "▶";
+  row.appendChild(chev);
+
+  const badge = document.createElement("span");
+  badge.className = "badge b-" + node.badge;
+  badge.textContent = node.badge;
+  row.appendChild(badge);
+
+  const title = document.createElement("span");
+  title.className = "title";
+  title.textContent = node.title;
+  row.appendChild(title);
+
+  if (node.diff) {
+    const a = document.createElement("a");
+    a.className = "difflink";
+    a.href = node.diff;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = "diff ↗";
+    a.addEventListener("click", (e) => e.stopPropagation());
+    row.appendChild(a);
+  }
+
+  const sumInline = document.createElement("span");
+  sumInline.className = "summary-inline";
+  sumInline.textContent = node.summary || "";
+  row.appendChild(sumInline);
+
+  wrap.appendChild(row);
+
+  const content = document.createElement("div");
+  content.className = "content";
+  if (node.summary) {
+    const sf = document.createElement("div");
+    sf.className = "summary-full";
+    sf.textContent = node.summary;
+    content.appendChild(sf);
+  }
+  if (node.body) {
+    const b = document.createElement("div");
+    b.className = "body";
+    b.innerHTML = node.body;
+    content.appendChild(b);
+  }
+  const diffText = node.diffFile ? getDiffText(node.diffFile) : "";
+  if (diffText) {
+    const { add, del } = diffStat(diffText);
+    const det = document.createElement("details");
+    det.className = "diff-details";
+    const sum = document.createElement("summary");
+    sum.innerHTML = 'Full diff <span class="meta">+' + add + " / −" + del + "</span>";
+    det.appendChild(sum);
+    det.appendChild(renderDiff(diffText));
+    content.appendChild(det);
+  }
+  wrap.appendChild(content);
+
+  if (node.children && node.children.length) {
+    const kids = document.createElement("div");
+    kids.className = "children";
+    node.children.forEach((c) => kids.appendChild(buildNode(c, depth + 1)));
+    wrap.appendChild(kids);
+  }
+
+  row.addEventListener("click", () => wrap.classList.toggle("open"));
+  return wrap;
+}
+
+NODES.forEach((n) => treeEl.appendChild(buildNode(n, 0)));
+
+const allNodes = () => treeEl.querySelectorAll(".node");
+document.getElementById("btn-expand-1").addEventListener("click", () => {
+  allNodes().forEach((n) => n.classList.toggle("open", n.classList.contains("depth-0")));
+});
+document.getElementById("btn-expand-all").addEventListener("click", () => {
+  allNodes().forEach((n) => n.classList.add("open"));
+});
+document.getElementById("btn-collapse").addEventListener("click", () => {
+  allNodes().forEach((n) => n.classList.remove("open"));
+});
+</script>
+</body>
+</html>

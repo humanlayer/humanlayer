@@ -1,0 +1,14 @@
+[Desktop Entry]
+Categories={{categories}}
+{{#if comment}}
+Comment={{comment}}
+{{/if}}
+Exec={{exec}} %u
+Icon={{icon}}
+Name={{name}}
+Terminal=false
+Type=Application
+StartupWMClass={{exec}}
+{{#if mime_type}}
+MimeType={{mime_type}}
+{{/if}}

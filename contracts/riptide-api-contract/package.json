@@ -1,0 +1,45 @@
+{
+  "name": "@humanlayer/riptide-api-contract",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun vitest run",
+    "test:llm": "bun run ../../scripts/run-silent.ts 'tests passed' bun run test",
+    "dev": "",
+    "build": "echo 'No build required for contracts'",
+    "build:macos": "bun run build",
+    "build:linux": "bun run build",
+    "test:watch": "bun vitest"
+  },
+  "devDependencies": {
+    "@orpc/server": "catalog:",
+    "@types/bun": "catalog:",
+    "@humanlayer/vitest-config": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@orpc/contract": "catalog:",
+    "@humanlayer/db": "workspace:*",
+    "@humanlayer/schemas": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/openapi-client": "catalog:",
+    "@orpc/zod": "catalog:",
+    "effect": "catalog:",
+    "http-status-codes": "^2.3.0",
+    "zod": "catalog:"
+  },
+  "exports": {
+    "./contract-router": "./src/contract-router.ts",
+    "./api/*": "./src/api/*.ts",
+    "./daemon/*": "./src/daemon/*.ts",
+    "./lib/*": "./src/lib/*.ts",
+    "./types/*": "./src/types/*.ts",
+    "./contract-builder": "./src/contract-builder.ts"
+  }
+}

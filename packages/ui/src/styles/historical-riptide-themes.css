@@ -1,0 +1,81 @@
+/* Historical Riptide palettes kept separate from the core theme set. */
+:root[data-theme="rapture"] {
+	--terminal-bg: #000000; --terminal-bg-alt: #000000; --terminal-fg: #e8b563; --terminal-fg-dim: #8a5a12;
+	--terminal-accent: #ffa31a; --terminal-accent-dim: rgba(255, 163, 26, 0.3); --terminal-accent-alt: #12e5c8;
+	--terminal-border: #0a7e6e; --terminal-success: #ffa31a; --terminal-warning: #ffd447; --terminal-error: #ff3344; --terminal-selection: #2a1a0c;
+	--terminal-color-0: #000000; --terminal-color-1: #ff3344; --terminal-color-2: #ffa31a; --terminal-color-3: #ffd447;
+	--terminal-color-4: #0a7e6e; --terminal-color-5: #b14cff; --terminal-color-6: #12e5c8; --terminal-color-7: #e8b563;
+	--terminal-color-8: #4a2f0e; --terminal-color-9: #ff3344; --terminal-color-10: #ffa31a; --terminal-color-11: #ffd447;
+	--terminal-color-12: #12e5c8; --terminal-color-13: #b14cff; --terminal-color-14: #12e5c8; --terminal-color-15: #ffd447;
+}
+
+:root[data-theme="tactical"] {
+	--terminal-bg: #0d0a04; --terminal-bg-alt: #191108; --terminal-fg: #e0a040; --terminal-fg-dim: #7a4a10;
+	--terminal-accent: #ff9500; --terminal-accent-dim: rgba(255, 149, 0, 0.3); --terminal-accent-alt: #eaa62b;
+	--terminal-border: #a34f00; --terminal-success: #ff9500; --terminal-warning: #ffc61a; --terminal-error: #ff2a1f; --terminal-selection: #30200c;
+	--terminal-color-0: #191108; --terminal-color-1: #ff2a1f; --terminal-color-2: #ff9500; --terminal-color-3: #ffc61a;
+	--terminal-color-4: #7e5518; --terminal-color-5: #a34f00; --terminal-color-6: #26c9be; --terminal-color-7: #e0a040;
+	--terminal-color-8: #3a2408; --terminal-color-9: #ff2a1f; --terminal-color-10: #ff9500; --terminal-color-11: #ffc61a;
+	--terminal-color-12: #eaa62b; --terminal-color-13: #ffc61a; --terminal-color-14: #26c9be; --terminal-color-15: #ffc61a;
+}
+
+:root[data-theme="neuromancer"] {
+	--terminal-bg: #050c07; --terminal-bg-alt: #0a140d; --terminal-fg: #5cd98a; --terminal-fg-dim: #26824a;
+	--terminal-accent: #2fe862; --terminal-accent-dim: rgba(47, 232, 98, 0.3); --terminal-accent-alt: #1fd6c4;
+	--terminal-border: #157a3a; --terminal-success: #2fe862; --terminal-warning: #ff7e14; --terminal-error: #ff7e14; --terminal-selection: #103d1e;
+	--terminal-color-0: #0a140d; --terminal-color-1: #ff7e14; --terminal-color-2: #2fe862; --terminal-color-3: #ff7e14;
+	--terminal-color-4: #14807a; --terminal-color-5: #7cffa8; --terminal-color-6: #1fd6c4; --terminal-color-7: #5cd98a;
+	--terminal-color-8: #123d22; --terminal-color-9: #ff7e14; --terminal-color-10: #7cffa8; --terminal-color-11: #b6ffd9;
+	--terminal-color-12: #1fd6c4; --terminal-color-13: #b6ffd9; --terminal-color-14: #1fd6c4; --terminal-color-15: #b6ffd9;
+}
+
+:root[data-theme="red-alert"] {
+	--terminal-bg: #050102; --terminal-bg-alt: #0c0304; --terminal-fg: #ec8892; --terminal-fg-dim: #7e343c;
+	--terminal-accent: #ff2233; --terminal-accent-dim: rgba(255, 34, 51, 0.3); --terminal-accent-alt: #26dcce;
+	--terminal-border: #9e0020; --terminal-success: #26dcce; --terminal-warning: #ffce1f; --terminal-error: #fff0f0; --terminal-selection: #560717;
+	--terminal-color-0: #0c0304; --terminal-color-1: #ff2233; --terminal-color-2: #26dcce; --terminal-color-3: #ffce1f;
+	--terminal-color-4: #4a4652; --terminal-color-5: #b45a64; --terminal-color-6: #26dcce; --terminal-color-7: #ec8892;
+	--terminal-color-8: #4a171d; --terminal-color-9: #ff5a6a; --terminal-color-10: #26dcce; --terminal-color-11: #ffce1f;
+	--terminal-color-12: #b45a64; --terminal-color-13: #ff5a6a; --terminal-color-14: #26dcce; --terminal-color-15: #fff0f0;
+}
+
+:root[data-theme="covenant"] {
+	--terminal-bg: #0a0416; --terminal-bg-alt: #140a24; --terminal-fg: #d9a8c4; --terminal-fg-dim: #7e4e68;
+	--terminal-accent: #ff3d9a; --terminal-accent-dim: rgba(255, 61, 154, 0.3); --terminal-accent-alt: #22e4ec;
+	--terminal-border: #b01e63; --terminal-success: #22e4ec; --terminal-warning: #ffb13d; --terminal-error: #eeff33; --terminal-selection: #34092a;
+	--terminal-color-0: #140a24; --terminal-color-1: #eeff33; --terminal-color-2: #22e4ec; --terminal-color-3: #ffb13d;
+	--terminal-color-4: #0e7a86; --terminal-color-5: #ff3d9a; --terminal-color-6: #22e4ec; --terminal-color-7: #d9a8c4;
+	--terminal-color-8: #4a2e42; --terminal-color-9: #eeff33; --terminal-color-10: #22e4ec; --terminal-color-11: #ffb13d;
+	--terminal-color-12: #22e4ec; --terminal-color-13: #ff8fcb; --terminal-color-14: #22e4ec; --terminal-color-15: #ff8fcb;
+}
+
+:root[data-theme="wintermute"] {
+	--terminal-bg: #02060c; --terminal-bg-alt: #050c16; --terminal-fg: #9cbbd4; --terminal-fg-dim: #5e7c93;
+	--terminal-accent: #62bcea; --terminal-accent-dim: rgba(98, 188, 234, 0.3); --terminal-accent-alt: #9e8fdc;
+	--terminal-border: #305370; --terminal-success: #9e8fdc; --terminal-warning: #ff8a24; --terminal-error: #ff8a24; --terminal-selection: #16345a;
+	--terminal-color-0: #050c16; --terminal-color-1: #ff8a24; --terminal-color-2: #62bcea; --terminal-color-3: #ff8a24;
+	--terminal-color-4: #5688b4; --terminal-color-5: #9e8fdc; --terminal-color-6: #62bcea; --terminal-color-7: #9cbbd4;
+	--terminal-color-8: #30475a; --terminal-color-9: #ff8a24; --terminal-color-10: #62bcea; --terminal-color-11: #c6e4ff;
+	--terminal-color-12: #5688b4; --terminal-color-13: #9e8fdc; --terminal-color-14: #62bcea; --terminal-color-15: #c6e4ff;
+}
+
+:root[data-theme="dash"] {
+	--terminal-bg: #ffffff; --terminal-bg-alt: #f7f7f7; --terminal-fg: #191919; --terminal-fg-dim: #767676;
+	--terminal-accent: #eb1700; --terminal-accent-dim: rgba(235, 23, 0, 0.3); --terminal-accent-alt: #6f50e7;
+	--terminal-border: #e6e6e6; --terminal-success: #008542; --terminal-warning: #d7a40c; --terminal-error: #b8001f; --terminal-selection: rgba(235, 23, 0, 0.15);
+	--terminal-color-0: #f7f7f7; --terminal-color-1: #eb1700; --terminal-color-2: #008542; --terminal-color-3: #d7a40c;
+	--terminal-color-4: #0a5cd3; --terminal-color-5: #6f50e7; --terminal-color-6: #006b8f; --terminal-color-7: #191919;
+	--terminal-color-8: #e6e6e6; --terminal-color-9: #ff3008; --terminal-color-10: #00a651; --terminal-color-11: #e6731a;
+	--terminal-color-12: #2e7ce6; --terminal-color-13: #8066e9; --terminal-color-14: #0099cc; --terminal-color-15: #000000;
+}
+
+/* on wednesdays we wear pink -- karen smith */
+:root[data-theme="wednesday"] {
+	--terminal-bg: #fff6f9; --terminal-bg-alt: #ffe4ef; --terminal-fg: #43242e; --terminal-fg-dim: #a4677d;
+	--terminal-accent: #eb4d8b; --terminal-accent-dim: rgba(235, 77, 139, 0.3); --terminal-accent-alt: #e4002b;
+	--terminal-border: #f5b8d0; --terminal-success: #2e9e5b; --terminal-warning: #c18401; --terminal-error: #e4002b; --terminal-selection: #eb4d8b26;
+	--terminal-color-0: #43242e; --terminal-color-1: #e4002b; --terminal-color-2: #2e9e5b; --terminal-color-3: #c18401;
+	--terminal-color-4: #3b82c4; --terminal-color-5: #eb4d8b; --terminal-color-6: #14a8b8; --terminal-color-7: #f3d1de;
+	--terminal-color-8: #a4677d; --terminal-color-9: #ff4d6d; --terminal-color-10: #3fbf77; --terminal-color-11: #f7b500;
+	--terminal-color-12: #62a6e3; --terminal-color-13: #f48fb1; --terminal-color-14: #3fc3d4; --terminal-color-15: #fff6f9;
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@humanlayer/streams",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./events": "./src/events.ts",
+    "./config": "./src/config.ts",
+    "./diff": "./src/diff.ts",
+    "./pr-status": "./src/pr-status.ts",
+    "./response-editor-collaboration": "./src/response-editor-collaboration.ts"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "effect": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@humanlayer/db": "workspace:*",
+    "@types/bun": "catalog:",
+    "vitest": "catalog:"
+  }
+}

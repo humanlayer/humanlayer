@@ -1,0 +1,33 @@
+appId: com.humanlayer.electron.local
+productName: HumanLayerElectronLocal
+extraMetadata:
+  version: 0.1.12
+asar: true
+afterPack: ./scripts/set-updater-cache-name.cjs
+publish: null
+asarUnpack:
+  - node_modules/node-pty/**
+npmRebuild: true
+directories:
+  output: release
+  buildResources: assets
+files:
+  - dist/**
+  - package.json
+extraResources:
+  - from: ../riptide-ui/dist
+    to: renderer
+  - from: resources/bin/riptided
+    to: bin/riptided
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dir
+      arch:
+        - arm64
+  icon: assets/icon.icns
+  hardenedRuntime: true
+  entitlements: entitlements.mac.plist
+  entitlementsInherit: entitlements.mac.plist
+  minimumSystemVersion: 11.0.0
+  artifactName: ${productName}-${version}-${arch}.${ext}

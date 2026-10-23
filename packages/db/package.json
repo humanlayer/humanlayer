@@ -1,0 +1,38 @@
+{
+	"name": "@humanlayer/db",
+	"private": true,
+	"type": "module",
+	"exports": {
+		"./artifact-comment-author": "./src/artifact-comment-author.ts",
+		"./artifact-public-permission": "./src/artifact-public-permission.ts",
+		"./tables/*": "./src/tables/*.ts",
+		"./effect-schemas/*": "./src/effect-schemas/*.ts",
+		"./zodschemas/*": "./src/zodschemas/*.ts",
+		"./utils/*": "./src/utils/*.ts",
+		"./schema": "./src/schema.ts"
+	},
+	"scripts": {
+		"db:forcepush": "bun --bun drizzle-kit push ",
+		"db:seed_orgs": "docker compose exec -T postgres psql -U postgres electric -c \"INSERT INTO organizations (id, workos_organization_id, name) VALUES ('019b049c-950d-7baa-b9a8-b9364599319b', 'org_01KC05C296SC0DJT2T36XVRJXT', 'Lizalg') ON CONFLICT DO NOTHING;\"",
+		"test": "bun vitest run"
+	},
+	"dependencies": {
+		"@humanlayer/schemas": "workspace:*",
+		"@paralleldrive/cuid2": "^3.0.4",
+		"drizzle-orm": "catalog:",
+		"drizzle-zod": "^0.8.3",
+		"effect": "catalog:",
+		"pg": "catalog:",
+		"uuidv7": "^1.1.0",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@humanlayer/vitest-config": "workspace:*",
+		"@types/bun": "latest",
+		"drizzle-kit": "catalog:",
+		"vitest": "catalog:"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
+}

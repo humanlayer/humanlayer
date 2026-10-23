@@ -1,0 +1,1 @@
+ALTER TABLE "tasks" ADD COLUMN "slack_notifications_muted" boolean DEFAULT false NOT NULL;

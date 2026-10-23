@@ -1,0 +1,34 @@
+{
+  "name": "@humanlayer/sync",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "bun vitest run",
+    "typecheck": "tsc --noEmit",
+    "test:watch": "bun vitest"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@humanlayer/db": "workspace:*",
+    "@humanlayer/logger": "workspace:*",
+    "@humanlayer/schemas": "workspace:*",
+    "@tanstack/db": "catalog:",
+    "@tanstack/electric-db-collection": "catalog:",
+    "@tanstack/query-core": "catalog:",
+    "@tanstack/query-db-collection": "catalog:",
+    "@tanstack/react-db": "catalog:",
+    "effect": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:",
+    "@humanlayer/vitest-config": "workspace:*",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "catalog:"
+  }
+}

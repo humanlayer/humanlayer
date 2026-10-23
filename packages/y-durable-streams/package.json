@@ -1,0 +1,30 @@
+{
+	"name": "@humanlayer/y-durable-streams",
+	"version": "0.0.0",
+	"private": true,
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": "./src/yjs-provider.ts",
+		"./server": "./src/server/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@durable-streams/client": "catalog:",
+		"effect": "catalog:",
+		"lib0": "catalog:",
+		"y-protocols": "catalog:",
+		"yjs": "catalog:"
+	},
+	"devDependencies": {
+		"@humanlayer/vitest-config": "workspace:*",
+		"@durable-streams/server": "catalog:",
+		"@effect/vitest": "catalog:",
+		"@hono/node-server": "^1.14.1",
+		"@types/node": "catalog:",
+		"vitest": "catalog:"
+	}
+}

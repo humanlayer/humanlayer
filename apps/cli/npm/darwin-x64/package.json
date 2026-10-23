@@ -1,0 +1,11 @@
+{
+  "name": "@humanlayer/cli-darwin-x64",
+  "license": "Apache-2.0",
+  "version": "0.3.0",
+  "description": "HumanLayer CLI binary for macOS x64 (Intel)",
+  "os": ["darwin"],
+  "cpu": ["x64"],
+  "preferUnplugged": true,
+  "files": ["bin/humanlayer"],
+  "bin": { "humanlayer": "bin/humanlayer"}
+}

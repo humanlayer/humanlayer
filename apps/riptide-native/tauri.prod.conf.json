@@ -1,0 +1,36 @@
+{
+  "productName": "HumanLayer",
+  "identifier": "com.humanlayer.riptide",
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["humanlayer", "riptide"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1QzFDQTIyMEYwRjU5MkQKUldRdFdROFBJc3JCTllIZEhnN3g0MktPVEEyN3lNc2ZhV2UxZFVjaXVTaGkwUFM2Y21lTUdPQTkK",
+      "endpoints": ["https://update.humanlayer.com/stable/{{target}}-{{arch}}/{{current_version}}"]
+    }
+  },
+  "build": {
+    "beforeBuildCommand": "bun run --cwd ../riptide-ui build:prod && ([ -f ./bin/riptided ] || (bun run --cwd ../riptide-daemon build:prod && cp ../riptide-daemon/dist/daemon ./bin/riptided))"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "HumanLayer",
+        "width": 1440,
+        "height": 900,
+        "center": true,
+        "minWidth": 800,
+        "minHeight": 600,
+        "zoomHotkeysEnabled": true,
+        "titleBarStyle": "Overlay",
+        "transparent": true,
+        "hiddenTitle": true,
+        "dragDropEnabled": true
+      }
+    ]
+  }
+}

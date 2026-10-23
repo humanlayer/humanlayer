@@ -1,0 +1,4 @@
+ALTER TABLE "commits" ADD COLUMN "change_id" text;--> statement-breakpoint
+ALTER TABLE "commits" ADD COLUMN "is_primary_branch" boolean;--> statement-breakpoint
+ALTER TABLE "commits" ADD COLUMN "author_matches_daemon_user" boolean;--> statement-breakpoint
+CREATE VIEW "public"."authored_commits" AS (select "id", "organization_id", "session_id", "task_id", "resource_owner_user_id", "commit_sha", "parent_shas", "branch", "repo_remote_url", "repo_full_name", "repo_directory", "subject", "body", "author_name", "author_email", "authored_at", "committed_at", "additions", "deletions", "files_changed", "file_stats", "co_authored_by_agent", "coding_agent", "capture_algorithm_version", "change_id", "is_primary_branch", "author_matches_daemon_user", "attribution_method", "ai_confidence", "ai_attributed_lines", "attribution_algorithm_version", "created_at" from "commits" where COALESCE(jsonb_array_length("commits"."parent_shas"), 1) = 1);

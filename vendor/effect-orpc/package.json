@@ -1,0 +1,65 @@
+{
+  "name": "@humanlayer/effect-orpc",
+  "version": "0.2.2",
+  "keywords": [
+    "effect",
+    "orpc",
+    "utopy",
+    "utopyin"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/utopyin/effect-orpc.git"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "src"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./src/index.ts",
+        "default": "./dist/index.js"
+      },
+      "./node": {
+        "types": "./src/node.ts",
+        "default": "./dist/node.js"
+      }
+    }
+  },
+  "scripts": {
+		"build": "tsup",
+    "build:watch": "bun run build --watch",
+    "typecheck": "tsc -b",
+    "lint:check": "oxlint",
+    "format:check": "oxfmt --check",
+    "check": "bun run format:check && bun run lint:check && bun run type:check",
+    "test": "bun vitest run ./src/tests",
+    "sync:readme": "bun ../../scripts/sync-package-readme.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "effect": "catalog:",
+    "oxfmt": "^0.21.0",
+    "oxlint": "^1.36.0",
+    "tsup": "^8.5.1",
+    "vitest": "catalog:",
+    "zod": "catalog:"
+  },
+  "peerDependencies": {
+    "@orpc/client": ">=1.13.0",
+    "@orpc/contract": ">=1.13.0",
+    "@orpc/server": ">=1.13.0",
+    "@orpc/shared": ">=1.13.0",
+    "effect": ">=4.0.0-beta.0",
+    "typescript": "^5"
+  }
+}

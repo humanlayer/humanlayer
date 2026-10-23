@@ -1,0 +1,20 @@
+{
+	"name": "@humanlayer/session-sdk-base",
+	"version": "0.0.0",
+	"private": true,
+	"description": "Session-side client base: channels, daemon route types, the RPC call, its error rules and the outbox",
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/riptide-api-contract": "workspace:*",
+		"@orpc/contract": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "^24.0.0"
+	}
+}

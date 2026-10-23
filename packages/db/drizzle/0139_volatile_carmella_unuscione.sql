@@ -1,0 +1,1 @@
+ALTER TABLE "online_hosts" ADD COLUMN "capabilities" text[];

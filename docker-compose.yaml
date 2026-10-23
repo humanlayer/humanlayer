@@ -1,0 +1,118 @@
+name: "${DEVSTACK_COMPOSE_PROJECT:-electric_quickstart}"
+
+# Dev environment with:
+# - Postgres, Electric
+# - Minio for S3 emulation
+# - Standalone Redis on port 7100
+
+services:
+  postgres:
+    image: docker.io/postgres:18
+    environment:
+      POSTGRES_DB: electric
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DEVSTACK_POSTGRES_PASSWORD:-password}
+    ports:
+      - "${DEVSTACK_POSTGRES_PORT:-54321}:5432"
+    command:
+      - -c
+      - listen_addresses=*
+      - -c
+      - wal_level=logical
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgresql_data:/var/lib/postgresql
+
+  electric:
+    image: docker.io/electricsql/electric:1.7.12
+    environment:
+      DATABASE_URL: postgresql://postgres:${DEVSTACK_POSTGRES_PASSWORD:-password}@postgres:5432/electric?sslmode=disable
+      ELECTRIC_SECRET: ${DEVSTACK_ELECTRIC_SECRET:-}
+      # Unique replication stream ID for the local Electric service
+      ELECTRIC_REPLICATION_STREAM_ID: ${DEVSTACK_ELECTRIC_REPLICATION_STREAM_ID:-stable}
+    ports:
+      - "${DEVSTACK_ELECTRIC_PORT:-3030}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  minio:
+    image: docker.io/minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+    ports:
+      - "${DEVSTACK_MINIO_API_PORT:-9000}:9000"
+      - "${DEVSTACK_MINIO_CONSOLE_PORT:-9001}:9001"
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-setup:
+    image: docker.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY_ID:-minioadmin} ${S3_SECRET_ACCESS_KEY:-minioadmin};
+      mc mb --ignore-existing local/${S3_ARTIFACTS_BUCKET:-riptide-artifacts};
+      exit 0;
+      "
+
+  durable-streams:
+    image: humanlayer/durable-streams-server:0.3.0-cebb50e
+    build:
+      context: ./docker/durable-streams-server
+      args:
+        DURABLE_STREAMS_SOURCE_COMMIT: cebb50e49c62c534dd714ef84a8a4572e66724b2
+    ports:
+      # Keep using the already-allocated Durable Streams port in existing manifests.
+      - "${DEVSTACK_DURABLE_STREAMS_PORT:-8642}:4437"
+    environment:
+      DS_SERVER__BIND_ADDRESS: 0.0.0.0:4437
+      DS_STORAGE__MODE: file-fast
+      DS_STORAGE__DATA_DIR: /var/lib/durable-streams
+      DS_LIMITS__MAX_MEMORY_BYTES: "187904819200"
+      DS_LIMITS__MAX_STREAM_BYTES: "104857600"
+      DS_LIMITS__MAX_STREAM_NAME_SEGMENTS: "256"
+      DS_HTTP__ALLOW_WILDCARD_CORS: "true"
+    volumes:
+      - durable-streams-data:/var/lib/durable-streams
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:4437/readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: docker.io/redis:7-alpine
+    ports:
+      - "${DEVSTACK_REDIS_PORT:-7100}:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgresql_data:
+    name: ${DEVSTACK_POSTGRES_VOLUME:-electric_quickstart_postgresql_data}
+  minio_data:
+    name: ${DEVSTACK_MINIO_VOLUME:-electric_quickstart_minio_data}
+  durable-streams-data:
+    name: ${DEVSTACK_DURABLE_STREAMS_VOLUME:-electric_quickstart_durable-streams-data}
+  redis-data:
+    name: ${DEVSTACK_REDIS_VOLUME:-electric_quickstart_redis}
