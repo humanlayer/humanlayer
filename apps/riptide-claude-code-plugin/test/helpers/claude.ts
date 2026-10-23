@@ -1,7 +1,7 @@
 // A fake Claude Code for the plugin's server: it starts the real server (src/server.ts) as its
 // child, as Claude Code starts the plugin's MCP server, and plays the mod's part over the server's
 // socket. It writes the session's transcript as Claude Code would, one JSONL line per content
-// block. The cloud is a mock cloud and diff streams, behind one sync origin.
+// block. The cloud is the pi extension's mock cloud and diff streams, behind one sync origin.
 
 import assert from 'node:assert/strict'
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process'
@@ -13,9 +13,9 @@ import { dirname, join } from 'node:path'
 import type { TestContext } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
+import { MOCK_PAT, type MockCloud, startMockCloud } from '../../../riptide-pi-extension/test/helpers/mock-cloud.ts'
+import { type MockStreams, startMockStreams } from '../../../riptide-pi-extension/test/helpers/mock-streams.ts'
 import type { Action, ApprovalAnswer, HelloReply, ModEvent } from '../../src/protocol.ts'
-import { MOCK_PAT, type MockCloud, startMockCloud } from './mock-cloud.ts'
-import { type MockStreams, startMockStreams } from './mock-streams.ts'
 
 const SERVER = fileURLToPath(new URL('../../src/server.ts', import.meta.url))
 
