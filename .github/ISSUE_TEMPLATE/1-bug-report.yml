@@ -1,0 +1,63 @@
+name: Bug report
+description: Something in HumanLayer is broken or behaves unexpectedly.
+title: '[Bug]: '
+labels: ['bug']
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: What happened
+      description: What you saw that you didn't expect. Include error messages as text.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Where it happened
+      multiple: true
+      options:
+        - Desktop app
+        - Web app
+        - Daemon
+        - humanlayer CLI
+        - Claude Code, OpenCode, or Pi plugin
+        - RPI skills
+        - Docs
+        - Self-hosted deploy
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Whatever applies.
+      value: |
+        - HumanLayer version (desktop app or `humanlayer --version`):
+        - Agent and version (for example Claude Code 2.x):
+        - OS:
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, screenshots, related issues
+      description: Daemon and app logs are in `~/.humanlayer/`. Remove anything secret before you paste.
+    validations:
+      required: false
