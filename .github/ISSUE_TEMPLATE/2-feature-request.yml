@@ -1,0 +1,32 @@
+name: Feature request
+description: Ask for something HumanLayer doesn't do yet. To build it yourself, use a contribution proposal instead.
+title: '[Feature]: '
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What you're trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: What you'd like
+      description: How you picture it working.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else
+      description: Mockups, examples, related issues, a photo of a cute animal.
+    validations:
+      required: false

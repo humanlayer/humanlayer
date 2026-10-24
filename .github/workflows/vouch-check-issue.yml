@@ -1,0 +1,24 @@
+# Closes and locks issues from authors who are denounced in .github/VOUCHED.td.
+# Anyone else can open issues: a proposal issue is how a new contributor gets vouched.
+name: Vouch check issue
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mitchellh/vouch/action/check-issue@d66fa29a64600490892131ad87597c30c91fcac4 # v1.5.0
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          require-vouch: false
+          auto-close: true
+          auto-lock: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,18 @@
+name: Feedback
+description: General thoughts, frustrations, or ideas that aren't a bug or a specific feature.
+title: '[Feedback]: '
+labels: ['user-feedback']
+body:
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Feedback
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What you were doing when you noticed it, and which part of HumanLayer it's about.
+    validations:
+      required: false
