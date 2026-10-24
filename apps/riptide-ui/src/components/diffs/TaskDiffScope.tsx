@@ -7,6 +7,7 @@ import {
 	createTaskDiffFilesDatabase,
 	createTaskDiffVersionsDatabase,
 	probeTaskDiffProtocol,
+	type TaskDiffFilesStreamDB,
 	type TaskDiffVersionsStreamDB,
 } from '@/collections/stream/task-diffs'
 import { useSync, useSyncInternal } from '@/components/providers/SyncProvider'
@@ -15,11 +16,15 @@ import { useTaskDiffReviewMarksStore } from '@/hooks/stores/taskDiffReviewMarksS
 import { useTaskDiffReviewStore } from '@/hooks/stores/taskDiffReviewStore'
 import { TaskDiffVisibilityStoreProvider } from '@/hooks/stores/taskDiffVisibilityStore'
 import { useMountEffect } from '@/hooks/useMountEffect'
+import { isNotFoundError } from '@/hooks/useStreamLiveness'
 import { logger } from '@/lib/logger'
 
 import { TaskDiffContext, type TaskDiffDatabaseStatus, type TaskDiffProtocolState } from './task-diff-context'
 
-/** How often a scope without the new payload stream checks again, e.g. after a daemon update. */
+/**
+ * How often a scope without the new payload stream checks again, e.g. after a daemon update.
+ * A files stream that failed to load retries on the same interval.
+ */
 export const TASK_DIFF_PROTOCOL_PROBE_INTERVAL_MS = 5_000
 
 type TaskDiffScopeProps = {
@@ -97,7 +102,7 @@ export function TaskDiffDatabaseScope({
 }) {
 	const { getAccessToken } = useAuth()
 	const [location] = useState(() => ({ taskId, organizationId, getAccessToken }))
-	const [filesDatabase] = useState(() => createTaskDiffFilesDatabase(location))
+	const [filesDatabase, setFilesDatabase] = useState(() => createTaskDiffFilesDatabase(location))
 	const [versionsDatabase, setVersionsDatabase] = useState<TaskDiffVersionsStreamDB | null>(null)
 	const databases = useMemo(
 		() => ({ files: filesDatabase, versions: versionsDatabase }),
@@ -111,17 +116,42 @@ export function TaskDiffDatabaseScope({
 
 	useMountEffect(() => {
 		let active = true
+		let openedFiles = filesDatabase
 		let openedVersions: TaskDiffVersionsStreamDB | null = null
+		let filesTimer: ReturnType<typeof setTimeout> | undefined
 		let probeTimer: ReturnType<typeof setTimeout> | undefined
 		logger.info('[task-diffs] preloading route resources', { organizationId, taskId })
-		void filesDatabase.preload().then(
-			() => active && setFilesStatus('ready'),
-			(error: unknown) => {
-				if (!active) return
-				setFilesError(error instanceof Error ? error : new Error('Unable to load task diff files'))
-				setFilesStatus('unavailable')
-			},
-		)
+
+		// The daemon creates `diff-files` on its first capture, which can land after this scope
+		// mounts (the workspace may still be setting up). A missing stream stays loading; any
+		// failure retries with a fresh database, because a `StreamDB` cannot preload twice.
+		const openFiles = (database: TaskDiffFilesStreamDB) => {
+			openedFiles = database
+			void database.preload().then(
+				() => {
+					if (!active) return
+					setFilesError(null)
+					setFilesStatus('ready')
+				},
+				(error: unknown) => {
+					if (!active) return
+					database.close()
+					if (isNotFoundError(error)) {
+						setFilesError(null)
+						setFilesStatus('loading')
+					} else {
+						setFilesError(error instanceof Error ? error : new Error('Unable to load task diff files'))
+						setFilesStatus('unavailable')
+					}
+					filesTimer = setTimeout(() => {
+						const nextDatabase = createTaskDiffFilesDatabase(location)
+						setFilesDatabase(nextDatabase)
+						openFiles(nextDatabase)
+					}, TASK_DIFF_PROTOCOL_PROBE_INTERVAL_MS)
+				},
+			)
+		}
+		openFiles(filesDatabase)
 
 		const openVersions = () => {
 			const database = createTaskDiffVersionsDatabase(location)
@@ -172,6 +202,7 @@ export function TaskDiffDatabaseScope({
 
 		return () => {
 			active = false
+			if (filesTimer !== undefined) clearTimeout(filesTimer)
 			if (probeTimer !== undefined) clearTimeout(probeTimer)
 			const presentation = useTaskDiffReviewStore.getState().presentationByTask[taskId]
 			if (presentation?.active === 'fullscreen') {
@@ -180,7 +211,7 @@ export function TaskDiffDatabaseScope({
 					fullscreenOrigin: null,
 				})
 			}
-			filesDatabase.close()
+			openedFiles.close()
 			openedVersions?.close()
 		}
 	})
