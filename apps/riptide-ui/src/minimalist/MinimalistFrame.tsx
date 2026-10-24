@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useState } from 'react'
 
 import { BetaBanner } from './components/BetaBanner'
-import { MinimalistSonnerToaster } from './components/MinimalistSonnerToaster'
+import { SonnerToastBridge } from './components/SonnerToastBridge'
 import { TabShortcuts } from './components/TabShortcuts'
 import { TabStrip } from './components/TabStrip'
 import { WiredUpdateNotices } from './components/UpdateNotices'
@@ -29,7 +29,7 @@ function Frame({ children }: { children: ReactNode }) {
 				</div>
 				<WiredUpdateNotices />
 			</MinimalistPortalContext.Provider>
-			<MinimalistSonnerToaster />
+			<SonnerToastBridge />
 			<div ref={setPortal} />
 		</div>
 	)
