@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useTaskDiffDatabases } from './task-diff-context'
-import { TASK_DIFF_PROTOCOL_PROBE_INTERVAL_MS, TaskDiffDatabaseScope } from './TaskDiffScope'
+import { TASK_DIFF_FILES_RETRY_INTERVAL_MS, TaskDiffDatabaseScope } from './TaskDiffScope'
 
 type FakeFilesDatabase = {
 	id: number
@@ -57,7 +57,7 @@ function renderScope() {
 const flush = () => act(async () => {})
 const advanceToRetry = () =>
 	act(async () => {
-		await vi.advanceTimersByTimeAsync(TASK_DIFF_PROTOCOL_PROBE_INTERVAL_MS)
+		await vi.advanceTimersByTimeAsync(TASK_DIFF_FILES_RETRY_INTERVAL_MS)
 	})
 
 describe('TaskDiffDatabaseScope files stream', () => {

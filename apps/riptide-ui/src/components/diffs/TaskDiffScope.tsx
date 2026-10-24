@@ -21,11 +21,9 @@ import { logger } from '@/lib/logger'
 
 import { TaskDiffContext, type TaskDiffDatabaseStatus, type TaskDiffProtocolState } from './task-diff-context'
 
-/**
- * How often a scope without the new payload stream checks again, e.g. after a daemon update.
- * A files stream that failed to load retries on the same interval.
- */
+/** How often a scope without the new payload stream checks again, e.g. after a daemon update. */
 export const TASK_DIFF_PROTOCOL_PROBE_INTERVAL_MS = 5_000
+export const TASK_DIFF_FILES_RETRY_INTERVAL_MS = 5_000
 
 type TaskDiffScopeProps = {
 	taskId: string
@@ -122,9 +120,6 @@ export function TaskDiffDatabaseScope({
 		let probeTimer: ReturnType<typeof setTimeout> | undefined
 		logger.info('[task-diffs] preloading route resources', { organizationId, taskId })
 
-		// The daemon creates `diff-files` on its first capture, which can land after this scope
-		// mounts (the workspace may still be setting up). A missing stream stays loading; any
-		// failure retries with a fresh database, because a `StreamDB` cannot preload twice.
 		const openFiles = (database: TaskDiffFilesStreamDB) => {
 			openedFiles = database
 			void database.preload().then(
@@ -136,20 +131,25 @@ export function TaskDiffDatabaseScope({
 				(error: unknown) => {
 					if (!active) return
 					database.close()
-					if (isNotFoundError(error)) {
-						setFilesError(null)
-						setFilesStatus('loading')
-					} else {
-						setFilesError(error instanceof Error ? error : new Error('Unable to load task diff files'))
-						setFilesStatus('unavailable')
-					}
-					filesTimer = setTimeout(() => {
-						const nextDatabase = createTaskDiffFilesDatabase(location)
-						setFilesDatabase(nextDatabase)
-						openFiles(nextDatabase)
-					}, TASK_DIFF_PROTOCOL_PROBE_INTERVAL_MS)
+					showFilesFailure(error)
+					filesTimer = setTimeout(reopenFilesInFreshDatabase, TASK_DIFF_FILES_RETRY_INTERVAL_MS)
 				},
 			)
+		}
+		const showFilesFailure = (error: unknown) => {
+			const filesStreamNotCreatedYet = isNotFoundError(error)
+			if (filesStreamNotCreatedYet) {
+				setFilesError(null)
+				setFilesStatus('loading')
+				return
+			}
+			setFilesError(error instanceof Error ? error : new Error('Unable to load task diff files'))
+			setFilesStatus('unavailable')
+		}
+		const reopenFilesInFreshDatabase = () => {
+			const freshDatabase = createTaskDiffFilesDatabase(location)
+			setFilesDatabase(freshDatabase)
+			openFiles(freshDatabase)
 		}
 		openFiles(filesDatabase)
 
