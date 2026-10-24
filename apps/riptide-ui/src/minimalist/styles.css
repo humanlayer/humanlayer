@@ -1809,12 +1809,16 @@
 	.minimalist-sonner-toasts [data-sonner-toast]:has([data-title] button[aria-label='Dismiss']) > [data-close-button] {
 		display: none;
 	}
+	.minimalist-sonner-toasts[data-sonner-toaster] [data-sonner-toast]:has([data-title] button[aria-label='Dismiss']) {
+		padding-right: 34px;
+	}
 	.minimalist-sonner-toasts [data-title] div:has(> button[aria-label='Dismiss']) {
-		padding-right: 22px;
+		position: static;
 	}
 	.minimalist-sonner-toasts [data-title] button[aria-label='Dismiss'] {
-		top: 0;
-		right: -6px;
+		top: 50%;
+		right: 10px;
+		transform: translateY(-50%);
 		padding: 2px;
 		opacity: 0.6;
 	}
