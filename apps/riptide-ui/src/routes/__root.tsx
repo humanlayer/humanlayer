@@ -53,15 +53,14 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		const initializeDefaultEditorFromEnv = useSettingsStore((s) => s.initializeDefaultEditorFromEnv)
 		const roundedCornersEnabled = useSettingsStore((s) => s.roundedCornersEnabled)
 		const pathname = useRouterState({ select: (state) => state.location.pathname })
-		const minimalist = useMinimalistLayout()
+		const showsStandardToaster = !useMinimalistLayout() || isSharedArtifactRoute(pathname)
 		useMountEffect(() => {
 			void initializeDefaultEditorFromEnv()
 		})
 
 		return (
 			<TooltipProvider>
-				{/* The minimalist frame mounts its own toaster; sonner replays toasts raised before it loads. */}
-				{(!minimalist || isSharedArtifactRoute(pathname)) && <CodeLayerToaster />}
+				{showsStandardToaster && <CodeLayerToaster />}
 				{showsFakeWindowControls() && <FakeMacTrafficLights />}
 				<ProviderProvider>
 					{isSharedArtifactRoute(pathname) ? (

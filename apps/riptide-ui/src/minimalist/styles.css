@@ -1728,12 +1728,7 @@
 	.toast .toast-close:hover {
 		opacity: 1;
 	}
-	/*
-	 * Toasts that shared code raises through sonner, drawn like `.toast`. Sonner positions, stacks and
-	 * animates them. Some carry standard markup (`CodeLayerToastButtons`, `DismissableToastTitle`,
-	 * `KeyboardShortcut`); these unlayered rules beat its Tailwind utilities.
-	 */
-	.shared-toasts[data-sonner-toaster] [data-sonner-toast] {
+	.minimalist-sonner-toasts[data-sonner-toaster] [data-sonner-toast] {
 		left: 0;
 		right: 0;
 		width: fit-content;
@@ -1752,31 +1747,30 @@
 		line-height: 1.5;
 		box-shadow: var(--shadow);
 	}
-	/* Collapsed toasts behind the front one show only their edge. */
-	.shared-toasts[data-sonner-toaster] [data-sonner-toast][data-expanded='false'][data-front='false'] > * {
+	.minimalist-sonner-toasts[data-sonner-toaster] [data-sonner-toast][data-expanded='false'][data-front='false'] > * {
 		opacity: 0;
 	}
-	.shared-toasts [data-content] {
+	.minimalist-sonner-toasts [data-content] {
 		display: flex;
 		flex-direction: column;
 		flex: 1 1 auto;
 		min-width: 0;
 	}
-	.shared-toasts [data-title] span {
+	.minimalist-sonner-toasts [data-title] span {
 		color: inherit;
 		font-size: inherit;
 		font-weight: inherit;
 	}
-	.shared-toasts [data-description],
-	.shared-toasts [data-title] span + span {
+	.minimalist-sonner-toasts [data-description],
+	.minimalist-sonner-toasts [data-title] span + span {
 		opacity: 0.75;
 	}
-	.shared-toasts [data-sonner-toast] > div:has(> [data-button]) {
+	.minimalist-sonner-toasts [data-sonner-toast] > div:has(> [data-button]) {
 		display: flex;
 		gap: 12px;
 		width: auto;
 	}
-	.shared-toasts [data-sonner-toast] button {
+	.minimalist-sonner-toasts [data-sonner-toast] button {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
@@ -1795,10 +1789,10 @@
 		opacity: 0.8;
 		cursor: pointer;
 	}
-	.shared-toasts [data-sonner-toast] button:hover {
+	.minimalist-sonner-toasts [data-sonner-toast] button:hover {
 		opacity: 1;
 	}
-	.shared-toasts [data-sonner-toast] kbd {
+	.minimalist-sonner-toasts [data-sonner-toast] kbd {
 		background: none;
 		border: 0;
 		box-shadow: none;
@@ -1806,20 +1800,19 @@
 		font: inherit;
 		opacity: 0.7;
 	}
-	.shared-toasts [data-sonner-toast] [data-close-button] {
+	.minimalist-sonner-toasts [data-sonner-toast] [data-close-button] {
 		order: 1;
 		margin-right: -6px;
 		padding: 2px;
 		opacity: 0.6;
 	}
-	/* An undo toast brings its own dismiss button, which also clears the undo. */
-	.shared-toasts [data-sonner-toast]:has([data-title] button[aria-label='Dismiss']) > [data-close-button] {
+	.minimalist-sonner-toasts [data-sonner-toast]:has([data-title] button[aria-label='Dismiss']) > [data-close-button] {
 		display: none;
 	}
-	.shared-toasts [data-title] div:has(> button[aria-label='Dismiss']) {
+	.minimalist-sonner-toasts [data-title] div:has(> button[aria-label='Dismiss']) {
 		padding-right: 22px;
 	}
-	.shared-toasts [data-title] button[aria-label='Dismiss'] {
+	.minimalist-sonner-toasts [data-title] button[aria-label='Dismiss'] {
 		top: 0;
 		right: -6px;
 		padding: 2px;
