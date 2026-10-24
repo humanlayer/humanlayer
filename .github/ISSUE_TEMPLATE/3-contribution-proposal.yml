@@ -1,0 +1,51 @@
+name: Contribution proposal
+description: Propose a change you want to build. Required before your first pull request.
+title: '[Proposal]: '
+labels: ['enhancement']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Pull requests from new contributors need a vouch from a maintainer. This proposal is how you get one. A maintainer reads it, and if the plan holds up, comments `!vouch`. After that, your pull requests stay open.
+
+        1. Install the HumanLayer RPI plugin in Claude Code:
+           ```
+           /plugin marketplace add humanlayer/riptide-rpi
+           /plugin install riptide-rpi@humanlayer-riptide-rpi
+           ```
+        2. In your clone of this repo, run `/rpi:create-design-discussion` and describe the problem and your idea.
+        3. Answer the agent's design questions until none are left under "Design Questions". Each decision should sit under "Resolved Design Questions" with your reasoning and the options you rejected. Use `/rpi:iterate-design-discussion` to keep going.
+        4. Paste the finished document below.
+
+        We read the resolved decisions most closely. They should show your judgment, not the agent's first suggestion.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is wrong or missing today, in your own words.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: The change you want to make, in a few sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: design
+    attributes:
+      label: Design discussion
+      description: The full document from `/rpi:create-design-discussion`, with every question resolved.
+      render: markdown
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before you submit
+      options:
+        - label: Every design question is resolved, with my reasoning and the options I rejected.
+          required: true
+        - label: I read [CONTRIBUTING.md](https://github.com/humanlayer/humanlayer/blob/main/CONTRIBUTING.md) and can run its checks locally.
+          required: true

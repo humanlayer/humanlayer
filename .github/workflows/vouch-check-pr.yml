@@ -1,0 +1,40 @@
+# Closes pull requests from authors who are not in .github/VOUCHED.td, or who are denounced there.
+# Bots and anyone with write access to this repo always pass. Org members with read access do not.
+#
+# pull_request_target runs with a write token, so this workflow must never check out or run
+# code from the pull request. The checkout below is the base branch, only to read the
+# comment template; vouch itself reads VOUCHED.td through the API.
+name: Vouch check PR
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'pull_request_target' ||
+      (github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '/recheck'))
+    steps:
+      - name: Check out comment template from the base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/vouch
+          persist-credentials: false
+
+      - uses: mitchellh/vouch/action/check-pr@d66fa29a64600490892131ad87597c30c91fcac4 # v1.5.0
+        with:
+          pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          auto-close: true
+          template-file: .github/vouch/pr-unvouched.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
