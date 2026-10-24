@@ -100,7 +100,7 @@ export function TaskDiffDatabaseScope({
 }) {
 	const { getAccessToken } = useAuth()
 	const [location] = useState(() => ({ taskId, organizationId, getAccessToken }))
-	const [filesDatabase, setFilesDatabase] = useState(() => createTaskDiffFilesDatabase(location))
+	const [filesDatabase, setFilesDatabase] = useState<TaskDiffFilesStreamDB | null>(null)
 	const [versionsDatabase, setVersionsDatabase] = useState<TaskDiffVersionsStreamDB | null>(null)
 	const databases = useMemo(
 		() => ({ files: filesDatabase, versions: versionsDatabase }),
@@ -114,14 +114,16 @@ export function TaskDiffDatabaseScope({
 
 	useMountEffect(() => {
 		let active = true
-		let openedFiles = filesDatabase
+		let openedFiles: TaskDiffFilesStreamDB | null = null
 		let openedVersions: TaskDiffVersionsStreamDB | null = null
 		let filesTimer: ReturnType<typeof setTimeout> | undefined
 		let probeTimer: ReturnType<typeof setTimeout> | undefined
 		logger.info('[task-diffs] preloading route resources', { organizationId, taskId })
 
-		const openFiles = (database: TaskDiffFilesStreamDB) => {
+		const openFiles = () => {
+			const database = createTaskDiffFilesDatabase(location)
 			openedFiles = database
+			setFilesDatabase(database)
 			void database.preload().then(
 				() => {
 					if (!active) return
@@ -132,7 +134,7 @@ export function TaskDiffDatabaseScope({
 					if (!active) return
 					database.close()
 					showFilesFailure(error)
-					filesTimer = setTimeout(reopenFilesInFreshDatabase, TASK_DIFF_FILES_RETRY_INTERVAL_MS)
+					filesTimer = setTimeout(openFiles, TASK_DIFF_FILES_RETRY_INTERVAL_MS)
 				},
 			)
 		}
@@ -146,12 +148,7 @@ export function TaskDiffDatabaseScope({
 			setFilesError(error instanceof Error ? error : new Error('Unable to load task diff files'))
 			setFilesStatus('unavailable')
 		}
-		const reopenFilesInFreshDatabase = () => {
-			const freshDatabase = createTaskDiffFilesDatabase(location)
-			setFilesDatabase(freshDatabase)
-			openFiles(freshDatabase)
-		}
-		openFiles(filesDatabase)
+		openFiles()
 
 		const openVersions = () => {
 			const database = createTaskDiffVersionsDatabase(location)
@@ -211,7 +208,7 @@ export function TaskDiffDatabaseScope({
 					fullscreenOrigin: null,
 				})
 			}
-			openedFiles.close()
+			openedFiles?.close()
 			openedVersions?.close()
 		}
 	})
