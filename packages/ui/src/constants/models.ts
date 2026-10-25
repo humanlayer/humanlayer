@@ -13,6 +13,9 @@ export const XAI_FRONTIER_MODELS = [
 export const DEFAULT_XAI_MODEL_ID: XaiFrontierModelId = 'grok-4.6'
 
 export const MODEL_OPTIONS = [
+	// Anthropic-compatible models
+	{ value: 'MiniMax-M3.1-Flash' as const, label: 'MiniMax M3.1 Flash', provider: 'anthropic' as ProviderOption },
+	{ value: 'MiniMax-M3' as const, label: 'MiniMax M3', provider: 'anthropic' as ProviderOption },
 	// Anthropic models - latest
 	{ value: 'fable' as const, label: 'FABLE', provider: 'anthropic' as ProviderOption },
 	{ value: 'claude-fable-5-1' as const, label: 'FABLE 5.1', provider: 'anthropic' as ProviderOption },
@@ -101,6 +104,8 @@ export function findXaiModelOption(model: string): XaiModelOption | undefined {
 }
 
 export const CODELAYER_ANTHROPIC_MODEL_OPTIONS = [
+	'MiniMax-M3.1-Flash',
+	'MiniMax-M3',
 	'claude-fable-5',
 	'opus',
 	'claude-opus-5-5',

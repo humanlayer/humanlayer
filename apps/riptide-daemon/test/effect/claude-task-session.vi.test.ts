@@ -98,6 +98,18 @@ describe('Effect Claude task session preparation', () => {
 		})
 	})
 
+	it('uses the provider thinking modes for the bundled MiniMax models', () => {
+		const adaptive = buildClaudeQueryOptions(
+			baseQueryInput(makeBasicEffectSession({ model: 'MiniMax-M3.1-Flash', effort: 'max' })),
+		)
+		const disabled = buildClaudeQueryOptions(
+			baseQueryInput(makeBasicEffectSession({ model: 'MiniMax-M3', effort: null })),
+		)
+
+		expect(adaptive.thinking).toEqual({ type: 'adaptive' })
+		expect(disabled.thinking).toEqual({ type: 'disabled' })
+	})
+
 	it('keeps tool calls before their matching tool results', () => {
 		const events = [
 			transformClaudeContentBlock({

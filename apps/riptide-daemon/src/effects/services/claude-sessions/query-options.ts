@@ -53,7 +53,12 @@ export interface BuildClaudeQueryOptionsInput {
 }
 
 /** Models that reject `budget_tokens` thinking and only run adaptive thinking. */
-const ADAPTIVE_ONLY_CLAUDE_MODELS: ReadonlySet<string> = new Set(['claude-opus-5-5', 'claude-sonnet-5-5'])
+const ADAPTIVE_ONLY_MODELS: ReadonlySet<string> = new Set([
+	'claude-opus-5-5',
+	'claude-sonnet-5-5',
+	'MiniMax-M3.1-Flash',
+])
+const DISABLED_THINKING_MODELS: ReadonlySet<string> = new Set(['MiniMax-M3'])
 
 /** Derives the complete SDK option value without acquiring any run resources. */
 export function buildClaudeQueryOptions(input: BuildClaudeQueryOptionsInput): Options {
@@ -64,9 +69,11 @@ export function buildClaudeQueryOptions(input: BuildClaudeQueryOptionsInput): Op
 
 	const effort = (input.session.effort ?? undefined) as Options['effort']
 	const thinking: Options['thinking'] =
-		input.session.model !== null && ADAPTIVE_ONLY_CLAUDE_MODELS.has(input.session.model)
-			? { type: 'adaptive' }
-			: { type: 'enabled', budgetTokens: 31999, display: 'summarized' }
+		input.session.model !== null && DISABLED_THINKING_MODELS.has(input.session.model)
+			? { type: 'disabled' }
+			: input.session.model !== null && ADAPTIVE_ONLY_MODELS.has(input.session.model)
+				? { type: 'adaptive' }
+				: { type: 'enabled', budgetTokens: 31999, display: 'summarized' }
 	const plugins: NonNullable<Options['plugins']> = [{ type: 'local', path: input.rpiPluginPath }]
 	if (input.humanlayerPluginPath) {
 		plugins.push({ type: 'local', path: input.humanlayerPluginPath })

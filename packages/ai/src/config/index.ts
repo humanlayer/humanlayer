@@ -37,6 +37,7 @@ const CLAUDE_WITH_MAX: ClaudeEffortLevel[] = [...CLAUDE_BASE, 'max']
 const CLAUDE_WITH_XHIGH_MAX: ClaudeEffortLevel[] = [...CLAUDE_BASE, 'xhigh', 'max']
 
 const CLAUDE_EFFORT_MODELS = [
+	'MiniMax-M3.1-Flash',
 	'claude-fable-5-1',
 	'claude-fable-5',
 	'opus',
@@ -57,6 +58,7 @@ type ClaudeEffortModel = typeof ClaudeEffortModel.Type
 
 /** Effort levels available per Claude model id. Models absent from this map don't support effort selection. */
 export const CLAUDE_EFFORT_LEVELS_BY_MODEL: Record<ClaudeEffortModel, ClaudeEffortLevel[]> = {
+	'MiniMax-M3.1-Flash': CLAUDE_WITH_XHIGH_MAX,
 	'claude-fable-5-1': CLAUDE_WITH_XHIGH_MAX,
 	'claude-fable-5': CLAUDE_WITH_XHIGH_MAX,
 	opus: CLAUDE_WITH_XHIGH_MAX,
@@ -74,6 +76,7 @@ export const CLAUDE_EFFORT_LEVELS_BY_MODEL: Record<ClaudeEffortModel, ClaudeEffo
 }
 
 const CODELAYER_ANTHROPIC_EFFORT_MODELS = [
+	'MiniMax-M3.1-Flash',
 	'claude-fable-5',
 	'opus',
 	'claude-opus-5-5',
@@ -91,6 +94,7 @@ type CodelayerAnthropicEffortModel = typeof CodelayerAnthropicEffortModel.Type
 
 /** CodeLayer Anthropic models that support adaptive thinking effort. Opus 4.5 is intentionally excluded. */
 export const CODELAYER_ANTHROPIC_EFFORT_LEVELS_BY_MODEL: Record<CodelayerAnthropicEffortModel, ClaudeEffortLevel[]> = {
+	'MiniMax-M3.1-Flash': CLAUDE_WITH_XHIGH_MAX,
 	'claude-fable-5': CLAUDE_WITH_XHIGH_MAX,
 	opus: CLAUDE_WITH_XHIGH_MAX,
 	'claude-opus-5-5': CLAUDE_WITH_XHIGH_MAX,

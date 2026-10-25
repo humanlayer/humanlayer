@@ -24,6 +24,7 @@ describe('modelLabel', () => {
 
 	test('bundled rows keep their labels', () => {
 		const options = getModelOptionsForAgentProvider({ agent: 'claude', provider: 'anthropic' })
+		expect(options.slice(0, 2).map((option) => option.value)).toEqual(['MiniMax-M3.1-Flash', 'MiniMax-M3'])
 		expect(modelLabel('opus', options)).toBe('OPUS')
 	})
 })
