@@ -72,12 +72,10 @@ export function useTaskDiffFiles(
 	const { databases, filesStatus, filesError } = useTaskDiffDatabases()
 	const fileSort = useTaskDiffVisibilityStore((state) => state.fileSort)
 	const fileOrderIds = useTaskDiffVisibilityStore((state) => state.fileOrderIds)
+	const filesDatabase = filesStatus === 'ready' ? databases.files : null
 	const { data: streamRows } = useLiveQuery(
-		(q) => {
-			if (filesStatus !== 'ready') return undefined
-			return q.from({ files: databases.files.collections.files })
-		},
-		[databases.files, filesStatus],
+		(q) => (filesDatabase ? q.from({ files: filesDatabase.collections.files }) : undefined),
+		[filesDatabase],
 	)
 	// Guarded inside the memo, not before it: `parseTaskDiffFileRow` throws on a row the
 	// schema no longer matches, and the states below render no files at all. Decoding them

@@ -7,6 +7,7 @@ import {
 	createTaskDiffFilesDatabase,
 	createTaskDiffVersionsDatabase,
 	probeTaskDiffProtocol,
+	type TaskDiffFilesStreamDB,
 	type TaskDiffVersionsStreamDB,
 } from '@/collections/stream/task-diffs'
 import { useSync, useSyncInternal } from '@/components/providers/SyncProvider'
@@ -15,12 +16,14 @@ import { useTaskDiffReviewMarksStore } from '@/hooks/stores/taskDiffReviewMarksS
 import { useTaskDiffReviewStore } from '@/hooks/stores/taskDiffReviewStore'
 import { TaskDiffVisibilityStoreProvider } from '@/hooks/stores/taskDiffVisibilityStore'
 import { useMountEffect } from '@/hooks/useMountEffect'
+import { isNotFoundError } from '@/hooks/useStreamLiveness'
 import { logger } from '@/lib/logger'
 
 import { TaskDiffContext, type TaskDiffDatabaseStatus, type TaskDiffProtocolState } from './task-diff-context'
 
 /** How often a scope without the new payload stream checks again, e.g. after a daemon update. */
 export const TASK_DIFF_PROTOCOL_PROBE_INTERVAL_MS = 5_000
+export const TASK_DIFF_FILES_RETRY_INTERVAL_MS = 5_000
 
 type TaskDiffScopeProps = {
 	taskId: string
@@ -97,7 +100,7 @@ export function TaskDiffDatabaseScope({
 }) {
 	const { getAccessToken } = useAuth()
 	const [location] = useState(() => ({ taskId, organizationId, getAccessToken }))
-	const [filesDatabase] = useState(() => createTaskDiffFilesDatabase(location))
+	const [filesDatabase, setFilesDatabase] = useState<TaskDiffFilesStreamDB | null>(null)
 	const [versionsDatabase, setVersionsDatabase] = useState<TaskDiffVersionsStreamDB | null>(null)
 	const databases = useMemo(
 		() => ({ files: filesDatabase, versions: versionsDatabase }),
@@ -111,17 +114,41 @@ export function TaskDiffDatabaseScope({
 
 	useMountEffect(() => {
 		let active = true
+		let openedFiles: TaskDiffFilesStreamDB | null = null
 		let openedVersions: TaskDiffVersionsStreamDB | null = null
+		let filesTimer: ReturnType<typeof setTimeout> | undefined
 		let probeTimer: ReturnType<typeof setTimeout> | undefined
 		logger.info('[task-diffs] preloading route resources', { organizationId, taskId })
-		void filesDatabase.preload().then(
-			() => active && setFilesStatus('ready'),
-			(error: unknown) => {
-				if (!active) return
-				setFilesError(error instanceof Error ? error : new Error('Unable to load task diff files'))
-				setFilesStatus('unavailable')
-			},
-		)
+
+		const openFiles = () => {
+			const database = createTaskDiffFilesDatabase(location)
+			openedFiles = database
+			setFilesDatabase(database)
+			void database.preload().then(
+				() => {
+					if (!active) return
+					setFilesError(null)
+					setFilesStatus('ready')
+				},
+				(error: unknown) => {
+					if (!active) return
+					database.close()
+					showFilesFailure(error)
+					filesTimer = setTimeout(openFiles, TASK_DIFF_FILES_RETRY_INTERVAL_MS)
+				},
+			)
+		}
+		const showFilesFailure = (error: unknown) => {
+			const filesStreamNotCreatedYet = isNotFoundError(error)
+			if (filesStreamNotCreatedYet) {
+				setFilesError(null)
+				setFilesStatus('loading')
+				return
+			}
+			setFilesError(error instanceof Error ? error : new Error('Unable to load task diff files'))
+			setFilesStatus('unavailable')
+		}
+		openFiles()
 
 		const openVersions = () => {
 			const database = createTaskDiffVersionsDatabase(location)
@@ -172,6 +199,7 @@ export function TaskDiffDatabaseScope({
 
 		return () => {
 			active = false
+			if (filesTimer !== undefined) clearTimeout(filesTimer)
 			if (probeTimer !== undefined) clearTimeout(probeTimer)
 			const presentation = useTaskDiffReviewStore.getState().presentationByTask[taskId]
 			if (presentation?.active === 'fullscreen') {
@@ -180,7 +208,7 @@ export function TaskDiffDatabaseScope({
 					fullscreenOrigin: null,
 				})
 			}
-			filesDatabase.close()
+			openedFiles?.close()
 			openedVersions?.close()
 		}
 	})

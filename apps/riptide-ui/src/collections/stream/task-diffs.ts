@@ -38,7 +38,7 @@ export type TaskDiffVersionsStateSchema = typeof taskDiffVersionsStateSchema
 export type TaskDiffVersionsStreamDB = ReturnType<typeof createStreamDB<TaskDiffVersionsStateSchema>>
 
 export interface TaskDiffDatabases {
-	files: TaskDiffFilesStreamDB
+	files: TaskDiffFilesStreamDB | null
 	/** Opened only once the probe finds the `diff-file-versions` stream. */
 	versions: TaskDiffVersionsStreamDB | null
 }
