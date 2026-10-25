@@ -1,7 +1,8 @@
 import * as Rpc from 'effect/rpc/Rpc'
 import * as Schema from 'effect/Schema'
 
-export const WindowTheme = Schema.Union([Schema.Literal('light'), Schema.Literal('dark')])
+// 'system' hands the choice back to the OS, so the renderer's prefers-color-scheme follows it again.
+export const WindowTheme = Schema.Union([Schema.Literal('light'), Schema.Literal('dark'), Schema.Literal('system')])
 export type WindowTheme = typeof WindowTheme.Type
 
 export const SetWindowThemePayload = Schema.Struct({ theme: WindowTheme })

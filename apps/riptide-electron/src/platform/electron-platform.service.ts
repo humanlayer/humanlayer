@@ -1,4 +1,4 @@
-import type { WindowDragError } from '@humanlayer/riptide-electron-rpc'
+import type { WindowDragError, WindowTheme } from '@humanlayer/riptide-electron-rpc'
 import * as Context from 'effect/Context'
 import type * as Effect from 'effect/Effect'
 import type * as Stream from 'effect/Stream'
@@ -17,7 +17,7 @@ export interface ElectronWindowHandle {
 	readonly id: number
 	readonly destroy: Effect.Effect<void, ElectronPlatformError>
 	readonly dragWindow: Effect.Effect<void, WindowDragError>
-	readonly setThemeSource: (theme: 'light' | 'dark') => Effect.Effect<void, ElectronPlatformError>
+	readonly setThemeSource: (theme: WindowTheme) => Effect.Effect<void, ElectronPlatformError>
 	readonly setZoomFactor: (zoomFactor: number) => Effect.Effect<void, ElectronPlatformError>
 	readonly stateChanges: Stream.Stream<ElectronWindowState>
 	readonly showAndFocus: Effect.Effect<void, ElectronPlatformError>
