@@ -14,10 +14,11 @@
 #   - One handle per line (without @), sorted alphabetically.
 #   - Denounce with a minus prefix: -username reason.
 aaronvg
-AlabamaMike
+alabamamike
 allisoneer
 balanceiskey
 hellovai
-PepijnSenders
+pepijnsenders
 smorin
 tomnagengast
+xtenzq
