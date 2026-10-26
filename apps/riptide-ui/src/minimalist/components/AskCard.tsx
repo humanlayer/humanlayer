@@ -192,7 +192,7 @@ export function AskCard({
 				)}
 				{total > 1 ? <span className="muted">· 1 of {total}</span> : null}
 			</div>
-			{name === 'bash' ? <pre>{text(input.command)}</pre> : null}
+			{name === 'bash' ? <ToolInputBlock value={text(input.command)} label="command" /> : null}
 			{isEdit ? (
 				<DiffCard
 					step={{
@@ -211,7 +211,9 @@ export function AskCard({
 					}}
 				/>
 			) : null}
-			{name !== 'bash' && !isEdit ? <pre>{JSON.stringify(input, null, 2)}</pre> : null}
+			{name !== 'bash' && !isEdit ? (
+				<ToolInputBlock value={JSON.stringify(input, null, 2)} label="tool input" />
+			) : null}
 			<div className="acts">
 				<button
 					type="button"
@@ -243,6 +245,35 @@ export function AskCard({
 					Approve<span className="kbd inv">⏎</span>
 				</button>
 			</div>
+		</div>
+	)
+}
+
+/** Past this many lines, or characters for one long wrapped line, the block starts collapsed. */
+const COLLAPSED_LINES = 8
+const COLLAPSED_CHARS = 600
+
+/**
+ * A command or tool input waiting for approval. A long one starts collapsed to its first lines,
+ * and even expanded it scrolls inside a capped height, so Approve and Deny stay on screen.
+ */
+function ToolInputBlock({ value, label }: { value: string; label: string }) {
+	const [open, setOpen] = useState(false)
+	const long = value.split('\n').length > COLLAPSED_LINES || value.length > COLLAPSED_CHARS
+	return (
+		<div className="ask-input">
+			<pre className={long && !open ? 'collapsed' : undefined}>{value}</pre>
+			{long ? (
+				<button
+					type="button"
+					className="linkbtn"
+					aria-expanded={open}
+					aria-label={open ? `Show less of the ${label}` : `Show the full ${label}`}
+					onClick={() => setOpen(!open)}
+				>
+					{open ? 'Show less' : 'Show more'}
+				</button>
+			) : null}
 		</div>
 	)
 }

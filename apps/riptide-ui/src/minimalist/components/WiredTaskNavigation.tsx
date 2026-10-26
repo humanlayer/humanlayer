@@ -122,6 +122,7 @@ export function WiredTaskNavigation({ taskId, sessionId }: { taskId: string; ses
 								))
 							: null}
 					</div>
+					<ResizeHandle pane="task-sessions" edge="bottom" />
 				</section>
 				<section className="task-nav-group" aria-label="Artifacts">
 					<div className="section">Artifacts</div>

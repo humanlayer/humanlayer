@@ -1012,9 +1012,29 @@
 		font-size: 12px;
 		background: var(--surface-2);
 		border-radius: 8px;
+		line-height: 18px;
 		padding: 8px 10px;
 		margin-bottom: 12px;
 		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+		/* A command taller than the window would push Approve off screen. */
+		max-height: min(420px, 45vh);
+		overflow: auto;
+	}
+	.ask-input {
+		margin-bottom: 12px;
+	}
+	.ask .ask-input pre {
+		margin-bottom: 4px;
+	}
+	/* Eight 18px lines plus padding, fading out to say there is more. */
+	.ask .ask-input pre.collapsed {
+		max-height: calc(8 * 18px + 16px);
+		overflow: hidden;
+		mask-image: linear-gradient(to bottom, #000 65%, transparent);
+	}
+	.ask-input .linkbtn {
+		font-size: 12px;
 	}
 	.ask .acts {
 		display: flex;
@@ -4388,17 +4408,25 @@
 	 * needs less than its share passes the rest on. A few sessions stay whole above a long artifact
 	 * list, and only a list longer than its share scrolls. The column can shrink below the longest
 	 * name, so names still truncate inside the panel.
+	 *
+	 * Dragging the edge under Sessions sets --task-sessions-h. The sessions row then starts at that
+	 * height instead of an equal share, but always leaves 150px for the artifacts and the task
+	 * views, so a tall drag or a shorter window never pushes them off the panel. Unset, the first
+	 * row is the same minmax(60px, auto) as the second.
 	 */
 	.task-nav-groups {
 		flex: 1;
 		min-height: 210px;
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		grid-template-rows: minmax(60px, auto) minmax(60px, auto) max-content;
+		grid-template-rows:
+			minmax(clamp(60px, var(--task-sessions-h, 60px), 100% - 150px), var(--task-sessions-h, auto))
+			minmax(60px, auto) max-content;
 		align-content: start;
 		padding: 0 8px;
 	}
 	.task-nav-group {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 	}
@@ -4635,9 +4663,31 @@
 	.resize-handle:focus-visible {
 		outline: none;
 	}
+	/* Between the sessions and artifacts lists: drag down for more sessions. */
+	.resize-handle.bottom {
+		top: auto;
+		bottom: -3px;
+		left: 0;
+		right: 0;
+		width: auto;
+		height: 6px;
+		cursor: row-resize;
+	}
+	.resize-handle.bottom::after {
+		top: 2px;
+		bottom: auto;
+		left: 0;
+		right: 0;
+		width: auto;
+		height: 2px;
+	}
 	/* While dragging, text doesn't select and the cursor stays a resize cursor everywhere. */
 	:scope.pane-resizing {
 		cursor: col-resize;
+		user-select: none;
+	}
+	:scope.pane-resizing-rows {
+		cursor: row-resize;
 		user-select: none;
 	}
 	.task-content-bar,
@@ -4727,7 +4777,8 @@
 		}
 	}
 	@media (max-width: 1050px) {
-		.task-nav .resize-handle {
+		/* The drawer has a fixed width; the split between its lists still drags. */
+		.task-nav > .resize-handle {
 			display: none;
 		}
 		.task-nav {

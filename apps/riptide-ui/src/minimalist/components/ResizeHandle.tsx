@@ -6,39 +6,45 @@ const STEP = 16
 
 /**
  * A drag edge for a pane. `edge` is the side of the pane it sits on: dragging away from the
- * pane widens it. Double-click resets the default width; arrow keys move it in steps.
+ * pane makes it bigger. A left or right edge sets a width, a bottom edge sets a height.
+ * Double-click resets the default size; arrow keys move it in steps.
  */
-export function ResizeHandle({ pane, edge }: { pane: PaneId; edge: 'left' | 'right' }) {
+export function ResizeHandle({ pane, edge }: { pane: PaneId; edge: 'left' | 'right' | 'bottom' }) {
 	const { variable, label, min, max } = PANES[pane]
-	const [width, setWidth] = useState<number | null>(() => storedWidth(pane))
+	const rows = edge === 'bottom'
+	const [size, setSize] = useState<number | null>(() => storedWidth(pane))
 	const apply = (element: HTMLElement, next: number | null) => {
 		const root = element.closest<HTMLElement>('.minimalist-ui')
 		if (next === null) root?.style.removeProperty(variable)
 		else root?.style.setProperty(variable, `${next}px`)
-		setWidth(next)
+		setSize(next)
 	}
-	const currentWidth = (element: HTMLElement) => element.parentElement?.getBoundingClientRect().width ?? min
+	const currentSize = (element: HTMLElement) => {
+		const rect = element.parentElement?.getBoundingClientRect()
+		return (rows ? rect?.height : rect?.width) ?? min
+	}
 
 	const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
 		if (event.button !== 0) return
 		event.preventDefault()
 		const handle = event.currentTarget
-		const startX = event.clientX
-		const startWidth = currentWidth(handle)
-		let latest = startWidth
+		const start = rows ? event.clientY : event.clientX
+		const startSize = currentSize(handle)
+		let latest = startSize
 		const root = handle.closest<HTMLElement>('.minimalist-ui')
+		const resizing = rows ? 'pane-resizing-rows' : 'pane-resizing'
 		handle.setPointerCapture(event.pointerId)
-		root?.classList.add('pane-resizing')
+		root?.classList.add(resizing)
 		const move = (moveEvent: globalThis.PointerEvent) => {
-			const delta = moveEvent.clientX - startX
-			latest = clampWidth(pane, startWidth + (edge === 'right' ? delta : -delta))
+			const delta = (rows ? moveEvent.clientY : moveEvent.clientX) - start
+			latest = clampWidth(pane, startSize + (edge === 'left' ? -delta : delta))
 			apply(handle, latest)
 		}
 		const stop = () => {
 			handle.removeEventListener('pointermove', move)
 			handle.removeEventListener('pointerup', stop)
 			handle.removeEventListener('pointercancel', stop)
-			root?.classList.remove('pane-resizing')
+			root?.classList.remove(resizing)
 			saveWidth(pane, latest)
 		}
 		handle.addEventListener('pointermove', move)
@@ -47,11 +53,11 @@ export function ResizeHandle({ pane, edge }: { pane: PaneId; edge: 'left' | 'rig
 	}
 
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-		const grow = edge === 'right' ? 'ArrowRight' : 'ArrowLeft'
-		const shrink = edge === 'right' ? 'ArrowLeft' : 'ArrowRight'
+		const grow = rows ? 'ArrowDown' : edge === 'right' ? 'ArrowRight' : 'ArrowLeft'
+		const shrink = rows ? 'ArrowUp' : edge === 'right' ? 'ArrowLeft' : 'ArrowRight'
 		if (event.key !== grow && event.key !== shrink) return
 		event.preventDefault()
-		const next = clampWidth(pane, currentWidth(event.currentTarget) + (event.key === grow ? STEP : -STEP))
+		const next = clampWidth(pane, currentSize(event.currentTarget) + (event.key === grow ? STEP : -STEP))
 		apply(event.currentTarget, next)
 		saveWidth(pane, next)
 	}
@@ -60,11 +66,11 @@ export function ResizeHandle({ pane, edge }: { pane: PaneId; edge: 'left' | 'rig
 		<div
 			className={`resize-handle ${edge}`}
 			role="separator"
-			aria-orientation="vertical"
+			aria-orientation={rows ? 'horizontal' : 'vertical'}
 			aria-label={`Resize ${label}`}
 			aria-valuemin={min}
 			aria-valuemax={max}
-			aria-valuenow={width ?? undefined}
+			aria-valuenow={size ?? undefined}
 			tabIndex={0}
 			title="Drag to resize. Double-click to reset."
 			onPointerDown={onPointerDown}

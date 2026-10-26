@@ -212,12 +212,48 @@ describe('task navigation list layout', () => {
 		expect(cssRule('.task-nav-groups')).toContain('display: grid;')
 		// Without a shrinkable column, the longest name would widen the lists past the panel.
 		expect(cssRule('.task-nav-groups')).toContain('grid-template-columns: minmax(0, 1fr);')
+		// Unset, --task-sessions-h leaves the first row at minmax(60px, auto), the same as the second.
 		expect(cssRule('.task-nav-groups')).toContain(
-			'grid-template-rows: minmax(60px, auto) minmax(60px, auto) max-content;',
+			'grid-template-rows: minmax(clamp(60px, var(--task-sessions-h, 60px), 100% - 150px), var(--task-sessions-h, auto)) minmax(60px, auto) max-content;',
 		)
 		expect(cssRule('.task-nav-groups')).toContain('align-content: start;')
 		expect(cssRule('.task-nav-group')).not.toMatch(/flex(-shrink)?:/)
 		// Changes and the pull request keep their full height in a short window.
 		expect(cssRule('.task-nav-views')).not.toContain('min-height')
+	})
+
+	// A long artifact list could squeeze the sessions down to one row with no way to get them back.
+	it('lets the sessions list be resized against the artifacts', () => {
+		data.sessions = []
+		useSync.mockReturnValue({
+			sessionsCollection: syncedSession({
+				id: 'none',
+				task_id: 'task',
+				title: null,
+				summary: null,
+				archived: false,
+				status: 'ready_for_input',
+				labels: [],
+			}).collection,
+		})
+		render(
+			<div className="minimalist-ui">
+				<WiredTaskNavigation taskId="task" />
+			</div>,
+		)
+		const sessions = screen.getByRole('region', { name: 'Sessions' })
+		const handle = screen.getByRole('separator', { name: 'Resize sessions list' })
+		expect(handle.parentElement).toBe(sessions)
+		expect(handle).toHaveAttribute('aria-orientation', 'horizontal')
+		const root = handle.closest<HTMLElement>('.minimalist-ui')!
+		vi.spyOn(sessions, 'getBoundingClientRect').mockReturnValue({ height: 100, width: 220 } as DOMRect)
+		fireEvent.keyDown(handle, { key: 'ArrowDown' })
+		expect(root.style.getPropertyValue('--task-sessions-h')).toBe('116px')
+		expect(localStorage.getItem('hl-min-width-task-sessions')).toBe('116')
+		fireEvent.keyDown(handle, { key: 'ArrowUp' })
+		expect(root.style.getPropertyValue('--task-sessions-h')).toBe('84px')
+		fireEvent.doubleClick(handle)
+		expect(root.style.getPropertyValue('--task-sessions-h')).toBe('')
+		expect(localStorage.getItem('hl-min-width-task-sessions')).toBeNull()
 	})
 })

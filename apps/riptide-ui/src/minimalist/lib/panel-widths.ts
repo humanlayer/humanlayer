@@ -1,6 +1,7 @@
 /**
- * Widths of the resizable panes. A drag sets a CSS variable on the minimalist root, so the
- * layout follows the pointer without a React render, and the width is kept for next time.
+ * Sizes of the resizable panes: widths, plus the height of the task outline's sessions list.
+ * A drag sets a CSS variable on the minimalist root, so the layout follows the pointer without
+ * a React render, and the size is kept for next time.
  */
 export const PANES = {
 	sidebar: { variable: '--sidebar-w', label: 'sidebar', min: 200, max: 480 },
@@ -8,6 +9,7 @@ export const PANES = {
 	'task-right': { variable: '--task-right-w', label: 'right panel', min: 280, max: 760 },
 	panel: { variable: '--panel-w', label: 'side panel', min: 320, max: 1000 },
 	'changed-files': { variable: '--changed-files-w', label: 'file tree', min: 160, max: 600 },
+	'task-sessions': { variable: '--task-sessions-h', label: 'sessions list', min: 60, max: 1600 },
 } as const
 
 export type PaneId = keyof typeof PANES
