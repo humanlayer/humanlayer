@@ -2,10 +2,13 @@
 # pull request. The first line of the comment must start with the keyword:
 #   !vouch [@user] [note]       !denounce [@user] [reason]       !unvouch [@user]
 # Without @user, the action applies to the author of the issue or pull request.
+# On success the action reacts to the comment with a thumbs up. No reaction means the run failed.
 #
 # The bang prefix keeps ordinary comments that start with the word "vouch" from triggering it.
-# The action commits straight to main, which works while main has no required reviews or
-# checks. If that changes, switch to a GitHub App token; see COOKBOOK.md in mitchellh/vouch.
+# The action commits straight to main. The "Protect main" ruleset blocks direct pushes, so the
+# job runs as the humanlayer-vouch GitHub App, which is on that ruleset's bypass list. The app's
+# ID and private key are in the VOUCH_ID and VOUCH_PRIVATE_KEY secrets. The action's
+# pull-request mode isn't used because it squash-merges, and squash merging is off in this repo.
 name: Vouch manage
 
 on:
@@ -16,19 +19,24 @@ concurrency:
   group: vouch-manage
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+# The app token carries the permissions this job needs.
+permissions: {}
 
 jobs:
   manage:
     runs-on: ubuntu-latest
     if: startsWith(github.event.comment.body, '!')
     steps:
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.VOUCH_ID }}
+          private-key: ${{ secrets.VOUCH_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: mitchellh/vouch/action/manage-by-issue@d66fa29a64600490892131ad87597c30c91fcac4 # v1.5.0
         with:
@@ -39,4 +47,4 @@ jobs:
           denounce-keyword: '!denounce'
           unvouch-keyword: '!unvouch'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
