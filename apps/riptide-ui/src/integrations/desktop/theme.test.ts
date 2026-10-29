@@ -4,16 +4,16 @@ const mocks = vi.hoisted(() => ({
 	electron: vi.fn<() => boolean>(),
 	tauri: vi.fn<() => boolean>(),
 	setElectronTheme: vi.fn(),
-	setTauriTheme: vi.fn(),
+	setTauriAppearance: vi.fn(),
 	logError: vi.fn(),
 }))
 
 vi.mock('@/lib/utils', () => ({ isElectron: mocks.electron, isTauri: mocks.tauri }))
 vi.mock('@/integrations/electron/theme', () => ({ setElectronWindowTheme: mocks.setElectronTheme }))
-vi.mock('@/integrations/tauri/theme', () => ({ setWindowTheme: mocks.setTauriTheme }))
+vi.mock('@/integrations/tauri/theme', () => ({ setWindowAppearance: mocks.setTauriAppearance }))
 vi.mock('@/lib/logger', () => ({ logger: { error: mocks.logError } }))
 
-import { setWindowTheme } from './theme'
+import { setWindowAppearance, setWindowTheme } from './theme'
 
 describe('desktop window theme facade', () => {
 	beforeEach(() => {
@@ -28,16 +28,27 @@ describe('desktop window theme facade', () => {
 		await setWindowTheme('catppuccin')
 
 		expect(mocks.setElectronTheme).toHaveBeenCalledWith('dark')
-		expect(mocks.setTauriTheme).not.toHaveBeenCalled()
+		expect(mocks.setTauriAppearance).not.toHaveBeenCalled()
 	})
 
-	it('preserves direct Tauri dispatch', async () => {
+	it('dispatches the mapped appearance to Tauri', async () => {
 		mocks.tauri.mockReturnValue(true)
 
 		await setWindowTheme('solarized-light')
 
-		expect(mocks.setTauriTheme).toHaveBeenCalledWith('solarized-light')
+		expect(mocks.setTauriAppearance).toHaveBeenCalledWith('light')
 		expect(mocks.setElectronTheme).not.toHaveBeenCalled()
+	})
+
+	it('dispatches an appearance, including system, to either shell', async () => {
+		mocks.electron.mockReturnValue(true)
+		await setWindowAppearance('system')
+		expect(mocks.setElectronTheme).toHaveBeenCalledWith('system')
+
+		mocks.electron.mockReturnValue(false)
+		mocks.tauri.mockReturnValue(true)
+		await setWindowAppearance('system')
+		expect(mocks.setTauriAppearance).toHaveBeenCalledWith('system')
 	})
 
 	it('is a browser no-op and contains Electron failures', async () => {

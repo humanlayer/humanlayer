@@ -1,3 +1,4 @@
+import type { WindowTheme } from '@humanlayer/riptide-electron-rpc'
 import * as Effect from 'effect/Effect'
 import * as FileSystem from 'effect/FileSystem'
 import * as Layer from 'effect/Layer'
@@ -246,7 +247,7 @@ export const makeWindowServiceLive = (config: ElectronConfig) =>
 			)
 
 			const setWindowTheme = Effect.fn('window_service.set_window_theme')(function* (input: {
-				readonly theme: 'light' | 'dark'
+				readonly theme: WindowTheme
 			}) {
 				const annotations = { theme: input.theme }
 				yield* Effect.suspend(() => {

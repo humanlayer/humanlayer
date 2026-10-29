@@ -117,7 +117,7 @@ describe('WindowService', () => {
 			const secondInstanceEvents = yield* Queue.unbounded<void>()
 			const focused = yield* Deferred.make<void>()
 			const opened: Array<Parameters<typeof ElectronPlatform.Service.openWindow>[0]> = []
-			const themes: Array<'light' | 'dark'> = []
+			const themes: Array<'light' | 'dark' | 'system'> = []
 			const zoomFactors: number[] = []
 			const writtenFiles: Array<{ readonly path: string; readonly contents: string }> = []
 			const renames: Array<{ readonly from: string; readonly to: string }> = []
@@ -176,6 +176,7 @@ describe('WindowService', () => {
 					concurrency: 'unbounded',
 				})
 				yield* service.setWindowTheme({ theme: 'dark' })
+				yield* service.setWindowTheme({ theme: 'system' })
 				yield* service.setZoom({ zoomFactor: 1.5 })
 				yield* Queue.offer(secondInstanceEvents, undefined)
 				yield* Deferred.await(focused)
@@ -222,7 +223,7 @@ describe('WindowService', () => {
 				'--riptide-window-role=additional',
 			])
 			expect(destroyed).toBe(2)
-			expect(themes).toEqual(['dark'])
+			expect(themes).toEqual(['dark', 'system'])
 			expect(zoomFactors).toEqual([1.5])
 			expect(writtenFiles).toEqual([
 				{

@@ -6,7 +6,7 @@ import { SonnerToastBridge } from './components/SonnerToastBridge'
 import { TabShortcuts } from './components/TabShortcuts'
 import { TabStrip } from './components/TabStrip'
 import { WiredUpdateNotices } from './components/UpdateNotices'
-import { useMinimalistDark } from './lib/color-scheme'
+import { useMinimalistDark, useWindowAppearance } from './lib/color-scheme'
 import { storedWidthStyle } from './lib/panel-widths'
 import { MinimalistPortalContext } from './lib/portal'
 import { UiProvider } from './lib/ui-state'
@@ -15,6 +15,7 @@ import './styles.css'
 
 function Frame({ children }: { children: ReactNode }) {
 	const dark = useMinimalistDark()
+	useWindowAppearance()
 	const [portal, setPortal] = useState<HTMLDivElement | null>(null)
 	// Read once: after that, resize handles set these variables on this element directly.
 	const [widths] = useState(storedWidthStyle)

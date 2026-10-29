@@ -1,6 +1,7 @@
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 
+import type { WindowTheme } from '@humanlayer/riptide-electron-rpc'
 import * as ConfigProvider from 'effect/ConfigProvider'
 import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
@@ -123,7 +124,7 @@ function openElectronWindow(options: ElectronWindowOptions, nativeConfig: Config
 							screen,
 							supported,
 						}),
-						setThemeSource: (theme: 'light' | 'dark') =>
+						setThemeSource: (theme: WindowTheme) =>
 							Effect.try({
 								try: () => {
 									nativeTheme.themeSource = theme
