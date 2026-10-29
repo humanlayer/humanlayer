@@ -510,6 +510,13 @@ describe('GitFileSystem', () => {
 					expect(retry.publication.versions.map((version) => version.id).sort()).toEqual(
 						delta.publication.versions.map((version) => version.id).sort(),
 					)
+					// Git reads a linked worktree's exclusions from the shared common directory.
+					const exclusions = yield* Effect.promise(() => readFile(join(commonDir, 'info', 'exclude'), 'utf8'))
+					expect(exclusions.split('\n').filter((line) => line === '/.shadow/')).toHaveLength(1)
+					const status = yield* Effect.promise(() =>
+						git(fixture.worktree, 'status', '--porcelain', '--untracked-files=all'),
+					)
+					expect(status).not.toContain('.shadow')
 					const capturedLogs = logMessages.join('\n')
 					expect(capturedLogs).toContain('Omitted environment files from task diff')
 					for (const sensitiveValue of [
@@ -657,6 +664,62 @@ describe('GitFileSystem', () => {
 						'scratch/-dash name.js',
 						'scratch/out.js',
 					])
+				}).pipe(Effect.provide(layer)),
+			({ root }) => Effect.promise(() => rm(root, { recursive: true, force: true })),
+		),
+	)
+
+	it.effect('keeps the shadow directory out of git status in the task checkout', () =>
+		Effect.acquireUseRelease(
+			Effect.promise(async () => {
+				const root = await mkdtemp(join(tmpdir(), 'task-diff-git-exclude-'))
+				const repoDir = join(root, 'repo')
+				const workspaceDir = join(root, 'workspace')
+				const nestedRepoDir = join(workspaceDir, 'nested')
+				for (const dir of [repoDir, nestedRepoDir]) {
+					await git(root, 'init', '--initial-branch=main', dir)
+					await git(dir, 'config', 'user.email', 'task-diff@example.com')
+					await git(dir, 'config', 'user.name', 'Task Diff Test')
+					await writeFile(join(dir, 'file.txt'), 'base\n')
+					await git(dir, 'add', '--all')
+					await git(dir, 'commit', '-m', 'base')
+					await writeFile(join(dir, 'file.txt'), 'changed\n')
+				}
+				// An exclude file without a trailing newline must not swallow the appended line.
+				await writeFile(join(repoDir, '.git', 'info', 'exclude'), '# user rule\nlocal-notes')
+				return { root, repoDir, nestedRepoDir, workspaceDir }
+			}),
+			({ repoDir, nestedRepoDir, workspaceDir }) =>
+				Effect.gen(function* () {
+					const gitFs = yield* GitFileSystem
+					const rebuild = (repo: TaskDiffRepoContext) =>
+						Effect.gen(function* () {
+							const base = yield* gitFs.resolveBase(repo)
+							yield* Effect.scoped(
+								gitFs.beginRebuild(repo, base, { versionMode: 'full', replaceFileProjection: false }),
+							)
+						})
+					const singleRepo: TaskDiffRepoContext = {
+						...resolverRepo('HEAD'),
+						absolutePath: repoDir,
+						workspaceBaseDirectory: repoDir,
+					}
+					yield* rebuild(singleRepo)
+					yield* rebuild(singleRepo)
+					expect(
+						yield* Effect.promise(() => readFile(join(repoDir, '.git', 'info', 'exclude'), 'utf8')),
+					).toBe('# user rule\nlocal-notes\n/.shadow/\n')
+					expect(yield* Effect.promise(() => git(repoDir, 'status', '--porcelain'))).toBe('M file.txt')
+
+					// The shadow root sits outside a repo nested under the workspace, so that repo's exclusions stay untouched.
+					const nestedExcludePath = join(nestedRepoDir, '.git', 'info', 'exclude')
+					const nestedExclusions = yield* Effect.promise(() => readFile(nestedExcludePath, 'utf8'))
+					yield* rebuild({
+						...resolverRepo('HEAD'),
+						absolutePath: nestedRepoDir,
+						workspaceBaseDirectory: workspaceDir,
+					})
+					expect(yield* Effect.promise(() => readFile(nestedExcludePath, 'utf8'))).toBe(nestedExclusions)
 				}).pipe(Effect.provide(layer)),
 			({ root }) => Effect.promise(() => rm(root, { recursive: true, force: true })),
 		),
