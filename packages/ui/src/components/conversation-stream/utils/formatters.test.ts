@@ -1,5 +1,27 @@
 import { describe, expect, it } from 'vitest'
-import { parseMcpTextContent } from './formatters'
+import { formatFilePath, parseMcpTextContent } from './formatters'
+
+describe('formatFilePath', () => {
+	it('strips the working directory prefix', () => {
+		expect(formatFilePath('/repo/app/src/index.ts', '/repo/app')).toBe('src/index.ts')
+	})
+
+	it('handles a working directory with a trailing slash', () => {
+		expect(formatFilePath('/repo/app/src/index.ts', '/repo/app/')).toBe('src/index.ts')
+	})
+
+	it('does not strip a sibling directory that shares a name prefix', () => {
+		expect(formatFilePath('/repo/app-old/src/index.ts', '/repo/app')).toBe('/repo/app-old/src/index.ts')
+	})
+
+	it('returns the path unchanged when outside the working directory', () => {
+		expect(formatFilePath('/other/file.ts', '/repo/app')).toBe('/other/file.ts')
+	})
+
+	it('returns the path unchanged without a working directory', () => {
+		expect(formatFilePath('/repo/app/file.ts')).toBe('/repo/app/file.ts')
+	})
+})
 
 describe('parseMcpTextContent', () => {
 	it('should extract text from single text block', () => {

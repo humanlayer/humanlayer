@@ -18,11 +18,15 @@ export function formatFilePath(path: string | undefined, workingDir?: string): s
 	if (!path) {
 		return ''
 	}
-	if (!workingDir || !path.startsWith(workingDir)) {
+	if (!workingDir) {
 		return path
 	}
-	const relativePath = path.slice(workingDir.length)
-	return relativePath.startsWith('/') ? relativePath.slice(1) : relativePath
+	// Match on a path-segment boundary so `/repo/app` does not strip `/repo/app-old/x.ts` to `-old/x.ts`
+	const prefix = workingDir.endsWith('/') ? workingDir : `${workingDir}/`
+	if (!path.startsWith(prefix)) {
+		return path
+	}
+	return path.slice(prefix.length)
 }
 
 export function truncateText(text: string | undefined | null, maxLength: number): string {
