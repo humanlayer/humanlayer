@@ -233,7 +233,40 @@ export const GitFileSystemLive = Layer.effect(
 				return yield* Effect.fail(new TaskDiffBaseUnavailableError(errorInput))
 			})
 
-		const initializeShadow = (repo: TaskDiffRepoContext, gitDir: string) =>
+		/**
+		 * When the workspace base is the checkout itself, the shadow root lands inside the user's
+		 * worktree, so add it to the real repository's exclude file to keep it out of `git status`
+		 * and `git add --all`. `--git-path` resolves to the file Git actually reads, which for a
+		 * linked worktree is the shared one in the common directory.
+		 */
+		const excludeShadowRootFromRepo = (repo: TaskDiffRepoContext, shadowRoot: string) =>
+			Effect.gen(function* () {
+				const relativeShadowRoot = path.relative(repo.absolutePath, shadowRoot)
+				if (relativeShadowRoot.startsWith('..') || path.isAbsolute(relativeShadowRoot)) return
+				const pattern = `/${relativeShadowRoot.split(path.sep).join('/')}/`
+				const excludeOutput = yield* git.run(
+					['-C', repo.absolutePath, 'rev-parse', '--git-path', 'info/exclude'],
+					{ cwd: repo.absolutePath },
+				)
+				const excludeValue = excludeOutput.stdout.trim()
+				const excludePath = path.isAbsolute(excludeValue)
+					? excludeValue
+					: path.resolve(repo.absolutePath, excludeValue)
+				const existing = yield* fs.exists(excludePath).pipe(
+					Effect.flatMap((exists) => (exists ? fs.readFileString(excludePath) : Effect.succeed(''))),
+					Effect.mapError(mapFileSystemError('Failed to read repository exclusions')),
+				)
+				if (existing.split(/\r?\n/).some((line) => line.trim() === pattern)) return
+				yield* fs
+					.makeDirectory(path.dirname(excludePath), { recursive: true })
+					.pipe(Effect.mapError(mapFileSystemError('Failed to configure repository exclusions')))
+				const separator = existing.length > 0 && !existing.endsWith('\n') ? '\n' : ''
+				yield* fs
+					.writeFileString(excludePath, `${separator}${pattern}\n`, { flag: 'a' })
+					.pipe(Effect.mapError(mapFileSystemError('Failed to configure repository exclusions')))
+			})
+
+		const initializeShadow = (repo: TaskDiffRepoContext, gitDir: string, shadowRoot: string) =>
 			Effect.gen(function* () {
 				const commonDirOutput = yield* git.run(['-C', repo.absolutePath, 'rev-parse', '--git-common-dir'], {
 					cwd: repo.absolutePath,
@@ -249,6 +282,7 @@ export const GitFileSystemLive = Layer.effect(
 				const realIndex = path.isAbsolute(realIndexValue)
 					? realIndexValue
 					: path.resolve(repo.absolutePath, realIndexValue)
+				yield* excludeShadowRootFromRepo(repo, shadowRoot)
 
 				yield* fs
 					.makeDirectory(gitDir, { recursive: true })
@@ -368,13 +402,9 @@ export const GitFileSystemLive = Layer.effect(
 			resolveBase: resolveComparisonBase,
 			beginRebuild: (repo, resolution, requirements) =>
 				Effect.gen(function* () {
-					const gitDir = path.join(
-						repo.workspaceBaseDirectory,
-						'.shadow',
-						String(repo.taskId),
-						`${String(repo.id)}.git`,
-					)
-					const { isFirstPublication, realIndex } = yield* initializeShadow(repo, gitDir)
+					const shadowRoot = path.join(repo.workspaceBaseDirectory, '.shadow')
+					const gitDir = path.join(shadowRoot, String(repo.taskId), `${String(repo.id)}.git`)
+					const { isFirstPublication, realIndex } = yield* initializeShadow(repo, gitDir, shadowRoot)
 					const publishedStatePointerPath = path.join(gitDir, 'published-state')
 					const publishedStateId = yield* fs.exists(publishedStatePointerPath).pipe(
 						Effect.flatMap((exists) =>
