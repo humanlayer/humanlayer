@@ -18,6 +18,9 @@ export function getSessionErrorDisplayMessage(
 	errorReason: SessionErrorReason | null | undefined,
 	errorMessage: string | null | undefined,
 ): string | null | undefined {
-	if (resolveSessionErrorReason(errorReason, errorMessage) === 'start_failed') return CLAUDE_CODE_START_FAILED_MESSAGE
+	if (resolveSessionErrorReason(errorReason, errorMessage) === 'start_failed') {
+		if (errorMessage && !errorMessage.includes(LEGACY_START_FAILED_MESSAGE)) return errorMessage
+		return CLAUDE_CODE_START_FAILED_MESSAGE
+	}
 	return errorMessage
 }

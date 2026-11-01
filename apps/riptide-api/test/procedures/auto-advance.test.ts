@@ -2581,6 +2581,65 @@ describe('Auto-Advance: implementation → describe-pr', async () => {
 		expect(prLabels).toContainEqual({ name: 'rpi:describe-pr', title: 'describe-pr' })
 	})
 
+	test('falls back to the current directory when extraction returns prose', async () => {
+		const [task] = await db
+			.insert(tasks)
+			.values({
+				organization_id: organizationId,
+				name: 'Test Invalid Suggested Directory',
+				slug: 'test-invalid-suggested-directory',
+				resource_owner_user_id: userId,
+				created_by: userId,
+				default_working_directory: tmpdir(),
+				setup_status: 'completed',
+				auto_advance_implementation_to_pr: true,
+			})
+			.returning()
+
+		const [session] = await db
+			.insert(sessions)
+			.values({
+				organization_id: organizationId,
+				resource_owner_user_id: userId,
+				created_by: userId,
+				host_id: hostId,
+				task_id: task!.id,
+				title: 'implementation',
+				working_directory: '/tmp/original-implementation-dir',
+				coding_agent: 'claude',
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				permissions_mode: 'default',
+				status: 'ready_for_input',
+				labels: [{ name: 'rpi:implementation', title: 'Implementation' }],
+				next_step_suggestions: [
+					{
+						parsedAt: Date.now(),
+						extraction: {
+							type: 'next_step_found',
+							nextStepPrompt: 'use the rpi:describe-pr skill',
+							nextStepSummary: 'Describe PR',
+							nextStepType: 'describe-pr',
+							taskReference: 'test-invalid-suggested-directory',
+							suggestedDirectory: 'none specified in message about running location',
+						},
+					},
+				],
+			})
+			.returning()
+
+		await checkAutoAdvance(db, session!.id, organizationId)
+
+		const newSessions = await db
+			.select()
+			.from(sessions)
+			.where(eq(sessions.task_id, task!.id))
+			.orderBy(sessions.created_at)
+
+		expect(newSessions).toHaveLength(2)
+		expect(newSessions[1]?.working_directory).toBe('/tmp/original-implementation-dir')
+	})
+
 	test('does NOT create session when auto_advance_implementation_to_pr flag is false', async () => {
 		const [task] = await db
 			.insert(tasks)

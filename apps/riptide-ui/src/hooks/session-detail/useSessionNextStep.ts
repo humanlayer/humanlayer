@@ -1,4 +1,4 @@
-import type { NextStepSuggestion } from '@humanlayer/db/zodschemas/next-step'
+import { normalizeSuggestedDirectory, type NextStepSuggestion } from '@humanlayer/db/zodschemas/next-step'
 import type { ConversationEvent } from '@humanlayer/ui/components/conversation-stream'
 import { SKILL_ID_TO_SLASH_COMMAND } from '@humanlayer/ui/constants/rpi-skills'
 import { useNavigate } from '@tanstack/react-router'
@@ -167,7 +167,7 @@ export function useSessionNextStep({
 			const { nextStepType, suggestedDirectory } = suggestion.extraction
 
 			const slashCommand = SKILL_ID_TO_SLASH_COMMAND[nextStepType]
-			const workingDir = suggestedDirectory || session?.working_directory
+			const workingDir = normalizeSuggestedDirectory(suggestedDirectory) || session?.working_directory
 			const search: DraftSearch = { slashCommand, updateTaskDir: true }
 			if (session?.task_id) search.taskId = session.task_id
 			if (workingDir) search.workingDirectory = workingDir

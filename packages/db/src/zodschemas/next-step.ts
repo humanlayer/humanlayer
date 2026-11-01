@@ -1,5 +1,22 @@
 import z from 'zod/v4'
 
+const DIRECTORY_PATH_PREFIX = /^(?:~(?:[\\/]|$)|\.{1,2}(?:[\\/]|$)|[\\/]{1,2}|[A-Za-z]:[\\/])/u
+
+/**
+ * Keep model-generated directory hints from being used as working directories
+ * when the model returned explanatory prose instead of a path. The daemon may
+ * run on a different host, so existence checks belong at launch time; this
+ * shared boundary only accepts paths with an unambiguous path prefix.
+ */
+export function normalizeSuggestedDirectory(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined
+
+	const candidate = value.trim()
+	if (!candidate || /\s/u.test(candidate) || !DIRECTORY_PATH_PREFIX.test(candidate)) return undefined
+
+	return candidate
+}
+
 /**
  * Discriminated union for AI extraction output
  * Matches the structure from the design discussion
@@ -35,8 +52,7 @@ export const NextStepAiOutputSchema = z.discriminatedUnion('type', [
 			.string()
 			.describe('Task identifier like "eng-1234-feature" or "ll-31-riptide-next-session-suggestions"'),
 		suggestedDirectory: z
-			.string()
-			.optional()
+			.preprocess(normalizeSuggestedDirectory, z.string().optional())
 			.describe('Directory to run the prompt in, if mentioned (e.g., "~/wt/project-name")'),
 	}),
 	z.object({

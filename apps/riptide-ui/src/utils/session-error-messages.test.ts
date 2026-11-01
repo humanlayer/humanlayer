@@ -13,6 +13,11 @@ describe('session error messages', () => {
 		)
 	})
 
+	test('preserves detailed start errors for the user', () => {
+		const error = 'Cannot access working directory /home/agent/workspace/none: NotFound'
+		expect(getSessionErrorDisplayMessage('start_failed', error)).toBe(error)
+	})
+
 	test('treats the legacy session-id message as start_failed when no reason is stored', () => {
 		expect(getSessionErrorDisplayMessage(null, 'Unable to locate coding agent session ID.')).toBe(
 			CLAUDE_CODE_START_FAILED_MESSAGE,

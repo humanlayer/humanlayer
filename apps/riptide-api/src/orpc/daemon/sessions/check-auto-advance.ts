@@ -3,6 +3,7 @@ import { sessions } from '@humanlayer/db/tables/sessions'
 import { taskUserSettings } from '@humanlayer/db/tables/task-user-settings'
 import { tasks } from '@humanlayer/db/tables/tasks'
 import { userSettings } from '@humanlayer/db/tables/user-settings'
+import { normalizeSuggestedDirectory } from '@humanlayer/db/zodschemas/next-step'
 import type { TaskWorkflowType, WorktreeTiming } from '@humanlayer/schemas/effect/taskconfiguration'
 import { and, eq, gt, not, sql } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
@@ -337,7 +338,7 @@ export async function checkAutoAdvance(
 				}
 
 				// Extract suggestedDirectory for cross-worktree handoff
-				suggestedDirectory = nextStepEntry.extraction?.suggestedDirectory
+				suggestedDirectory = normalizeSuggestedDirectory(nextStepEntry.extraction?.suggestedDirectory)
 			}
 
 			// Condition 4: No session with the target label already exists (deduplication)

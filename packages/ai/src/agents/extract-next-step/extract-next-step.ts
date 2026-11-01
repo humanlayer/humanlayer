@@ -1,5 +1,9 @@
 import type { LanguageModelV3 } from '@ai-sdk/provider'
-import type { NextStepAiOutput, NextStepSuggestion } from '@humanlayer/db/zodschemas/next-step'
+import {
+	normalizeSuggestedDirectory,
+	type NextStepAiOutput,
+	type NextStepSuggestion,
+} from '@humanlayer/db/zodschemas/next-step'
 import { generateText, Output } from 'ai'
 import z from 'zod/v4'
 
@@ -47,7 +51,9 @@ const ExtractionSchema = z.object({
 	nextStepSummary: z.string().optional().describe('Short button label in format "skill: task-ref"'),
 	nextStepType: z.string().optional().describe('The RPI skill name'),
 	taskReference: z.string().optional().describe('Task identifier'),
-	suggestedDirectory: z.string().optional().describe('Directory to run the prompt in'),
+	suggestedDirectory: z
+		.preprocess(normalizeSuggestedDirectory, z.string().optional())
+		.describe('Directory to run the prompt in'),
 })
 
 type ExtractionResult = z.infer<typeof ExtractionSchema>
@@ -114,7 +120,7 @@ export async function extractNextStep(
 					nextStepSummary: result.nextStepSummary ?? '',
 					nextStepType: normalizeSkillType(result.nextStepType),
 					taskReference: result.taskReference ?? '',
-					suggestedDirectory: result.suggestedDirectory,
+					suggestedDirectory: normalizeSuggestedDirectory(result.suggestedDirectory),
 				}
 			: {
 					type: 'no_next_step',
