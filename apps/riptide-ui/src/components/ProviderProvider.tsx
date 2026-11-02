@@ -28,9 +28,8 @@ import { WindowStateHandler } from '@/components/WindowStateHandler'
 import { ZoomHandler } from '@/components/ZoomHandler'
 import { useSettingsStore } from '@/hooks/stores/settingsStore'
 import { useDaemonManager } from '@/hooks/use-daemon-manager'
-import { useMinimalistLayout } from '@/hooks/use-minimalist-layout'
+import { useMinimalistLayout, useWindowThemeReporter } from '@/hooks/use-minimalist-layout'
 import { UpdateProvider } from '@/hooks/use-update'
-import { setWindowTheme } from '@/integrations/desktop/theme'
 import { PostHogHandler } from '@/integrations/posthog/PostHogHandler'
 import { AuthProvider } from '@/integrations/workos/AuthProvider'
 import { providerModeForPath } from '@/lib/auth-routing'
@@ -40,10 +39,11 @@ export function ProviderProvider({ children }: { children: ReactNode }) {
 	const setDiffStyle = useSettingsStore((s) => s.setDiffStyle)
 	const pathname = useLocation({ select: (location) => location.pathname })
 	const providerMode = providerModeForPath(pathname)
+	const reportWindowTheme = useWindowThemeReporter()
 
 	return (
 		<AuthProvider>
-			<ThemeProvider defaultTheme="rose-pine" storageKey="riptide-theme" onThemeChange={setWindowTheme}>
+			<ThemeProvider defaultTheme="rose-pine" storageKey="riptide-theme" onThemeChange={reportWindowTheme}>
 				{providerMode === 'shared' ? (
 					<SharedArtifactProviders>{children}</SharedArtifactProviders>
 				) : (

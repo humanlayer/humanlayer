@@ -1,7 +1,9 @@
+import type { Theme } from '@humanlayer/ui/components/theme-provider'
 import { useLocation, useNavigate } from '@tanstack/react-router'
 
 import { useSettingsStore } from '@/hooks/stores/settingsStore'
 import { type TaskViewLayout, useTaskViewPreferencesStore } from '@/hooks/stores/taskViewPreferencesStore'
+import { setWindowTheme } from '@/integrations/desktop/theme'
 
 export function supportsMinimalistLayout(pathname: string, search: Record<string, unknown> = {}): boolean {
 	if (pathname === '/tasks/new' || pathname === '/sessions/draft' || search.tab) return false
@@ -53,6 +55,14 @@ export function useMinimalistLayout(): boolean {
 	const location = useLocation()
 	const search = location.search as Record<string, unknown>
 	return (tabOverride(search) ?? enabled) && supportsMinimalistLayout(location.pathname, search)
+}
+
+/**
+ * The standard theme's `onThemeChange`. The minimalist frame sets the window theme from its own
+ * preference (System included), so the standard theme only reports to the window outside it.
+ */
+export function useWindowThemeReporter(): ((theme: Theme) => Promise<void>) | undefined {
+	return useMinimalistLayout() ? undefined : setWindowTheme
 }
 
 /**

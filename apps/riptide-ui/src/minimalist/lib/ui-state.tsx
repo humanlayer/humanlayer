@@ -1,5 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react'
 
+import { setWindowAppearance } from '@/integrations/desktop/theme'
+
 export type ThemePreference = 'system' | 'light' | 'dark'
 
 type UiState = {
@@ -82,6 +84,8 @@ export function UiProvider({ children }: { children: ReactNode }) {
 	const setTheme = useCallback((next: ThemePreference) => {
 		store('hl-min-theme', next)
 		setThemeState(next)
+		// The window only follows the OS again when it is told 'system'; see useWindowAppearance.
+		void setWindowAppearance(next)
 	}, [])
 	const showToast = useCallback<UiState['showToast']>((text, action) => {
 		toastCount += 1

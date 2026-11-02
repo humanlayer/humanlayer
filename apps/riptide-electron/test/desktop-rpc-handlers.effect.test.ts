@@ -8,6 +8,7 @@ import {
 	ExternalUrlOpenError,
 	HostIdPersistenceError,
 	WindowThemeSetError,
+	type WindowTheme,
 } from '@humanlayer/riptide-electron-rpc'
 import * as Crypto from 'effect/Crypto'
 import * as Effect from 'effect/Effect'
@@ -310,7 +311,7 @@ describe('DesktopRpcHandlers', () => {
 	})
 
 	it.effect('sets the window theme and narrows rich service failures', () => {
-		const themes: Array<'light' | 'dark'> = []
+		const themes: Array<WindowTheme> = []
 		const dependencies = Layer.mergeAll(
 			diagnosticsServices,
 			hostLogService,
@@ -328,9 +329,10 @@ describe('DesktopRpcHandlers', () => {
 		return Effect.gen(function* () {
 			const client = yield* RpcTest.makeClient(DesktopRpc.omit('DragWindow'))
 			yield* client.SetWindowTheme({ theme: 'light' })
+			yield* client.SetWindowTheme({ theme: 'system' })
 			const failure = yield* Effect.flip(client.SetWindowTheme({ theme: 'dark' }))
 
-			expect(themes).toEqual(['light'])
+			expect(themes).toEqual(['light', 'system'])
 			expect(failure).toStrictEqual(new WindowThemeSetError({ message: 'Failed to set window theme' }))
 		}).pipe(
 			Effect.provide(

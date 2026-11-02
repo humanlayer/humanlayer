@@ -1,3 +1,4 @@
+import type { WindowTheme } from '@humanlayer/riptide-electron-rpc'
 import * as Context from 'effect/Context'
 import type * as Effect from 'effect/Effect'
 import type * as Stream from 'effect/Stream'
@@ -20,7 +21,7 @@ export interface WindowServiceShape {
 	// Emits every window handle after it opens so runtime wiring (for example the
 	// RPC port attachment) can react without the window service knowing about it.
 	readonly openedWindows: Stream.Stream<ElectronWindowHandle>
-	readonly setWindowTheme: (input: { readonly theme: 'light' | 'dark' }) => Effect.Effect<void, WindowThemeError>
+	readonly setWindowTheme: (input: { readonly theme: WindowTheme }) => Effect.Effect<void, WindowThemeError>
 	readonly setZoom: (input: { readonly zoomFactor: number }) => Effect.Effect<void, WindowZoomError>
 }
 

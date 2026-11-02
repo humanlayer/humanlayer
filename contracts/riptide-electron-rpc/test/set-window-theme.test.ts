@@ -5,14 +5,14 @@ import { describe, expect, it } from 'vitest'
 import { SetWindowThemePayload, WindowThemeSetError } from '../src/desktop-rpc.js'
 
 describe('SetWindowTheme contract', () => {
-	it('accepts only light and dark', async () => {
-		for (const theme of ['light', 'dark']) {
+	it('accepts light, dark, and system', async () => {
+		for (const theme of ['light', 'dark', 'system']) {
 			await expect(
 				Effect.runPromise(Schema.decodeUnknownEffect(SetWindowThemePayload)({ theme })),
 			).resolves.toEqual({ theme })
 		}
 		await expect(
-			Effect.runPromise(Schema.decodeUnknownEffect(SetWindowThemePayload)({ theme: 'system' })),
+			Effect.runPromise(Schema.decodeUnknownEffect(SetWindowThemePayload)({ theme: 'rose-pine' })),
 		).rejects.toBeDefined()
 	})
 

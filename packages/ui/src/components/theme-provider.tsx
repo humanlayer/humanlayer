@@ -63,11 +63,13 @@ export function ThemeProvider({
     document.documentElement.setAttribute('data-theme', theme)
 
     // Call optional callback for app-specific integration (e.g., Tauri)
-    if (onThemeChange) {
-      setTimeout(() => {
-        onThemeChange(theme)
-      }, 10)
-    }
+    if (!onThemeChange) return
+    const timeout = setTimeout(() => {
+      onThemeChange(theme)
+    }, 10)
+    // A report still pending when the theme or callback changes is stale; dropping it keeps
+    // it from overwriting whatever owns the window theme now.
+    return () => clearTimeout(timeout)
   }, [theme, storageKey, onThemeChange, isLoaded])
 
   return (

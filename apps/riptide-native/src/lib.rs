@@ -422,6 +422,7 @@ fn set_window_theme(window: tauri::WebviewWindow, theme: String) -> Result<(), S
     let tauri_theme = match theme.as_str() {
         "light" => Some(tauri::Theme::Light),
         "dark" => Some(tauri::Theme::Dark),
+        "system" => None,
         _ => return Err(format!("Unknown theme: {}", theme)),
     };
     window
