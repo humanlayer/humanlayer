@@ -2,6 +2,28 @@
 
 This page lists changes in each HumanLayer release. Download the latest build from [cloud.humanlayer.com/install](https://cloud.humanlayer.com/install).
 
+## 0.201.0 — November 2, 2026
+
+In the minimalist UI, a task started on a directory now runs in its own worktrees instead of editing your checkout. Comments in fullscreen diff review now work on every file, and the changes view loads even if you open it before the first diff. The daemon also hides its `.shadow` folder from git, so agents no longer commit it.
+
+**Highlights**
+
+- **Worktrees for directory tasks (Minimalist UI)** - On a local host, a task started on a directory gets worktrees from the directory's `.humanlayer/workspace.json`, or one worktree of the repo if there is no file. Pick "In this directory" on the launch chip to edit in place. HumanLayer remembers your choice for each directory.
+- **Fullscreen diff comments work** - Comment boxes on added and deleted files stay on screen, and clicks near the edges reach the review, not the panels behind it.
+- **Changes view loads** - If you open a task's changes before the daemon's first diff, the view now waits for the diff instead of spinning forever or showing "Could not load the changes".
+
+**Other Changes**
+
+- **`.shadow` folder hidden from git** - The daemon adds `/.shadow/` to the repo's git exclude file, so `git status` stays clean and `git add -A` skips the folder.
+- **Full paths for sibling folders** - A file in a folder whose name starts with the working directory's name, such as `app-old` next to `app`, now shows its full path.
+- **No stray scroll bars** - Empty comment boxes and composers no longer show a sideways scroll bar when you zoom in the desktop app.
+- **HumanLayer core is open source** - The desktop app, daemon, CLI, web UI, API, and plugins now live at [github.com/humanlayer/humanlayer](https://github.com/humanlayer/humanlayer). Hosted HumanLayer stays the same.
+
+### Minimalist UI (Beta) Updates
+
+- **Session list keeps its rows** - A long artifact list no longer squeezes a short session list in the task nav.
+- **Shared alerts use the minimalist toast** - Errors from the API, the daemon, sign-in, and copy and open actions now show in the minimalist UI's own toast.
+
 ## 0.183.0 — October 14, 2026
 
 Teams that run everything on remote hosts can now turn off the desktop app's local daemon, and the daemon starts much faster on large organizations. The minimalist UI moves from alpha to beta: it is on by default for new devices, and it gains multiplayer prompting, HTML artifacts, and a resizable file tree.

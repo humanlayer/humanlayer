@@ -1,7 +1,7 @@
 {
   "name": "@humanlayer/riptide-native",
   "private": true,
-  "version": "0.200.0",
+  "version": "0.201.0",
   "type": "module",
   "scripts": {
     "dev": "bun run build:daemon && if [ -f ../../.devstack.json ]; then set -a && source ../../.env && set +a && bun run tauri dev --config tauri.stack.json; else bun run tauri dev --config tauri.local.conf.json; fi",
