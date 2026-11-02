@@ -74,17 +74,15 @@ export function useHostClock(): HostClock {
 
 /**
  * Whether a host reads live. Right after a wake the rows on hand predate the pause, so a host that was
- * live when sync paused stays live for a short grace, even if the server marked it offline meanwhile.
- * Its daemon may have slept too, and its first beat after wake is on the way.
+ * beating when sync paused is not called stale for a short grace while fresh rows arrive.
  */
 export function hostLiveness(
 	status: 'online' | 'offline',
 	lastSeen: number,
 	clock: HostClock,
 ): { online: boolean; stale: boolean } {
-	const stale = clock.now - lastSeen > STALE_AFTER_MS
 	const inGrace = clock.now - clock.resumedAt < RESUME_GRACE_MS && clock.pausedAt - lastSeen <= STALE_AFTER_MS
-	if (inGrace) return { online: true, stale: false }
+	const stale = !inGrace && clock.now - lastSeen > STALE_AFTER_MS
 	return { online: status === 'online' && !stale, stale }
 }
 

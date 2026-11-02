@@ -2,7 +2,7 @@ import { hostname } from 'node:os'
 
 import { DAEMON_CAPABILITIES } from '@humanlayer/riptide-api-contract/daemon/heartbeat'
 import type { HostModelCatalog } from '@humanlayer/schemas/zod/model-catalog'
-import { Clock, Data, Duration, Effect, Fiber, type ManagedRuntime, Queue, Schedule, Stream } from 'effect'
+import { Data, Duration, Effect, Fiber, type ManagedRuntime, Queue, Schedule, Stream } from 'effect'
 
 import { HostMachineStats } from '@/effects/services/host-machine-stats/host-machine-stats.service'
 import { BUILD_VERSION } from '@/lib/macros'
@@ -11,12 +11,9 @@ import type { ManagedDaemonRuntimeConfig } from '@/managed-daemon-start'
 import type { ORPCClient } from '@/orpc/client'
 import { shouldRetryORPCRequest } from '@/orpc/retry-policy'
 
-// Keep well under the sweeper's STALE_DAEMON_AFTER_MS (120s): a host is swept — running
+// Keep well under the API's HOST_STALE_AFTER_MS (120s): a host is swept — running
 // sessions failed, approvals rejected — after missing 8 consecutive beats.
 const HEARTBEAT_INTERVAL = Duration.seconds(15)
-// Timers pause while the machine sleeps, so the interval's beat can land up to 15 s after wake.
-// The wall clock does not pause; checking it this often catches a wake within a few seconds.
-const WAKE_CHECK_INTERVAL = Duration.seconds(5)
 // A connection that died while the machine slept never settles; abort the beat so the next one runs.
 export const HEARTBEAT_TIMEOUT = Duration.seconds(10)
 const REGISTERING_BEAT_RETRY_INTERVAL = Duration.seconds(5)
@@ -152,18 +149,6 @@ export async function startHeartbeat(
 
 	const beat = sendHeartbeatLoggingFailure(target)
 	const onInterval = Effect.sleep(HEARTBEAT_INTERVAL).pipe(Effect.andThen(beat), Effect.forever)
-	// A check that lands an interval late means the machine slept; beat now rather than wait out the interval.
-	const onWake = Effect.gen(function* () {
-		const sleptAfterMs = Duration.toMillis(WAKE_CHECK_INTERVAL) + Duration.toMillis(HEARTBEAT_INTERVAL)
-		let lastCheck = yield* Clock.currentTimeMillis
-		while (true) {
-			yield* Effect.sleep(WAKE_CHECK_INTERVAL)
-			const now = yield* Clock.currentTimeMillis
-			const slept = now - lastCheck > sleptAfterMs
-			lastCheck = now
-			if (slept) yield* beat
-		}
-	})
 	const onUsageLimitChange = HostUsageLimits.pipe(
 		Effect.flatMap((usageLimits) =>
 			usageLimits.changes.pipe(
@@ -172,7 +157,7 @@ export async function startHeartbeat(
 			),
 		),
 	)
-	const fiber = runtime.runFork(Effect.all([onInterval, onWake, onUsageLimitChange], { concurrency: 'unbounded' }))
+	const fiber = runtime.runFork(Effect.all([onInterval, onUsageLimitChange], { concurrency: 'unbounded' }))
 
 	return {
 		stop: () => {

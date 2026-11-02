@@ -23,8 +23,7 @@ describe('hostLiveness', () => {
 		const resumed = { now, pausedAt, resumedAt: now }
 
 		expect(hostLiveness('online', lastSeen, resumed)).toEqual({ online: true, stale: false })
-		// The sweeper marked it offline while the laptop slept; its daemon beats again soon.
-		expect(hostLiveness('offline', lastSeen, resumed)).toEqual({ online: true, stale: false })
+		expect(hostLiveness('offline', lastSeen, resumed)).toEqual({ online: false, stale: false })
 		expect(hostLiveness('online', lastSeen, { ...resumed, now: now + RESUME_GRACE_MS })).toEqual({
 			online: false,
 			stale: true,
