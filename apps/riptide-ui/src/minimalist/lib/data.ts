@@ -8,6 +8,7 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import { useLocation, useParams, useSearch } from '@tanstack/react-router'
 import { useMemo } from 'react'
 
+import { getOnlineHostKey } from '@/collections/online-host-key'
 import { LAUNCHER_FALLBACK_SLASH_COMMANDS } from '@/components/launcher-v3/prompt/launcher-slash-commands'
 import { useSync } from '@/components/providers/SyncProvider'
 import { RESPONSE_SLASH_COMMANDS } from '@/constants/response-slash-commands'
@@ -19,6 +20,7 @@ import { useBrowserAuth as useAuth } from '@/hooks/use-browser-auth'
 import { useLocalHostId } from '@/hooks/use-colocated'
 import { matchesTaskScope, type TaskScope } from '@/lib/tasks/taskScope'
 import { basename, toMs } from '@/minimalist/lib/format'
+import { type HostClock, hostLiveness, useHostClock } from '@/minimalist/lib/host-clock'
 import { type Attention, rollupAttention } from '@/minimalist/lib/status'
 import { useFailedSetups } from '@/minimalist/lib/workspace-setup'
 import { useRiptideApi } from '@/orpc/client'
@@ -351,8 +353,6 @@ export type HostView = {
 	local: boolean
 }
 
-const STALE_AFTER_MS = 30_000
-
 /**
  * Online hosts first, then offline ones. In each, this computer's host leads, so the launcher's
  * default (the first online host) is local when it can be. Then online hosts go by name and offline
@@ -376,25 +376,17 @@ export function useHosts(): { hosts: HostView[]; isReady: boolean } {
 	const { onlineHostsCollection: hosts } = useSync()
 	const { user } = useAuth()
 	const localHostId = useLocalHostId()
+	const clock = useHostClock()
+	const checked = useResumeCheck(clock.resumedAt)
 	const query = useLiveQuery((q) => q.from({ hosts }), [hosts])
-	const list = useMemo(() => {
-		const now = Date.now()
-		return (query.data ?? [])
-			.filter((host) => host.user_id === user?.id)
-			.map((host) => {
-				const lastSeen = toMs(host.last_seen)
-				const stale = now - lastSeen > STALE_AFTER_MS
-				return {
-					host,
-					name: host.host_name || host.host_id.slice(0, 8),
-					online: host.status === 'online' && !stale,
-					stale,
-					lastSeen,
-					local: host.host_id === localHostId,
-				}
-			})
-			.sort(compareHosts)
-	}, [query.data, user?.id, localHostId])
+	const list = useMemo(
+		() =>
+			(query.data ?? [])
+				.filter((host) => host.user_id === user?.id)
+				.map((host) => toHostView(host, clock, checked, localHostId))
+				.sort(compareHosts),
+		[query.data, user?.id, localHostId, clock, checked],
+	)
 	return { hosts: list, isReady: query.isReady }
 }
 
@@ -414,20 +406,57 @@ export function useHost(
 				: undefined,
 		[hosts, hostId, daemonUserId],
 	)
+	const clock = useHostClock()
+	const checked = useResumeCheck(clock.resumedAt)
 	const host = query.data?.[0]
 	if (!host) return { host: null, isReady: query.isReady }
-	const lastSeen = toMs(host.last_seen)
-	const stale = Date.now() - lastSeen > STALE_AFTER_MS
-	return {
-		host: {
-			host,
-			name: host.host_name || host.host_id.slice(0, 8),
-			online: host.status === 'online' && !stale,
-			stale,
-			lastSeen,
-			local: host.host_id === localHostId,
+	return { host: toHostView(host, clock, checked, localHostId), isReady: query.isReady }
+}
+
+type CheckedHost = { status: HostRow['status']; lastSeen: number }
+
+/**
+ * After a wake, synced rows can take a while to catch up. For a minute, ask the API directly too,
+ * so a host that is beating reads live as soon as it beats.
+ */
+function useResumeCheck(resumedAt: number): Map<string, CheckedHost> | undefined {
+	const { client } = useRiptideApi()
+	const { data } = useQuery({
+		queryKey: ['minimalist-host-resume-check', resumedAt],
+		queryFn: async () => {
+			const { rows } = await client.sync.v2.onlineHosts({})
+			return new Map(
+				rows.map((row): [string, CheckedHost] => [
+					getOnlineHostKey(row),
+					{ status: row.status, lastSeen: toMs(row.last_seen) },
+				]),
+			)
 		},
-		isReady: query.isReady,
+		enabled: resumedAt > 0,
+		refetchInterval: () => (Date.now() - resumedAt < RESUME_CHECK_MS ? RESUME_CHECK_EVERY_MS : false),
+		retry: false,
+	})
+	return data
+}
+
+const RESUME_CHECK_MS = 60_000
+const RESUME_CHECK_EVERY_MS = 5_000
+
+function toHostView(
+	host: HostRow,
+	clock: HostClock,
+	checked: Map<string, CheckedHost> | undefined,
+	localHostId: string | null | undefined,
+): HostView {
+	const synced = { status: host.status, lastSeen: toMs(host.last_seen) }
+	const fresh = checked?.get(getOnlineHostKey(host))
+	const { status, lastSeen } = fresh && fresh.lastSeen > synced.lastSeen ? fresh : synced
+	return {
+		host,
+		name: host.host_name || host.host_id.slice(0, 8),
+		...hostLiveness(status, lastSeen, clock),
+		lastSeen,
+		local: host.host_id === localHostId,
 	}
 }
 
