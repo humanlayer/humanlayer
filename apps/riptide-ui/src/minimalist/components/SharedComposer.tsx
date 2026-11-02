@@ -188,6 +188,7 @@ function SharedComposerReady({
 			!editor ||
 			!writable ||
 			props.disabled ||
+			props.submitDisabled ||
 			props.attachments?.blocked ||
 			sending ||
 			(!text.trim() && !props.attachments?.metadata.length)

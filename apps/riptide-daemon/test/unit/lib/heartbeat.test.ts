@@ -136,6 +136,20 @@ describe('startHeartbeat', () => {
 		expect(heartbeat).toHaveBeenCalledTimes(3)
 	})
 
+	test('beats within one check of the wall clock jumping, as after the machine sleeps', async () => {
+		const heartbeat = heartbeatMock()
+		const running = await startHeartbeat(runtime, 'host-1', makeOrpc(heartbeat), capabilities)
+
+		await vi.advanceTimersByTimeAsync(15_000)
+		expect(heartbeat).toHaveBeenCalledTimes(2)
+
+		vi.setSystemTime(Date.now() + 10 * 60_000)
+		await vi.advanceTimersByTimeAsync(5_000)
+		running.stop()
+
+		expect(heartbeat).toHaveBeenCalledTimes(3)
+	})
+
 	test('retries a registering beat that never settles until one lands', async () => {
 		const signals: AbortSignal[] = []
 		const heartbeat = heartbeatMock().mockImplementationOnce(neverSettles(signals))
