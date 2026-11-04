@@ -406,6 +406,47 @@ describe('WorkspaceSetupExecutor', () => {
 		}).pipe(Effect.provide(executorRuntimeLayer), Effect.scoped),
 	)
 
+	it.effect('preflights an unborn default branch by creating an initial empty commit', () =>
+		Effect.gen(function* () {
+			const fileSystem = yield* FileSystem.FileSystem
+			const path = yield* Path.Path
+			const fixture = yield* fileSystem.makeTempDirectoryScoped({ prefix: 'workspace-executor-unborn-' })
+			const source = path.join(fixture, 'source')
+			const target = path.join(fixture, 'target')
+			yield* runProcess('git', ['init', '--initial-branch=main', source])
+			yield* runProcess('git', ['-C', source, 'config', 'user.email', 'test@example.com'])
+			yield* runProcess('git', ['-C', source, 'config', 'user.name', 'Test User'])
+
+			const executor = yield* WorkspaceSetupExecutor
+			const operation = {
+				taskId: 'task-unborn',
+				hostId: 'host-unborn',
+				directory: source,
+				repo: {
+					localPath: '.',
+					targetPath: target,
+					branch: 'unborn-task-branch',
+					sourceRef: 'HEAD',
+					setupCommand: 'true',
+					copyGlobs: [],
+					primary: true,
+				},
+			} as const
+			const preflight = yield* executor.preflightRepo(operation)
+			expect(preflight.resolvedSourceCommit).toMatch(/^[0-9a-f]{40}$/)
+
+			const worktree = yield* executor.createOrAdoptWorktree({
+				...operation,
+				resolvedSourceCommit: preflight.resolvedSourceCommit,
+			})
+			expect(worktree.targetPath).toBe(target)
+			expect(worktree.adopted).toBe(false)
+			expect((yield* runProcess('git', ['-C', target, 'branch', '--show-current'])).trim()).toBe(
+				'unborn-task-branch',
+			)
+		}).pipe(Effect.provide(executorRuntimeLayer), Effect.scoped),
+	)
+
 	it.effect('still fails preflight when the existing target is not the task worktree', () =>
 		Effect.gen(function* () {
 			const fileSystem = yield* FileSystem.FileSystem

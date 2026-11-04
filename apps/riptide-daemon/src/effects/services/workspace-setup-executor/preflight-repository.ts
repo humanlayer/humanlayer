@@ -226,13 +226,61 @@ export const preflightWorkspaceRepository = (input: WorkspaceRepoOperationInput)
 		}
 
 		const sourceIdentity = input.repo.sourceCommit ?? input.repo.sourceRef
-		const resolved = yield* runCapturedWorkspaceProcessObserved({
+		let resolved = yield* runCapturedWorkspaceProcessObserved({
 			workspace: input,
 			stage: 'preflight',
 			command: 'git',
 			args: ['rev-parse', '--verify', `${sourceIdentity}^{commit}`],
 			workingDirectory: sourceDirectory,
 		})
+		if ((resolved.exitCode !== 0 || resolved.stdout.trim().length === 0) && input.repo.sourceCommit === undefined) {
+			const headCheck = yield* runCapturedWorkspaceProcessObserved({
+				workspace: input,
+				stage: 'preflight',
+				command: 'git',
+				args: ['rev-parse', 'HEAD'],
+				workingDirectory: sourceDirectory,
+			})
+			if (headCheck.exitCode !== 0) {
+				const initialCommit = yield* runCapturedWorkspaceProcessObserved({
+					workspace: input,
+					stage: 'preflight',
+					command: 'git',
+					args: [
+						'-c',
+						'user.email=humanlayer@local',
+						'-c',
+						'user.name=HumanLayer',
+						'commit',
+						'--allow-empty',
+						'-m',
+						'Initial empty commit',
+					],
+					workingDirectory: sourceDirectory,
+				})
+				if (initialCommit.exitCode !== 0) {
+					const error: MutableWorkspaceSetupExecutorErrorFields = {
+						...input,
+						localPath: input.repo.localPath,
+						stage: 'preflight',
+						message: 'Unable to create initial commit on unborn branch',
+						command: 'git commit --allow-empty -m "Initial empty commit"',
+						workingDirectory: sourceDirectory,
+						exitCode: initialCommit.exitCode,
+					}
+					const excerpt = stderrExcerpt(initialCommit.stderr)
+					if (excerpt !== undefined) error.stderr = excerpt
+					return yield* Effect.fail(new WorkspacePreflightError(error))
+				}
+				resolved = yield* runCapturedWorkspaceProcessObserved({
+					workspace: input,
+					stage: 'preflight',
+					command: 'git',
+					args: ['rev-parse', '--verify', `${sourceIdentity}^{commit}`],
+					workingDirectory: sourceDirectory,
+				})
+			}
+		}
 		if (resolved.exitCode !== 0 || resolved.stdout.trim().length === 0) {
 			const error: MutableWorkspaceSetupExecutorErrorFields = {
 				...input,
