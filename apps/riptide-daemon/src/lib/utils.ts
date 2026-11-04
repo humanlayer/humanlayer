@@ -12,12 +12,14 @@ export function requireEnvironment(key: string, defaultValue?: string) {
 }
 
 /**
- * Normalize a path to handle the user home dir if specified
+ * Normalize a path: expand ~ to the home directory and resolve relative paths
+ * to absolute using the current working directory.
  * @param filePath
- * @returns
+ * @returns an absolute path
  */
 export function normalizePath(filePath: string) {
-	return filePath.startsWith('~') ? path.join(homedir(), filePath.slice(1)) : filePath
+	const expanded = filePath.startsWith('~') ? path.join(homedir(), filePath.slice(1)) : filePath
+	return path.resolve(expanded)
 }
 
 export async function ensureDir(filePath: string) {
@@ -38,7 +40,7 @@ export interface WorkingDirectoryValidation {
 
 /**
  * Validates that a working directory exists and is actually a directory.
- * Normalizes the path first (handles ~ expansion).
+ * Normalizes the path first (expands ~ and resolves relative paths).
  */
 export async function validateWorkingDirectory(filePath: string): Promise<WorkingDirectoryValidation> {
 	const normalizedPath = normalizePath(filePath)
