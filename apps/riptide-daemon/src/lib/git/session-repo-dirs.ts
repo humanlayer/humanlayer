@@ -28,7 +28,7 @@ export async function sessionRepoDirs(input: {
 	setupRows: WorkspaceSetupRows
 }): Promise<string[]> {
 	const { session, services, setupRows } = input
-	// normalizePath: a `~`-prefixed working_directory would hand git an invalid cwd and the
+	// normalizePath: an unresolved working_directory (~-prefixed or relative) would hand git an invalid cwd and the
 	// session's repo would never resolve (the arm/renew paths normalize the same way).
 	const workingDirectory = normalizePath(session.working_directory)
 	const dirs = [workingDirectory]

@@ -1,5 +1,6 @@
 import { unlink, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
+import { resolve } from 'node:path'
 
 import { describe, expect, test } from 'vitest'
 
@@ -21,9 +22,14 @@ describe('normalizePath', () => {
 		expect(result).toBe('/absolute/path')
 	})
 
-	test('returns relative path unchanged', () => {
+	test('resolves relative path to absolute', () => {
 		const result = normalizePath('relative/path')
-		expect(result).toBe('relative/path')
+		expect(result).toBe(resolve('relative/path'))
+	})
+
+	test('resolves dot-relative path to absolute', () => {
+		const result = normalizePath('./some/dir')
+		expect(result).toBe(resolve('./some/dir'))
 	})
 
 	test('does not expand ~ in middle of path', () => {
