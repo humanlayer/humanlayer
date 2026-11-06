@@ -298,3 +298,41 @@ Create hello.txt with "hi", then reply done.
 The web app should show the prompt, the write call and the reply, with the session ending ready for input. The task's diff should list `hello.txt` as added.
 
 The login saves `dev` as the default channel, so from then on every pi session that mirrors goes to dev, headless runs (`pi -p`) included, even without `HUMANLAYER_CHANNEL`. `/humanlayer login prod` moves the default back; `/humanlayer logout` or `pi remove /path/to/pi-humanlayer` stops mirroring.
+
+## Delegated agents
+
+This package ships seven canonical HumanLayer agent definitions in `agents/`.
+Delegation requires nicobailon's **pi-subagents**, installed separately:
+
+```bash
+pi install npm:pi-subagents
+```
+
+This is not the Tintin Agent API. If `subagents_enable` is available, call that
+model tool before delegation. Restart Pi after setup. Existing recorded sessions
+can retain their previous tool selection; see pi-subagents tool activation
+documentation for recovery with `toolActivation: "dynamic"`.
+The package declares its agent directory through `pi-subagents.agents` metadata.
+
+Delegate explicitly through the `subagent` tool, for example:
+
+```text
+subagent({agent: "codebase-locator", task: "Find the session binding implementation", cwd: "/path/to/repo"})
+```
+
+The other names are `codebase-analyzer`, `codebase-pattern-finder`,
+`implementation-reviewer`, `implementer-agent`, `outline-implementer-agent`, and
+`web-search-researcher`. Definitions omit a model override to inherit the parent
+model unless loader settings override it. Web research requires an available web
+extension registering `web_search` and `fetch_content` in the child. Missing
+providers may prevent launch; these are not built-in Pi tools.
+
+From this source package, run `bun run agents:generate` after canonical agent
+changes, then `bun run agents:check` and `node --test test/agents.test.ts`.
+The generator preserves canonical prompts verbatim after a separate Pi tool
+compatibility preamble. Generated Markdown is checked in; do not edit it directly.
+These checks validate packaging and content, not live child execution.
+
+Release gate: this checkout lacks `scripts/build.ts`, although `bun run build`
+references it. Build and publish verification remain blocked; this agent packaging
+change does not restore that tooling.

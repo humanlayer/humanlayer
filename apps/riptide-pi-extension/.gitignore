@@ -2,3 +2,8 @@ node_modules/
 *.log
 .DS_Store
 dist/
+
+# Ship the canonical agent generator, not other local scripts.
+!/scripts/
+/scripts/*
+!/scripts/generate-agents.ts

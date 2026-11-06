@@ -9,6 +9,7 @@
 	"files": [
 		"src",
 		"skills",
+		"agents",
 		"README.md"
 	],
 	"type": "module",
@@ -17,7 +18,9 @@
 		"typecheck": "tsc --noEmit",
 		"check": "bun run typecheck && bun run test",
 		"build": "bun scripts/build.ts",
-		"mock-cloud": "node test/mock-cloud/server.ts"
+		"mock-cloud": "node test/mock-cloud/server.ts",
+		"agents:generate": "node scripts/generate-agents.ts",
+		"agents:check": "node scripts/generate-agents.ts --check"
 	},
 	"dependencies": {
 		"@humanlayer/session-sdk-artifacts": "workspace:*",
@@ -44,6 +47,11 @@
 	"pi": {
 		"extensions": [
 			"./src/pi-humanlayer.ts"
+		]
+	},
+	"pi-subagents": {
+		"agents": [
+			"./agents"
 		]
 	}
 }
