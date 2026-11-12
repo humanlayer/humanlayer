@@ -1,0 +1,76 @@
+#!/usr/bin/env node
+
+import { createRequire } from "module";
+import { platform, arch } from "os";
+import { spawn } from "child_process";
+
+const require = createRequire(import.meta.url);
+
+const PLATFORMS = {
+  "darwin-arm64": "@humanlayer/cli-darwin-arm64",
+  "darwin-x64": "@humanlayer/cli-darwin-x64",
+  "linux-arm64": "@humanlayer/cli-linux-arm64",
+  "linux-x64": "@humanlayer/cli-linux-x64",
+  "win32-x64": "@humanlayer/cli-win32-x64",
+};
+
+const key = `${platform()}-${arch()}`;
+const pkg = PLATFORMS[key];
+
+if (!pkg) {
+  console.error(
+    `Unsupported platform: ${key}\nSupported: ${Object.keys(PLATFORMS).join(", ")}`
+  );
+  process.exit(1);
+}
+
+const ext = platform() === "win32" ? ".exe" : "";
+let binPath;
+try {
+  binPath = require.resolve(`${pkg}/bin/humanlayer${ext}`);
+} catch {
+  console.error(
+    `Could not find binary package ${pkg}.\n` +
+    `This usually means npm did not install the platform-specific package.\n` +
+    `Try: npm install @humanlayer/cli --force`
+  );
+  process.exit(1);
+}
+
+const RESTART_EXIT_CODE = 75;
+const childEnv = { ...process.env, HUMANLAYER_SHIM_RESTART_EXIT_CODE: String(RESTART_EXIT_CODE) };
+
+let child;
+const signals = ["SIGINT", "SIGTERM", "SIGHUP"];
+for (const signal of signals) {
+  process.on(signal, () => child?.kill(signal));
+}
+
+function run() {
+  child = spawn(binPath, process.argv.slice(2), { stdio: "inherit", env: childEnv });
+
+  child.on("error", (error) => {
+    console.error(`Failed to start ${binPath}: ${error.message}`);
+    process.exit(1);
+  });
+
+  child.on("exit", (code, signal) => {
+    if (code === RESTART_EXIT_CODE) {
+      run();
+      return;
+    }
+
+    for (const registeredSignal of signals) {
+      process.removeAllListeners(registeredSignal);
+    }
+
+    if (signal) {
+      process.kill(process.pid, signal);
+      return;
+    }
+
+    process.exit(code ?? 1);
+  });
+}
+
+run();
