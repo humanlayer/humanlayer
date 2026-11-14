@@ -1,5 +1,5 @@
 import { homedir } from 'node:os'
-import { resolve } from 'node:path'
+import { isAbsolute, resolve, sep } from 'node:path'
 
 /**
  * Extract file_path from tool input for Read/Write/Edit tools.
@@ -47,10 +47,10 @@ export function isWhitelistedBashCommand(command: string): boolean {
  * Handles both absolute and relative paths.
  */
 export function isArtifactPath(rawPath: string, cwd: string): boolean {
-	const filePath = rawPath.startsWith('/') ? rawPath : resolve(cwd, rawPath)
-	const rpiPrefix = `${resolve(cwd, 'rpi')}/`
-	const humanlayerPrefix = `${resolve(cwd, '.humanlayer', 'tasks')}/`
-	const artifactStoragePrefix = `${resolve(homedir(), '.humanlayer', 'riptide', 'artifacts')}/`
+	const filePath = isAbsolute(rawPath) ? rawPath : resolve(cwd, rawPath)
+	const rpiPrefix = resolve(cwd, 'rpi') + sep
+	const humanlayerPrefix = resolve(cwd, '.humanlayer', 'tasks') + sep
+	const artifactStoragePrefix = resolve(homedir(), '.humanlayer', 'riptide', 'artifacts') + sep
 	return (
 		filePath.startsWith(rpiPrefix) ||
 		filePath.startsWith(humanlayerPrefix) ||
