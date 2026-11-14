@@ -6,9 +6,10 @@ import { useUnreadStore } from '@/hooks/stores/unreadStore'
 
 import { ThreadView } from './ThreadView'
 
-const { useSessionThread, useSlashCommands, useTask, WorkspaceSetup, Composer, Transcript, scrollIntoView } =
+const { useSessionThread, useSlashCommands, useTask, useHost, WorkspaceSetup, Composer, Transcript, scrollIntoView } =
 	vi.hoisted(() => ({
 		useSessionThread: vi.fn(),
+		useHost: vi.fn(),
 		useSlashCommands: vi.fn(),
 		useTask: vi.fn(),
 		WorkspaceSetup: vi.fn(),
@@ -49,7 +50,7 @@ vi.mock('@/minimalist/lib/access', () => ({
 }))
 vi.mock('@/minimalist/lib/data', () => ({
 	useSessionThread,
-	useHost: () => ({ host: null }),
+	useHost,
 	useTask,
 	useTaskArtifacts: () => [],
 	useSlashCommands,
@@ -85,6 +86,7 @@ function session(status: string) {
 beforeEach(() => {
 	vi.clearAllMocks()
 	useSlashCommands.mockReturnValue([])
+	useHost.mockReturnValue({ host: null })
 	useTask.mockReturnValue({ task: { id: 'task', name: 'Task' } })
 	session('running')
 	WorkspaceSetup.mockImplementation(() => <div>Workspace recovery</div>)
@@ -229,5 +231,28 @@ describe('visible-session unread state', () => {
 		view.rerender(<ThreadView sessionId="session" taskManaged visible={false} />)
 		useUnreadStore.getState().markUnread('session')
 		expect(useUnreadStore.getState().unreadSessionIds).toEqual(new Set(['session', 'sibling']))
+	})
+})
+
+describe('offline host', () => {
+	it('keeps the composer open for typing and turns off sending', () => {
+		session('ready_for_input')
+		useHost.mockReturnValue({ host: { name: 'Laptop', online: false, host: {} } })
+		render(<ThreadView sessionId="session" />)
+		expect(Composer.mock.lastCall?.[0].disabled).toBeFalsy()
+		expect(Composer.mock.lastCall?.[0]).toMatchObject({
+			submitDisabled: true,
+			submitBlocked: 'Start the daemon on Laptop to send',
+			placeholder: "Laptop is offline — send once it's back",
+		})
+	})
+
+	it('sends as usual while the host is online', () => {
+		session('ready_for_input')
+		useHost.mockReturnValue({ host: { name: 'Laptop', online: true, host: {} } })
+		render(<ThreadView sessionId="session" />)
+		expect(Composer.mock.lastCall?.[0].disabled).toBeFalsy()
+		expect(Composer.mock.lastCall?.[0].submitDisabled).toBe(false)
+		expect(Composer.mock.lastCall?.[0].submitBlocked).toBeUndefined()
 	})
 })

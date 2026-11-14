@@ -306,7 +306,11 @@ export function ThreadView({
 							onInterruptAndSend={() => void submit('interrupt_and_send')}
 							onCompact={() => void agent.compact()}
 							running={running && !denying && !settingUp}
-							disabled={hostOffline || stop.pending || agent.pending}
+							disabled={stop.pending || agent.pending}
+							submitDisabled={hostOffline}
+							submitBlocked={
+								hostOffline ? `Start the daemon on ${host?.name ?? 'the host'} to send` : undefined
+							}
 							placeholder={composerPlaceholder({
 								denying: denying !== null,
 								hostOffline,
@@ -432,7 +436,7 @@ function composerPlaceholder(state: {
 	settingUp: boolean
 }) {
 	if (state.denying) return 'Tell the agent what to do instead'
-	if (state.hostOffline) return `${state.hostName ?? 'The host'} is offline`
+	if (state.hostOffline) return `${state.hostName ?? 'The host'} is offline — send once it's back`
 	if (state.settingUp) return 'Queue a message. It sends after setup succeeds.'
 	if (state.running) return 'Queue a follow-up. It sends when the agent finishes.'
 	return 'Ask for follow-up changes'

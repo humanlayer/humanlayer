@@ -185,3 +185,35 @@ describe('minimalist composer file drops', () => {
 		expect(activeViewportFileDropHandler()).toBeNull()
 	})
 })
+
+describe('minimalist composer with sending off', () => {
+	it('takes typing but not sending, and says why on the send button', () => {
+		const onSubmit = vi.fn()
+		function Blocked() {
+			const [value, setValue] = useState('')
+			return (
+				<Composer
+					value={value}
+					onChange={setValue}
+					onSubmit={onSubmit}
+					placeholder="Laptop is offline"
+					settings={settings}
+					onSettingsChange={() => {}}
+					catalog={{ models: [], codexSignedOut: false }}
+					submitDisabled
+					submitBlocked="Start the daemon on Laptop to send"
+				/>
+			)
+		}
+		render(<Blocked />)
+
+		const input = type('still here')
+		expect(input).toHaveProperty('disabled', false)
+		expect(input).toHaveProperty('value', 'still here')
+		fireEvent.keyDown(input, { key: 'Enter' })
+		const send = screen.getByRole('button', { name: 'Send' })
+		expect(send).toHaveProperty('disabled', true)
+		expect(send.getAttribute('title')).toBe('Start the daemon on Laptop to send')
+		expect(onSubmit).not.toHaveBeenCalled()
+	})
+})

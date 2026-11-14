@@ -31,6 +31,7 @@ export function Composer({
 	running = false,
 	disabled = false,
 	submitDisabled = false,
+	submitBlocked,
 	submitLabel,
 	settings,
 	onSettingsChange,
@@ -61,7 +62,10 @@ export function Composer({
 	placeholder: string
 	running?: boolean
 	disabled?: boolean
+	/** Typing stays open; only sending, and actions that send, are off. */
 	submitDisabled?: boolean
+	/** Why sending is off, shown on the send button. */
+	submitBlocked?: string
 	submitLabel?: string
 	settings: ComposerSettings
 	onSettingsChange: (settings: ComposerSettings) => void
@@ -177,7 +181,12 @@ export function Composer({
 									catalog.models.find((model) => model.value === settings.model)?.autoMode ?? true
 								}
 							/>
-							<ContextMeter usage={context} running={running} disabled={disabled} onCompact={onCompact} />
+							<ContextMeter
+								usage={context}
+								running={running}
+								disabled={disabled || submitDisabled}
+								onCompact={onCompact}
+							/>
 						</>
 					)}
 					<span className="sp" />
@@ -220,7 +229,10 @@ export function Composer({
 						<button
 							type="button"
 							className={running ? 'btn primary' : 'send'}
-							title={running ? 'Queue. It sends when the agent finishes.' : (submitLabel ?? 'Send')}
+							title={
+								submitBlocked ??
+								(running ? 'Queue. It sends when the agent finishes.' : (submitLabel ?? 'Send'))
+							}
 							aria-label={submitLabel ?? 'Send'}
 							disabled={!canSend}
 							onClick={onSubmit}

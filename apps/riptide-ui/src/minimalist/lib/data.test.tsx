@@ -1,7 +1,7 @@
 import { createCollection, type SyncConfig } from '@tanstack/db'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, renderHook, waitFor } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
+import { type ReactNode, useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useSettingsStore } from '@/hooks/stores/settingsStore'
@@ -16,8 +16,10 @@ import {
 	useTaskArtifacts,
 	useTaskTree,
 } from './data'
+import { resetHostClockForTests } from './host-clock'
 
-const { useSync, useBrowserAuth, workspaceStatus, projectsList } = vi.hoisted(() => ({
+const { useSync, useBrowserAuth, workspaceStatus, projectsList, onlineHosts } = vi.hoisted(() => ({
+	onlineHosts: vi.fn(),
 	useSync: vi.fn(),
 	useBrowserAuth: vi.fn(),
 	workspaceStatus: vi.fn(),
@@ -26,6 +28,7 @@ const { useSync, useBrowserAuth, workspaceStatus, projectsList } = vi.hoisted(()
 vi.mock('@/components/providers/SyncProvider', () => ({ useSync }))
 vi.mock('@/orpc/client', () => ({
 	useRiptideApi: () => ({
+		client: { sync: { v2: { onlineHosts } } },
 		queryClient: {
 			projects: {
 				v2: {
@@ -77,6 +80,11 @@ function trackedCollection<T extends { id: string }>(rows: T[]) {
 	return { collection, sync, loadSubset }
 }
 
+function withQueryClient({ children }: { children: ReactNode }) {
+	const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }))
+	return <QueryClientProvider client={client}>{children}</QueryClientProvider>
+}
+
 afterEach(() => {
 	cleanup()
 	vi.clearAllMocks()
@@ -87,7 +95,7 @@ describe('optional sync query IDs', () => {
 		const hosts = trackedCollection([{ id: hostId, host_id: hostId, user_id: 'teammate' }])
 		useSync.mockReturnValue({ onlineHostsCollection: hosts.collection })
 
-		const { result } = renderHook(() => useHost(id, 'teammate'))
+		const { result } = renderHook(() => useHost(id, 'teammate'), { wrapper: withQueryClient })
 
 		expect(result.current.host).toBeNull()
 		expect(hosts.sync).not.toHaveBeenCalled()
@@ -97,7 +105,7 @@ describe('optional sync query IDs', () => {
 		const hosts = trackedCollection([{ id: hostId, host_id: hostId, user_id: 'teammate' }])
 		useSync.mockReturnValue({ onlineHostsCollection: hosts.collection })
 
-		const { result } = renderHook(() => useHost(hostId, userId))
+		const { result } = renderHook(() => useHost(hostId, userId), { wrapper: withQueryClient })
 
 		expect(result.current.host).toBeNull()
 		expect(hosts.sync).not.toHaveBeenCalled()
@@ -325,7 +333,9 @@ describe('session host lookup', () => {
 		const hosts = trackedCollection(rows)
 		useSync.mockReturnValue({ onlineHostsCollection: hosts.collection })
 		useBrowserAuth.mockReturnValue({ user: { id: 'me' } })
-		const { result } = renderHook(() => ({ launch: useHosts(), session: useHost(hostId, 'teammate') }))
+		const { result } = renderHook(() => ({ launch: useHosts(), session: useHost(hostId, 'teammate') }), {
+			wrapper: withQueryClient,
+		})
 
 		await waitFor(() => expect(result.current.session.isReady && result.current.launch.isReady).toBe(true))
 		expect(result.current.session.host).toMatchObject({
@@ -347,7 +357,7 @@ describe('session host lookup', () => {
 			{ id: hostId, host_id: hostId, user_id: 'teammate', host_name: null, status, last_seen: BigInt(lastSeen) },
 		])
 		useSync.mockReturnValue({ onlineHostsCollection: hosts.collection })
-		const { result } = renderHook(() => useHost(hostId, 'teammate'))
+		const { result } = renderHook(() => useHost(hostId, 'teammate'), { wrapper: withQueryClient })
 
 		await waitFor(() => expect(result.current.isReady).toBe(true))
 		expect(result.current.host).toMatchObject({
@@ -357,6 +367,35 @@ describe('session host lookup', () => {
 			stale,
 			lastSeen,
 		})
+	})
+
+	it('after a wake, reads a host live from the API before the synced row catches up', async () => {
+		const row = {
+			id: hostId,
+			host_id: hostId,
+			organization_id: 'org',
+			user_id: 'teammate',
+			host_name: 'Laptop',
+			status: 'offline',
+			last_seen: BigInt(Date.now() - 5 * 60_000),
+		}
+		const hosts = trackedCollection([row])
+		useSync.mockReturnValue({ onlineHostsCollection: hosts.collection })
+		onlineHosts.mockResolvedValue({ rows: [{ ...row, status: 'online', last_seen: String(Date.now()) }] })
+		const { result } = renderHook(() => useHost(hostId, 'teammate'), { wrapper: withQueryClient })
+		await waitFor(() => expect(result.current.isReady).toBe(true))
+		expect(result.current.host?.online).toBe(false)
+		expect(onlineHosts).not.toHaveBeenCalled()
+
+		const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+		act(() => void document.dispatchEvent(new Event('visibilitychange')))
+		visibility.mockReturnValue('visible')
+		act(() => void document.dispatchEvent(new Event('visibilitychange')))
+		visibility.mockRestore()
+
+		await waitFor(() => expect(result.current.host?.online).toBe(true))
+		expect(onlineHosts).toHaveBeenCalledTimes(1)
+		resetHostClockForTests()
 	})
 
 	it('looks up hosts when the session host ID changes and clears absent IDs', async () => {
@@ -371,6 +410,7 @@ describe('session host lookup', () => {
 		const hosts = trackedCollection(rows)
 		useSync.mockReturnValue({ onlineHostsCollection: hosts.collection })
 		const { result, rerender } = renderHook(({ id }) => useHost(id, 'teammate'), {
+			wrapper: withQueryClient,
 			initialProps: { id: null as string | null },
 		})
 
@@ -406,6 +446,7 @@ describe('session host lookup', () => {
 		])
 		useSync.mockReturnValue({ onlineHostsCollection: hosts.collection })
 		const { result, rerender } = renderHook(({ userId }) => useHost(hostId, userId), {
+			wrapper: withQueryClient,
 			initialProps: { userId: 'owner' as string | null },
 		})
 
