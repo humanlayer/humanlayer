@@ -1,0 +1,66 @@
+name: Install Sentry CLI
+description: >-
+  Install a pinned, checksum-verified sentry-cli for the runner platform. Avoids executing the
+  unversioned https://sentry.io/get-cli/ installer response in jobs that hold release credentials.
+
+inputs:
+  version:
+    description: sentry-cli release version to install.
+    default: "3.8.2"
+  install-dir:
+    description: Directory to install into. Defaults to $HOME/.local/bin.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Download, verify, and install sentry-cli
+      shell: bash
+      env:
+        SENTRY_CLI_VERSION: ${{ inputs.version }}
+        SENTRY_CLI_INSTALL_DIR: ${{ inputs.install-dir }}
+      run: |
+        set -euo pipefail
+
+        case "$(uname -s)-$(uname -m)" in
+          Linux-x86_64)
+            asset=sentry-cli-Linux-x86_64
+            sha256=c958865f9d4000183509ea21b1f04925d5390de6d8d87386b9e69f2b305070c3
+            ;;
+          Linux-aarch64|Linux-arm64)
+            asset=sentry-cli-Linux-aarch64
+            sha256=b6e49fca868a36d20da2ada1832a0ce2f9ac7012c128207518b09d6b6c991f4d
+            ;;
+          Darwin-arm64)
+            asset=sentry-cli-Darwin-arm64
+            sha256=c80d92b6d34eb64fe7402f56cc7968fbb15aab1c763254ad428b55cc98ec7dcf
+            ;;
+          Darwin-x86_64)
+            asset=sentry-cli-Darwin-x86_64
+            sha256=084591ee1f0a43ba8696ccde30d4a79cd9a70d0fa294c5a10143a340f8f332ff
+            ;;
+          *)
+            echo "Unsupported platform for sentry-cli: $(uname -s)-$(uname -m)" >&2
+            exit 1
+            ;;
+        esac
+
+        install_dir="${SENTRY_CLI_INSTALL_DIR:-$HOME/.local/bin}"
+        mkdir -p "$install_dir"
+
+        archive="$(mktemp)"
+        trap 'rm -f "$archive"' EXIT
+
+        curl --fail --silent --show-error --location \
+          "https://github.com/getsentry/sentry-cli/releases/download/${SENTRY_CLI_VERSION}/${asset}" \
+          --output "$archive"
+
+        actual_sha256="$(openssl dgst -sha256 "$archive" | awk '{print $NF}')"
+        if [ "$actual_sha256" != "$sha256" ]; then
+          echo "Checksum mismatch for ${asset}: expected ${sha256}, got ${actual_sha256}" >&2
+          exit 1
+        fi
+
+        install -m 0755 "$archive" "$install_dir/sentry-cli"
+        "$install_dir/sentry-cli" --version
+        echo "$install_dir" >> "$GITHUB_PATH"

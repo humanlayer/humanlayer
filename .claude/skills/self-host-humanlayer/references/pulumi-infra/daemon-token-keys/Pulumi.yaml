@@ -1,0 +1,11 @@
+name: daemon-token-keys
+description: RSA key pair for daemon token signing/verification
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

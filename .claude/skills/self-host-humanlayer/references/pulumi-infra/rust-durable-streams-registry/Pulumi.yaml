@@ -1,0 +1,11 @@
+name: rust-durable-streams-registry
+description: ECR registry bootstrap for the pinned Rust Durable Streams server image
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

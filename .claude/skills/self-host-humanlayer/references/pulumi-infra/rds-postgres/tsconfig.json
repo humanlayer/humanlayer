@@ -1,0 +1,13 @@
+{
+	"compilerOptions": {
+		"noUncheckedIndexedAccess": true,
+		"strict": true,
+		"target": "ES2022",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true
+	},
+	"files": ["pulumi.ts"]
+}

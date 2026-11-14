@@ -1,0 +1,20 @@
+{
+	"name": "@humanlayer/deploy-updater-server",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "bun run --cwd ../../humanlayer/apps/updater-server build",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/pulumi-helpers": "workspace:*",
+		"@pulumi/aws": "catalog:",
+		"@pulumi/command": "catalog:",
+		"@pulumi/pulumi": "catalog:",
+		"effect": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	}
+}

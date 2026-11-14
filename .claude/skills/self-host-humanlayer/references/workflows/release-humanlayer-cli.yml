@@ -1,0 +1,444 @@
+name: Release HumanLayer CLI
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type (dev, beta, prod)"
+        type: choice
+        options:
+          - dev
+          - beta
+          - prod
+        required: true
+      public_repo:
+        description: "Public repo to build from (a private stand-in during the rehearsal)"
+        type: string
+        default: humanlayer/humanlayer
+      public_ref:
+        description: "Public repo branch, tag, or SHA to build from"
+        type: string
+        default: main
+      dry_run:
+        description: "Build and sign everything, publish nothing, and preview Pulumi instead of up"
+        type: boolean
+        default: false
+      skip_npm_publish:
+        description: "Skip npm publish"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      release_type:
+        type: string
+        required: true
+      public_repo:
+        description: "Public repo to build from"
+        required: false
+        type: string
+        default: humanlayer/humanlayer
+      public_ref:
+        description: "Public repo branch, tag, or SHA to build from"
+        required: false
+        type: string
+        default: main
+      dry_run:
+        description: "Build and sign everything, publish nothing, and preview Pulumi instead of up"
+        required: false
+        type: boolean
+        default: false
+      skip_npm_publish:
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-humanlayer-cli-${{ inputs.release_type }}
+  cancel-in-progress: false
+
+env:
+  DO_NOT_TRACK: "1"
+
+jobs:
+  resolve:
+    uses: ./.github/workflows/resolve-public-sha.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ inputs.public_ref }}
+    secrets: inherit
+
+  build-cli:
+    needs: resolve
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ needs.resolve.outputs.sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+          # Full history: derive-package-version.ts derives the version from
+          # commits since the base version in package.json last changed
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      # The committed version in apps/cli/package.json is a base; the released
+      # version is derived and stamped into the npm packages further down —
+      # never committed, so PRs don't bump versions and don't conflict on them.
+      - name: Derive version
+        id: version
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          VERSION_FILE: apps/cli/package.json
+          # NOTE: keep in sync with the detect-cli-change path list in
+          # .github/workflows/main.yml (see derive-package-version.ts header)
+          COUNT_PATHS: >-
+            apps/cli
+            apps/riptide-daemon
+            contracts/riptide-api-contract
+            scripts/bun-build-plugins/embed-photon-wasm.ts
+        run: |
+          BASE_VERSION=$(bun run ci-scripts/derive-package-version.ts)
+          case "$RELEASE_TYPE" in
+            dev)
+              VERSION="${BASE_VERSION}-dev.0"
+              NPM_TAG=dev
+              PRERELEASE=true
+              ;;
+            beta)
+              VERSION="${BASE_VERSION}-beta.0"
+              NPM_TAG=beta
+              PRERELEASE=true
+              ;;
+            prod)
+              VERSION="$BASE_VERSION"
+              NPM_TAG=latest
+              PRERELEASE=false
+              ;;
+            *)
+              echo "Unsupported release type: $RELEASE_TYPE" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "release_version=$VERSION"
+            echo "npm_tag=$NPM_TAG"
+            echo "prerelease=$PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
+
+      # The CLI embeds the daemon, which embeds the Claude plugins
+      - name: Stamp derived plugin versions
+        run: bun run ci-scripts/stamp-plugin-versions.ts
+
+      - name: Install pulumi
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.137.0
+
+      - name: Fetch dev Pulumi stack outputs
+        id: pulumi_dev
+        run: |
+          DEV_API_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-api/dev)
+          DEV_SYNC_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-electric-proxy/dev)
+          DEV_CLOUD_URL=$(pulumi stack output cloudUrl --stack humanlayer/riptide-cloud/dev)
+          DEV_APP_URL=$(pulumi stack output appUrl --stack humanlayer/riptide-ui/dev)
+          echo "api_url=$DEV_API_URL" >> $GITHUB_OUTPUT
+          echo "sync_url=$DEV_SYNC_URL" >> $GITHUB_OUTPUT
+          echo "cloud_url=$DEV_CLOUD_URL" >> $GITHUB_OUTPUT
+          echo "app_url=$DEV_APP_URL" >> $GITHUB_OUTPUT
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Fetch beta Pulumi stack outputs
+        id: pulumi_beta
+        run: |
+          BETA_API_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-api/beta)
+          BETA_SYNC_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-electric-proxy/beta)
+          BETA_CLOUD_URL=$(pulumi stack output cloudUrl --stack humanlayer/riptide-cloud/beta)
+          BETA_APP_URL=$(pulumi stack output appUrl --stack humanlayer/riptide-ui/beta)
+          echo "api_url=$BETA_API_URL" >> $GITHUB_OUTPUT
+          echo "sync_url=$BETA_SYNC_URL" >> $GITHUB_OUTPUT
+          echo "cloud_url=$BETA_CLOUD_URL" >> $GITHUB_OUTPUT
+          echo "app_url=$BETA_APP_URL" >> $GITHUB_OUTPUT
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Fetch prod Pulumi stack outputs
+        id: pulumi_prod
+        run: |
+          PROD_API_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-api/prod)
+          PROD_SYNC_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-electric-proxy/prod)
+          PROD_CLOUD_URL=$(pulumi stack output cloudUrl --stack humanlayer/riptide-cloud/prod)
+          PROD_APP_URL=$(pulumi stack output appUrl --stack humanlayer/riptide-ui/prod)
+          echo "api_url=$PROD_API_URL" >> $GITHUB_OUTPUT
+          echo "sync_url=$PROD_SYNC_URL" >> $GITHUB_OUTPUT
+          echo "cloud_url=$PROD_CLOUD_URL" >> $GITHUB_OUTPUT
+          echo "app_url=$PROD_APP_URL" >> $GITHUB_OUTPUT
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID || secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY || secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Validate CLI baked environment config
+        run: |
+          missing=0
+          for key in \
+            DEV_WORKOS_CLIENT_ID DEV_API_ORIGIN DEV_SYNC_ORIGIN DEV_CLOUD_ORIGIN DEV_APP_ORIGIN \
+            BETA_WORKOS_CLIENT_ID BETA_API_ORIGIN BETA_SYNC_ORIGIN BETA_CLOUD_ORIGIN BETA_APP_ORIGIN \
+            PROD_WORKOS_CLIENT_ID PROD_API_ORIGIN PROD_SYNC_ORIGIN PROD_CLOUD_ORIGIN PROD_APP_ORIGIN; do
+            if [ -z "${!key}" ]; then
+              echo "Missing required CLI build env: $key" >&2
+              missing=1
+            fi
+          done
+          exit "$missing"
+        env:
+          DEV_WORKOS_CLIENT_ID: ${{ secrets.DEV_WORKOS_CLIENT_ID }}
+          DEV_API_ORIGIN: ${{ steps.pulumi_dev.outputs.api_url }}
+          DEV_SYNC_ORIGIN: ${{ steps.pulumi_dev.outputs.sync_url }}
+          DEV_CLOUD_ORIGIN: ${{ steps.pulumi_dev.outputs.cloud_url }}
+          DEV_APP_ORIGIN: ${{ steps.pulumi_dev.outputs.app_url }}
+          BETA_WORKOS_CLIENT_ID: PLACEHOLDER_BETA_WORKOS_CLIENT_ID_PLACEHOLDER
+          BETA_API_ORIGIN: ${{ steps.pulumi_beta.outputs.api_url }}
+          BETA_SYNC_ORIGIN: ${{ steps.pulumi_beta.outputs.sync_url }}
+          BETA_CLOUD_ORIGIN: ${{ steps.pulumi_beta.outputs.cloud_url }}
+          BETA_APP_ORIGIN: ${{ steps.pulumi_beta.outputs.app_url }}
+          PROD_WORKOS_CLIENT_ID: ${{ secrets.PROD_WORKOS_CLIENT_ID }}
+          PROD_API_ORIGIN: ${{ steps.pulumi_prod.outputs.api_url }}
+          PROD_SYNC_ORIGIN: ${{ steps.pulumi_prod.outputs.sync_url }}
+          PROD_CLOUD_ORIGIN: ${{ steps.pulumi_prod.outputs.cloud_url }}
+          PROD_APP_ORIGIN: ${{ steps.pulumi_prod.outputs.app_url }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build all CLI targets
+        run: bun run --cwd apps/cli build:all
+        env:
+          # Dev environment
+          DEV_WORKOS_CLIENT_ID: ${{ secrets.DEV_WORKOS_CLIENT_ID }}
+          DEV_API_ORIGIN: ${{ steps.pulumi_dev.outputs.api_url }}
+          DEV_SYNC_ORIGIN: ${{ steps.pulumi_dev.outputs.sync_url }}
+          DEV_CLOUD_ORIGIN: ${{ steps.pulumi_dev.outputs.cloud_url }}
+          DEV_APP_ORIGIN: ${{ steps.pulumi_dev.outputs.app_url }}
+          # Beta environment (always available)
+          BETA_WORKOS_CLIENT_ID: PLACEHOLDER_BETA_WORKOS_CLIENT_ID_PLACEHOLDER
+          BETA_API_ORIGIN: ${{ steps.pulumi_beta.outputs.api_url }}
+          BETA_SYNC_ORIGIN: ${{ steps.pulumi_beta.outputs.sync_url }}
+          BETA_CLOUD_ORIGIN: ${{ steps.pulumi_beta.outputs.cloud_url }}
+          BETA_APP_ORIGIN: ${{ steps.pulumi_beta.outputs.app_url }}
+          # Prod environment
+          PROD_WORKOS_CLIENT_ID: ${{ secrets.PROD_WORKOS_CLIENT_ID }}
+          PROD_API_ORIGIN: ${{ steps.pulumi_prod.outputs.api_url }}
+          PROD_SYNC_ORIGIN: ${{ steps.pulumi_prod.outputs.sync_url }}
+          PROD_CLOUD_ORIGIN: ${{ steps.pulumi_prod.outputs.cloud_url }}
+          PROD_APP_ORIGIN: ${{ steps.pulumi_prod.outputs.app_url }}
+          # Fallback for standalone daemon code. `daemon launch` overrides this per selected environment.
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi_prod.outputs.api_url || steps.pulumi_beta.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi_prod.outputs.sync_url || steps.pulumi_beta.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi_prod.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi_prod.outputs.app_url || steps.pulumi_beta.outputs.app_url }}
+          # Standard build vars
+          BUILD_TYPE: ${{ inputs.release_type }}
+          BUILD_VERSION: ${{ steps.version.outputs.release_version }}
+          NODE_ENV: production
+
+      # === Package archives ===
+
+      - name: Package binaries
+        run: |
+          cd apps/cli/dist
+          for BINARY in humanlayer-darwin-arm64 humanlayer-darwin-x64 humanlayer-linux-arm64 humanlayer-linux-x64; do
+            PLATFORM="${BINARY#humanlayer-}"
+            cp "$BINARY" humanlayer
+            tar czf "humanlayer-${PLATFORM}.tar.gz" humanlayer
+            rm humanlayer
+            echo "Packaged humanlayer-${PLATFORM}.tar.gz"
+          done
+          # Windows uses zip
+          cp humanlayer-win32-x64.exe humanlayer.exe
+          zip "humanlayer-win32-x64.zip" humanlayer.exe
+          rm humanlayer.exe
+
+      - name: Compute SHA256
+        id: sha
+        run: |
+          cd apps/cli/dist
+          for ARCHIVE in *.tar.gz *.zip; do
+            SHA=$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')
+            echo "${ARCHIVE}: ${SHA}" >> $GITHUB_STEP_SUMMARY
+          done
+
+      # === GitHub Release ===
+
+      - name: Determine release tag
+        id: tag
+        run: |
+          VERSION="${{ steps.version.outputs.release_version }}"
+          echo "tag=humanlayer-cli-v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          token: ${{ secrets.HOMEBREW_HUMANLAYER_RELEASES_PAT }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: humanlayer-cli-${{ steps.version.outputs.release_version }}
+          files: |
+            apps/cli/dist/humanlayer-darwin-arm64.tar.gz
+            apps/cli/dist/humanlayer-darwin-x64.tar.gz
+            apps/cli/dist/humanlayer-linux-arm64.tar.gz
+            apps/cli/dist/humanlayer-linux-x64.tar.gz
+            apps/cli/dist/humanlayer-win32-x64.zip
+          draft: false
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
+          body: |
+            # HumanLayer CLI ${{ steps.version.outputs.release_version }}
+
+            ## Installation
+
+            ```bash
+            npx @humanlayer/cli --version
+            ```
+
+      # === npm Publish ===
+
+      - name: Copy binaries to npm packages
+        if: ${{ inputs.skip_npm_publish != true }}
+        run: |
+          for dir in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
+            mkdir -p apps/cli/npm/$dir/bin
+          done
+          cp apps/cli/dist/humanlayer-darwin-arm64 apps/cli/npm/darwin-arm64/bin/humanlayer
+          cp apps/cli/dist/humanlayer-darwin-x64 apps/cli/npm/darwin-x64/bin/humanlayer
+          cp apps/cli/dist/humanlayer-linux-arm64 apps/cli/npm/linux-arm64/bin/humanlayer
+          cp apps/cli/dist/humanlayer-linux-x64 apps/cli/npm/linux-x64/bin/humanlayer
+          cp apps/cli/dist/humanlayer-win32-x64.exe apps/cli/npm/win32-x64/bin/humanlayer.exe
+
+      - name: Update versions in all package.json files
+        if: ${{ inputs.skip_npm_publish != true }}
+        run: |
+          VERSION="${{ steps.version.outputs.release_version }}"
+
+          # Update platform packages
+          for dir in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
+            jq --arg v "$VERSION" '.version = $v' apps/cli/npm/$dir/package.json > tmp.json
+            mv tmp.json apps/cli/npm/$dir/package.json
+          done
+
+          # Update main package version + optionalDependencies versions
+          # Remove dependencies — they are compiled into the binary and contain
+          # workspace:*/catalog: specifiers that are invalid on the public registry
+          jq --arg v "$VERSION" '
+            .version = $v |
+            .optionalDependencies |= with_entries(.value = $v) |
+            del(.dependencies)
+          ' apps/cli/package.json > tmp.json
+          mv tmp.json apps/cli/package.json
+
+      # CORE-1917: 0.40.x shipped @humanlayer/cli with only package.json, so
+      # installs got no `humanlayer` command. Fail before publishing if any
+      # package's tarball lacks a file its `bin` field names. Runs on dry runs.
+      - name: Verify npm tarballs contain their bin files
+        if: ${{ inputs.skip_npm_publish != true }}
+        run: |
+          fail=0
+          for dir in apps/cli apps/cli/npm/darwin-arm64 apps/cli/npm/darwin-x64 apps/cli/npm/linux-arm64 apps/cli/npm/linux-x64 apps/cli/npm/win32-x64; do
+            name=$(jq -r .name "$dir/package.json")
+            packed=$(cd "$dir" && npm pack --dry-run --json --ignore-scripts 2>/dev/null | jq -r '.[0].files[].path')
+            echo "$name tarball: $(echo "$packed" | tr '\n' ' ')"
+            bins=$(jq -r 'if (.bin | type) == "string" then .bin else (.bin // {} | .[]) end | sub("^\\./"; "")' "$dir/package.json")
+            if [ -z "$bins" ]; then
+              echo "::error::$name has no bin field"
+              fail=1
+            fi
+            for bin in $bins; do
+              if ! grep -qxF "$bin" <<<"$packed"; then
+                echo "::error::$name tarball is missing $bin"
+                fail=1
+              fi
+            done
+          done
+          exit "$fail"
+
+      - name: Configure npm auth
+        if: ${{ inputs.skip_npm_publish != true && !inputs.dry_run }}
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+
+      - name: Check npm channel advancement
+        if: ${{ inputs.skip_npm_publish != true }}
+        id: npm_channel
+        env:
+          NPM_TAG: ${{ steps.version.outputs.npm_tag }}
+        run: |
+          VERSION="${{ steps.version.outputs.release_version }}"
+          CURRENT_VERSION=$(npm view "@humanlayer/cli@${NPM_TAG}" version 2>/dev/null || true)
+
+          if [ -n "$CURRENT_VERSION" ] && ! bun -e \
+            'process.exit(Bun.semver.order(process.argv[1], process.argv[2]) >= 0 ? 0 : 1)' \
+            "$VERSION" "$CURRENT_VERSION"; then
+            echo "Not moving $NPM_TAG backward from $CURRENT_VERSION to $VERSION"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish platform packages
+        if: ${{ inputs.skip_npm_publish != true && !inputs.dry_run && steps.npm_channel.outputs.should_publish == 'true' }}
+        env:
+          NPM_TAG: ${{ steps.version.outputs.npm_tag }}
+        run: |
+          VERSION="${{ steps.version.outputs.release_version }}"
+          for dir in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
+            PACKAGE="@humanlayer/cli-${dir}"
+            if npm view "${PACKAGE}@${VERSION}" version >/dev/null 2>&1; then
+              echo "Skipping ${PACKAGE}@${VERSION}; already published"
+              continue
+            fi
+
+            echo "Publishing ${PACKAGE}@${VERSION}..."
+            cd apps/cli/npm/$dir
+            npm publish --access public --tolerate-republish --tag "$NPM_TAG"
+            cd ../../../..
+          done
+
+          # Keep reruns idempotent and repair a missing/moved channel tag even
+          # when the immutable package version was already published.
+          for dir in darwin-arm64 darwin-x64 linux-arm64 linux-x64 win32-x64; do
+            npm dist-tag add "@humanlayer/cli-${dir}@${VERSION}" "$NPM_TAG"
+          done
+
+      - name: Publish main package
+        if: ${{ inputs.skip_npm_publish != true && !inputs.dry_run && steps.npm_channel.outputs.should_publish == 'true' }}
+        env:
+          NPM_TAG: ${{ steps.version.outputs.npm_tag }}
+        run: |
+          VERSION="${{ steps.version.outputs.release_version }}"
+          if npm view "@humanlayer/cli@${VERSION}" version >/dev/null 2>&1; then
+            echo "Skipping @humanlayer/cli@${VERSION}; already published"
+          else
+            cd apps/cli
+            npm publish --access public --tolerate-republish --tag "$NPM_TAG"
+            cd ../..
+          fi
+
+          npm dist-tag add "@humanlayer/cli@${VERSION}" "$NPM_TAG"

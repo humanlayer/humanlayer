@@ -1,0 +1,18 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  rust-durable-streams:fargate:
+    cpu: 2048
+    memory: 4096
+  rust-durable-streams:imageTag: "0.3.0-r1"
+  rust-durable-streams:alarmThresholds:
+    cpuPercent: 80
+    memoryPercent: 80
+    alb5xxCount: 10
+    albTarget5xxCount: 10
+    ephemeralStorageGiB: 150
+  rust-durable-streams:albLogs:
+    retentionDays: 30

@@ -1,0 +1,207 @@
+name: Publish Riptide Electron Dev
+
+on:
+  workflow_call:
+    inputs:
+      public_repo:
+        description: Public repo the build came from
+        required: false
+        type: string
+        default: humanlayer/humanlayer
+      dry_run:
+        description: Generate the manifest and casks, publish nothing
+        required: false
+        type: boolean
+        default: false
+      release_type:
+        required: false
+        type: string
+        default: dev
+      release_version:
+        required: true
+        type: string
+      release_tag:
+        required: true
+        type: string
+      dmg_filename:
+        required: true
+        type: string
+      zip_filename:
+        required: true
+        type: string
+      source_sha:
+        description: Public commit the build came from
+        required: true
+        type: string
+      skip_cask_update:
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: blacksmith-12vcpu-macos-15
+    concurrency:
+      group: homebrew-humanlayer-cask-publish
+      cancel-in-progress: false
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ inputs.source_sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+      - name: Install Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Download release products
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: riptide-electron-${{ inputs.release_type }}-release-products
+          path: release-products
+      - name: Create GitHub release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_HUMANLAYER_RELEASES_PAT }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          DMG_PATH: release-products/${{ inputs.dmg_filename }}
+          ZIP_PATH: release-products/${{ inputs.zip_filename }}
+        run: |
+          gh release create "$RELEASE_TAG" "$DMG_PATH" "$ZIP_PATH" \
+            --repo humanlayer/homebrew-humanlayer \
+            --title "HumanLayer Electron ${{ inputs.release_type }} ${RELEASE_VERSION}" \
+            ${{ inputs.release_type == 'prod' && '--latest=false' || '--prerelease' }} \
+            --notes "Signed and notarized Electron ${{ inputs.release_type }} build from ${{ inputs.public_repo }}@${{ inputs.source_sha }}."
+      - name: Calculate DMG SHA256
+        id: dmg
+        env:
+          DMG_PATH: release-products/${{ inputs.dmg_filename }}
+        run: echo "sha256=$(shasum -a 256 "$DMG_PATH" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - name: Calculate ZIP SHA-512 and size
+        id: zip_hash
+        env:
+          ZIP_PATH: release-products/${{ inputs.zip_filename }}
+        run: |
+          SHA512=$(openssl dgst -sha512 -binary "$ZIP_PATH" | base64)
+          SIZE=$(stat -f%z "$ZIP_PATH")
+          {
+            echo "sha512=$SHA512"
+            echo "size=$SIZE"
+          } >> "$GITHUB_OUTPUT"
+      - name: Install Pulumi
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.137.0
+      - name: Fetch updater bucket name
+        id: pulumi_updater
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ inputs.release_type == 'dev' && secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID || secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ inputs.release_type == 'dev' && secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY || secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+        run: echo "bucket_name=$(pulumi stack output bucketName --stack humanlayer/updater-server/${{ inputs.release_type }})" >> "$GITHUB_OUTPUT"
+      - name: Generate electron-updater manifest
+        env:
+          VERSION: ${{ inputs.release_version }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          ZIP_FILENAME: ${{ inputs.zip_filename }}
+          ZIP_SHA512: ${{ steps.zip_hash.outputs.sha512 }}
+          ZIP_SIZE: ${{ steps.zip_hash.outputs.size }}
+          OUTPUT_PATH: latest-mac.yml
+        run: bun run ci-scripts/generate-electron-updater-manifest.ts
+      - name: Upload updater manifest to S3
+        if: ${{ !inputs.dry_run }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ inputs.release_type == 'dev' && secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID || secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ inputs.release_type == 'dev' && secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY || secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+          MANIFEST_PREFIX: ${{ inputs.release_type == 'prod' && 'stable' || inputs.release_type }}
+        run: aws s3 cp latest-mac.yml "s3://${{ steps.pulumi_updater.outputs.bucket_name }}/${MANIFEST_PREFIX}/latest-mac.yml"
+      - name: Check out Homebrew tap
+        if: ${{ inputs.skip_cask_update != true }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          ref: main
+          fetch-depth: 0
+          path: homebrew-humanlayer
+          token: ${{ secrets.HUMANLAYER_HOMEBREW_CASK_WRITE_GITHUB_PAT }}
+      - name: Generate Electron Homebrew casks
+        if: ${{ inputs.skip_cask_update != true }}
+        env:
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          RELEASE_VERSION: ${{ inputs.release_version }}
+          SHA256: ${{ steps.dmg.outputs.sha256 }}
+          DMG_URL: https://github.com/humanlayer/homebrew-humanlayer/releases/download/${{ inputs.release_tag }}/${{ inputs.dmg_filename }}
+          OUTPUT_DIR: homebrew-humanlayer/Casks
+        run: bun run ci-scripts/generate-electron-homebrew-cask.ts
+      - name: Commit and safely push cask update
+        if: ${{ inputs.skip_cask_update != true && !inputs.dry_run }}
+        working-directory: homebrew-humanlayer
+        env:
+          RELEASE_VERSION: ${{ inputs.release_version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if [ "${{ inputs.release_type }}" = "prod" ]; then
+            git add Casks/humanlayer-electron.rb
+          else
+            git add "Casks/humanlayer-electron-${{ inputs.release_type }}.rb"
+          fi
+          if git diff --staged --quiet; then
+            exit 0
+          fi
+          git commit -m "Update Electron ${{ inputs.release_type }} to ${RELEASE_VERSION}"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+      - name: Install published Homebrew cask and launch app
+        if: ${{ inputs.skip_cask_update != true && !inputs.dry_run }}
+        env:
+          EXPECTED_VERSION: ${{ inputs.release_version }}
+        run: |
+          brew tap humanlayer/humanlayer
+          brew trust humanlayer/humanlayer
+          brew update
+          if [ "${{ inputs.release_type }}" = "prod" ]; then
+            CASK=humanlayer-electron
+            APP_PATH=/Applications/HumanLayerElectron.app
+          elif [ "${{ inputs.release_type }}" = "beta" ]; then
+            CASK=humanlayer-electron-beta
+            APP_PATH=/Applications/HumanLayerElectronBeta.app
+          else
+            CASK=humanlayer-electron-dev
+            APP_PATH=/Applications/HumanLayerElectronDev.app
+          fi
+          brew install --cask "humanlayer/humanlayer/$CASK"
+          test "$(brew list --cask --versions "$CASK")" = "$CASK ${EXPECTED_VERSION}"
+          codesign --verify --deep --strict --verbose=4 "$APP_PATH"
+          xcrun stapler validate "$APP_PATH"
+          spctl --assess --type execute --verbose=4 "$APP_PATH"
+          open -n -a "$APP_PATH" &
+          OPEN_PID=$!
+          for _attempt in {1..30}; do
+            if pgrep -f "^${APP_PATH}/Contents/MacOS/" >/dev/null; then
+              kill "$OPEN_PID" || true
+              pkill -f "^${APP_PATH}/Contents/MacOS/" || true
+              exit 0
+            fi
+            sleep 1
+          done
+          kill "$OPEN_PID" || true
+          log show --last 2m --style compact --predicate 'process == "syspolicyd" OR process == "CoreServicesUIAgent"'
+          exit 1

@@ -1,0 +1,16 @@
+{
+	"name": "@humanlayer/pulumi-electric-sql",
+	"type": "module",
+	"main": "pulumi.ts",
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@humanlayer/pulumi-helpers": "workspace:*",
+		"@pulumi/aws": "catalog:",
+		"@pulumi/awsx": "catalog:",
+		"@pulumi/pulumi": "catalog:",
+		"@pulumi/random": "catalog:"
+	}
+}

@@ -1,0 +1,18 @@
+{
+	"name": "@humanlayer/deploy-riptide-cloud",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "bun run --cwd ../../humanlayer/apps/riptide-cloud build"
+	},
+	"dependencies": {
+		"@humanlayer/pulumi-helpers": "workspace:*",
+		"@pulumi/aws": "catalog:",
+		"@pulumi/command": "catalog:",
+		"@pulumi/pulumi": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	}
+}

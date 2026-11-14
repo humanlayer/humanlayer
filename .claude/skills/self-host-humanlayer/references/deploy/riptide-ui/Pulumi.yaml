@@ -1,0 +1,11 @@
+name: riptide-ui
+description: Riptide UI static SPA (S3 + CloudFront)
+runtime:
+    name: nodejs
+    options:
+        packagemanager: bun
+        typescript: false
+        nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+    refresh: always

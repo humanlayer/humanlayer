@@ -1,0 +1,13 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  riptide-ui:sentryEnvironment: prod
+  riptide-ui:sentryDsn: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  riptide-ui:workosClientId: PLACEHOLDER_WORKOS_CLIENT_ID_PLACEHOLDER
+  riptide-ui:buildType: prod
+  riptide-ui:deepLinkScheme: humanlayer
+  riptide-ui:posthogKey: PLACEHOLDER_POSTHOG_KEY_PLACEHOLDER
+  riptide-ui:sentryAuthToken: PLACEHOLDER_SENTRY_AUTH_TOKEN_PLACEHOLDER  # secret: pulumi config set --secret riptide-ui:sentryAuthToken <value>

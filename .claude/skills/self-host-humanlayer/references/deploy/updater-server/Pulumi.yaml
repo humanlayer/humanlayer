@@ -1,0 +1,11 @@
+name: updater-server
+description: Update server infrastructure - S3, CloudFront, Lambda version resolver
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

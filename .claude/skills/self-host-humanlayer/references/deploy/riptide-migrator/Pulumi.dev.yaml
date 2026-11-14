@@ -1,0 +1,8 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  migrator-function:sentryEnvironment: devcloud
+  migrator-function:sentryDsn: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER

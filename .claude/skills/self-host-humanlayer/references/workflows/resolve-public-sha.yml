@@ -1,0 +1,42 @@
+# Turns a public repo ref (branch, tag, or SHA) into one commit SHA, so every job in a release
+# builds and deploys the same code even if the branch moves mid-run.
+name: Resolve public SHA
+
+on:
+  workflow_call:
+    inputs:
+      public_repo:
+        type: string
+        default: humanlayer/humanlayer
+      public_ref:
+        type: string
+        default: main
+    outputs:
+      sha:
+        description: The commit public_ref points at
+        value: ${{ jobs.resolve.outputs.sha }}
+    secrets:
+      PUBLIC_REPO_READ_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - name: Resolve ref
+        id: sha
+        env:
+          # The real public repo needs no token; the rehearsal stand-in is private.
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          PUBLIC_REPO: ${{ inputs.public_repo }}
+          PUBLIC_REF: ${{ inputs.public_ref || 'main' }}
+        run: |
+          SHA=$(gh api "repos/$PUBLIC_REPO/commits/$PUBLIC_REF" --jq .sha)
+          test -n "$SHA"
+          echo "Resolved $PUBLIC_REPO@$PUBLIC_REF to $SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"

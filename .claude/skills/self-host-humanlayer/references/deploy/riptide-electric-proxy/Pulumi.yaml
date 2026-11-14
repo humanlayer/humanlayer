@@ -1,0 +1,11 @@
+name: riptide-electric-proxy
+description: Riptide Electric Proxy Fargate service
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

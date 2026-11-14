@@ -1,0 +1,13 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  core:dnsZone: PLACEHOLDER_DNS_ZONE_PLACEHOLDER
+  core:domainSuffix: PLACEHOLDER_DOMAIN_SUFFIX_PLACEHOLDER
+  core:serviceDiscoveryNamespace: humanlayer.internal
+  core:dockerHubAccessToken: PLACEHOLDER_DOCKER_HUB_ACCESS_TOKEN_PLACEHOLDER  # secret: pulumi config set --secret core:dockerHubAccessToken <value>
+  core:dockerHubUsername: PLACEHOLDER_DOCKER_HUB_USERNAME_PLACEHOLDER  # secret: pulumi config set --secret core:dockerHubUsername <value>
+  core:ghcrUsername: PLACEHOLDER_GHCR_USERNAME_PLACEHOLDER  # secret: pulumi config set --secret core:ghcrUsername <value>
+  core:ghcrAccessToken: PLACEHOLDER_GHCR_ACCESS_TOKEN_PLACEHOLDER  # secret: pulumi config set --secret core:ghcrAccessToken <value>
