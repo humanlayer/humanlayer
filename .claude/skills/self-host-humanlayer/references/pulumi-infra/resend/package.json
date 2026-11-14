@@ -1,0 +1,18 @@
+{
+  "name": "@humanlayer/pulumi-infra-resend",
+  "type": "module",
+  "main": "pulumi.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@humanlayer/pulumi-resend": "0.3.2",
+    "@pulumi/aws": "catalog:",
+    "@pulumi/pulumi": "catalog:",
+    "dedent": "1.7.2"
+  }
+}

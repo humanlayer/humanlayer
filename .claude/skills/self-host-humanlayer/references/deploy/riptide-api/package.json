@@ -1,0 +1,22 @@
+{
+	"name": "@humanlayer/deploy-riptide-api",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "bun run --cwd ../../humanlayer/apps/riptide-api build",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/pulumi-helpers": "workspace:*",
+		"@humanlayer/pulumi-resend": "0.3.2",
+		"@pulumi/aws": "catalog:",
+		"@pulumi/awsx": "catalog:",
+		"@pulumi/command": "^1.2.1",
+		"@pulumi/docker-build": "0.0.14",
+		"@pulumi/pulumi": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	}
+}

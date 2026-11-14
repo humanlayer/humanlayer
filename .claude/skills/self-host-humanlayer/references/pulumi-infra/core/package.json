@@ -1,0 +1,14 @@
+{
+	"name": "@humanlayer/pulumi-core",
+	"type": "module",
+	"main": "pulumi.ts",
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@pulumi/aws": "catalog:",
+		"@pulumi/awsx": "catalog:",
+		"@pulumi/pulumi": "catalog:"
+	}
+}

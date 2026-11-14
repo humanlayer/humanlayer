@@ -1,0 +1,11 @@
+name: rust-durable-streams
+description: Rust Durable Streams singleton Fargate service with an internal streaming ALB
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

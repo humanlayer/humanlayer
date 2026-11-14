@@ -1,0 +1,9 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  monitoring:slackChannelId: PLACEHOLDER_SLACK_CHANNEL_ID_PLACEHOLDER
+  monitoring:slackWorkspaceId: PLACEHOLDER_SLACK_WORKSPACE_ID_PLACEHOLDER
+  monitoring:guarddutyDetectorId: PLACEHOLDER_GUARDDUTY_DETECTOR_ID_PLACEHOLDER

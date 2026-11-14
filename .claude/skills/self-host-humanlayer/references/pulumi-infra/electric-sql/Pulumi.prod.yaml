@@ -1,0 +1,29 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  electric-sql:fargate:
+    cpu: 8192
+    memory: 16384
+    ephemeralStorage: 200
+    desiredCount: 1
+  electric-sql:alarmThresholds:
+    cpuPercent: 50
+    memoryPercent: 60
+    alb5xxCountCritical: 100
+    alb5xxCountWarning: 50
+    ephemeralStorageGiB: 100
+  electric-sql:imageTag: "1.7.12"
+  # Binary-memory GC tuning to fix refc-binary retention OOM (ecs-crash-loop-alarm).
+  # Requires Electric >= 1.7.0 for shapeSuspendConsumer.
+  # Tunable: lower handlerFullsweepAfter => more aggressive handler binary reclamation.
+  electric-sql:handlerFullsweepAfter: "10"
+  electric-sql:shapeSuspendConsumer: "true"
+  electric-sql:electricDbPoolSize: "200"
+  electric-sql:electricMaxShapes: "20000"
+  electric-sql:electricMaxConcurrentRequests: '{"initial": 1000, "existing": 10000}'
+  electric-sql:otelSamplingRatio: "0.00001"
+  electric-sql:honeycombDataset: electric
+  electric-sql:honeycombApiKey: PLACEHOLDER_HONEYCOMB_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret electric-sql:honeycombApiKey <value>

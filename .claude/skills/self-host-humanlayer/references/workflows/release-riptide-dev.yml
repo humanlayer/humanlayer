@@ -1,0 +1,319 @@
+name: Release Riptide Dev
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_repo:
+        description: "Public repo to build from (a private stand-in during the rehearsal)"
+        type: string
+        default: humanlayer/humanlayer
+      public_ref:
+        description: "Public repo branch, tag, or SHA to build from"
+        type: string
+        default: main
+      dry_run:
+        description: "Build and sign everything, publish nothing, and preview Pulumi instead of up"
+        type: boolean
+        default: false
+      skip_cask_update:
+        description: "Skip updating the Homebrew cask"
+        type: boolean
+        default: false
+      skip_signing:
+        description: "Skip code signing and notarization"
+        type: boolean
+        default: false
+      use_office_runner:
+        description: "Use office runners on main (disable for Blacksmith fallback)"
+        type: boolean
+        default: true
+      urgency:
+        description: "Update urgency level (normal, critical, etc.)"
+        type: string
+        default: "normal"
+      notes:
+        description: "Release notes for the updater manifest, rendered as Markdown in the update modal (leave empty for no modal body)"
+        type: string
+        default: ""
+      skip_pulumi:
+        description: "Skip the full infrastructure deploy (use when infra is wedged but the app release must ship)"
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      public_repo:
+        description: "Public repo to build from"
+        required: false
+        type: string
+        default: humanlayer/humanlayer
+      public_ref:
+        description: "Public repo branch, tag, or SHA to build from"
+        required: false
+        type: string
+        default: main
+      dry_run:
+        description: "Build and sign everything, publish nothing, and preview Pulumi instead of up"
+        required: false
+        type: boolean
+        default: false
+      skip_cask_update:
+        description: "Skip updating the Homebrew cask"
+        required: false
+        type: boolean
+        default: false
+      skip_signing:
+        description: "Skip code signing and notarization"
+        required: false
+        type: boolean
+        default: false
+      use_office_runner:
+        description: "Use office runners on main (disable for Blacksmith fallback)"
+        required: false
+        type: boolean
+        default: true
+      urgency:
+        description: "Update urgency level (normal, critical, etc.)"
+        required: false
+        type: string
+        default: "normal"
+      notes:
+        description: "Release notes for the updater manifest, rendered as Markdown in the update modal"
+        required: false
+        type: string
+        default: ""
+      skip_pulumi:
+        description: "Skip the full infrastructure deploy (use when infra is wedged but the app release must ship)"
+        required: false
+        type: boolean
+        default: false
+permissions:
+  contents: write
+
+concurrency:
+  group: release-riptide-dev
+  cancel-in-progress: false
+
+env:
+  DO_NOT_TRACK: "1"
+  TURBO_UI: stream
+
+# The public repo's CI already passed on the commits main.yml dispatches, so no checks run here.
+jobs:
+  resolve:
+    uses: ./.github/workflows/resolve-public-sha.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ inputs.public_ref }}
+    secrets: inherit
+
+  build-riptide-dev:
+    needs: resolve
+    uses: ./.github/workflows/release-riptide-tauri-dev-build.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ needs.resolve.outputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      skip_signing: ${{ inputs.skip_signing }}
+      # Off-main manual releases must build on Blacksmith, not skip the build.
+      use_office_runner: ${{ inputs.use_office_runner && github.ref == 'refs/heads/main' }}
+    secrets: inherit
+
+  build-riptide-electron-dev:
+    needs: resolve
+    uses: ./.github/workflows/release-riptide-electron-dev-build.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ needs.resolve.outputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      use_mac_mini: ${{ inputs.use_office_runner && github.ref == 'refs/heads/main' }}
+    secrets: inherit
+
+  deploy-pulumi:
+    needs: resolve
+    if: ${{ inputs.skip_pulumi != true }}
+    uses: ./.github/workflows/pulumi-deploy-dev.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ needs.resolve.outputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      deploy-updater-server: false
+      ref: ${{ github.ref }}
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+
+  deploy-updater-server:
+    needs: [resolve, build-riptide-dev, deploy-pulumi]
+    if: ${{ always() && needs.build-riptide-dev.result == 'success' && needs.build-riptide-dev.outputs.has_updater_artifacts == 'true' && (needs.deploy-pulumi.result == 'success' || needs.deploy-pulumi.result == 'skipped') }}
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ needs.resolve.outputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      project-path: deploy/updater-server
+      stack: humanlayer/updater-server/dev
+      action: up
+      pre-command: bun run build
+      ref: ${{ github.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  publish-release:
+    runs-on: ubuntu-latest
+    needs: [resolve, build-riptide-dev, deploy-pulumi, deploy-updater-server]
+    if: ${{ always() && needs.build-riptide-dev.result == 'success' && (needs.deploy-pulumi.result == 'success' || needs.deploy-pulumi.result == 'skipped') && (needs.deploy-updater-server.result == 'success' || needs.deploy-updater-server.result == 'skipped') }}
+    concurrency:
+      group: homebrew-humanlayer-cask-publish
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ needs.resolve.outputs.sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download release products
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: riptide-dev-release-products
+          path: release-products
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          token: ${{ secrets.HOMEBREW_HUMANLAYER_RELEASES_PAT }}
+          tag_name: ${{ needs.build-riptide-dev.outputs.release_tag }}
+          name: riptide-dev-${{ needs.build-riptide-dev.outputs.release_version }}
+          files: release-products/*
+          draft: false
+          prerelease: true
+          body: |
+            # Riptide Dev Release
+
+            Version: ${{ needs.build-riptide-dev.outputs.release_version }}
+            Environment: dev (PLACEHOLDER_DEV_DOMAIN_PLACEHOLDER)
+
+            ## Installation
+
+            ```bash
+            brew tap humanlayer/humanlayer
+            brew install --cask riptide-dev
+            ```
+
+      - name: Install Pulumi
+        if: ${{ needs.build-riptide-dev.outputs.has_updater_artifacts == 'true' }}
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.137.0
+
+      - name: Fetch updater bucket
+        if: ${{ needs.build-riptide-dev.outputs.has_updater_artifacts == 'true' }}
+        id: pulumi_updater
+        run: echo "bucket_name=$(pulumi stack output bucketName --stack humanlayer/updater-server/dev)" >> "$GITHUB_OUTPUT"
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Generate and upload latest.json
+        if: ${{ needs.build-riptide-dev.outputs.has_updater_artifacts == 'true' }}
+        run: |
+          bun run ci-scripts/generate-updater-manifest.ts
+          if [ "$DRY_RUN" = true ]; then
+            echo "dry run: not uploading latest.json"
+            cat latest.json
+          else
+            aws s3 cp latest.json s3://${{ steps.pulumi_updater.outputs.bucket_name }}/dev/latest.json
+          fi
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          VERSION: ${{ needs.build-riptide-dev.outputs.release_version }}
+          RELEASE_TAG: ${{ needs.build-riptide-dev.outputs.release_tag }}
+          ARTIFACT_NAME: ${{ needs.build-riptide-dev.outputs.updater_artifact_name }}
+          SIGNATURE_FILE: release-products/${{ needs.build-riptide-dev.outputs.updater_artifact_name }}.sig
+          NOTES: ${{ inputs.notes }}
+          URGENCY: ${{ inputs.urgency || 'normal' }}
+          OUTPUT_PATH: latest.json
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Calculate DMG SHA256 and URL
+        if: ${{ inputs.skip_cask_update != true }}
+        id: dmg_hash
+        run: |
+          SHA256=$(shasum -a 256 "release-products/${{ needs.build-riptide-dev.outputs.dmg_filename }}" | awk '{print $1}')
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "dmg_url=https://github.com/humanlayer/homebrew-humanlayer/releases/download/${{ needs.build-riptide-dev.outputs.release_tag }}/${{ needs.build-riptide-dev.outputs.dmg_filename }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout homebrew-humanlayer
+        if: ${{ inputs.skip_cask_update != true }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          ref: main
+          fetch-depth: 0
+          path: homebrew-humanlayer
+          token: ${{ secrets.HUMANLAYER_HOMEBREW_CASK_WRITE_GITHUB_PAT }}
+
+      - name: Generate Homebrew cask file
+        if: ${{ inputs.skip_cask_update != true }}
+        run: bun run ci-scripts/generate-homebrew-cask.ts
+        env:
+          RELEASE_TYPE: dev
+          RELEASE_VERSION: ${{ needs.build-riptide-dev.outputs.release_version }}
+          SHA256: ${{ steps.dmg_hash.outputs.sha256 }}
+          DMG_URL: ${{ steps.dmg_hash.outputs.dmg_url }}
+          OUTPUT_DIR: homebrew-humanlayer/Casks
+
+      - name: Commit and push cask update
+        if: ${{ inputs.skip_cask_update != true && !inputs.dry_run }}
+        working-directory: homebrew-humanlayer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/riptide-dev.rb Casks/humanlayer-dev.rb
+          if git diff --staged --quiet; then
+            exit 0
+          fi
+          git commit -m "Update riptide-dev and humanlayer-dev to ${{ needs.build-riptide-dev.outputs.release_version }}"
+          for attempt in 1 2 3 4 5; do
+            git fetch origin main
+            git rebase origin/main
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
+
+  publish-riptide-electron-dev:
+    needs: [build-riptide-electron-dev, deploy-pulumi]
+    if: ${{ always() && needs.build-riptide-electron-dev.result == 'success' && (needs.deploy-pulumi.result == 'success' || needs.deploy-pulumi.result == 'skipped') }}
+    uses: ./.github/workflows/release-riptide-electron-dev-publish.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      dry_run: ${{ inputs.dry_run }}
+      release_version: ${{ needs.build-riptide-electron-dev.outputs.release_version }}
+      release_tag: ${{ needs.build-riptide-electron-dev.outputs.release_tag }}
+      dmg_filename: ${{ needs.build-riptide-electron-dev.outputs.dmg_filename }}
+      zip_filename: ${{ needs.build-riptide-electron-dev.outputs.zip_filename }}
+      source_sha: ${{ needs.build-riptide-electron-dev.outputs.source_sha }}
+    secrets: inherit

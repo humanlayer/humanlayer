@@ -1,0 +1,21 @@
+{
+	"name": "@humanlayer/deploy-riptide-electric-proxy",
+	"private": true,
+	"scripts": {
+		"build": "bun run --cwd ../../humanlayer/apps/riptide-electric-proxy build",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@humanlayer/pulumi-helpers": "workspace:*",
+		"@pulumi/aws": "catalog:",
+		"@pulumi/awsx": "catalog:",
+		"@pulumi/command": "^1.2.1",
+		"@pulumi/docker-build": "0.0.14",
+		"@pulumi/pulumi": "catalog:",
+		"@pulumi/random": "catalog:"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	}
+}

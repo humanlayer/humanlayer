@@ -1,0 +1,11 @@
+name: stripe
+description: Stripe billing catalog and secret scaffolding
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

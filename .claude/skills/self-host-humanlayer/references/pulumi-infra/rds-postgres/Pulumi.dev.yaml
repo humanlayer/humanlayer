@@ -1,0 +1,11 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  rds-postgres:instanceClass: db.t4g.large
+  rds-postgres:replicaInstanceClass: db.t4g.large
+  rds-postgres:allocatedStorage: 200
+  rds-postgres:maxAllocatedStorage: 1000
+  rds-postgres:multiAz: false

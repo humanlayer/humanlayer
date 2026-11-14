@@ -1,0 +1,456 @@
+name: Deploy Prod Pulumi (PLACEHOLDER_PROD_DOMAIN_PLACEHOLDER)
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_repo:
+        description: Public repo cloned into humanlayer/
+        type: string
+        default: humanlayer/humanlayer
+      public_sha:
+        description: Public commit to deploy. Empty means the public repo's main at each job's start.
+        type: string
+        default: ""
+      dry_run:
+        description: Run pulumi preview instead of up
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      public_repo:
+        description: Public repo cloned into humanlayer/
+        required: false
+        type: string
+        default: humanlayer/humanlayer
+      public_sha:
+        description: Public commit to deploy. Empty means the public repo's main at each job's start.
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: Run pulumi preview instead of up
+        required: false
+        type: boolean
+        default: false
+      deploy-updater-server:
+        description: Deploy the updater server as part of this workflow
+        required: false
+        type: boolean
+        default: true
+      ref:
+        description: Synclayer ref (branch/tag/SHA) holding the Pulumi programs
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: deploy-prod-pulumi
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # Level 1: No dependencies (parallel)
+  core:
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/core
+      stack: humanlayer/core/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  daemon-token-keys:
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/daemon-token-keys
+      stack: humanlayer/daemon-token-keys/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  updater-signing-keys:
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/updater-signing-keys
+      stack: humanlayer/updater-signing-keys/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  rust-durable-streams-registry:
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/rust-durable-streams-registry
+      stack: humanlayer/rust-durable-streams-registry/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      upsert: true
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  stripe:
+    needs: core
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/stripe
+      stack: humanlayer/stripe/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  updater-server:
+    if: ${{ github.event_name != 'workflow_call' || inputs.deploy-updater-server != false }}
+    needs: core
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/updater-server
+      stack: humanlayer/updater-server/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      pre-command: bun run build
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  docs:
+    needs: core
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/docs
+      stack: humanlayer/docs/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  # Level 2: Depends on core
+  rds-postgres:
+    needs: core
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/rds-postgres
+      stack: humanlayer/rds-postgres/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  memorydb:
+    needs: core
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/memorydb
+      stack: humanlayer/memorydb/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  rivet:
+    needs: core
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/rivet
+      stack: humanlayer/rivet/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  rust-durable-streams:
+    needs: [core, rust-durable-streams-registry]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/rust-durable-streams
+      stack: humanlayer/rust-durable-streams/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  # Level 3: Depends on core + rds-postgres (parallel)
+  electric-sql:
+    needs: rds-postgres
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/electric-sql
+      stack: humanlayer/electric-sql/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  migrator-function:
+    needs: rds-postgres
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/riptide-migrator
+      stack: humanlayer/migrator-function/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      pre-command: bun run build
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  database-maintenance-function:
+    needs: rds-postgres
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/database-maintenance-function
+      stack: humanlayer/database-maintenance-function/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      pre-command: bun run build
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  stale-daemon-sweeper:
+    needs: rds-postgres
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/stale-daemon-sweeper
+      stack: humanlayer/stale-daemon-sweeper/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      pre-command: bun run build
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  # Level 4: Depends on core + rds-postgres + electric-sql + daemon-token-keys (parallel)
+  riptide-electric-proxy:
+    needs: [electric-sql, daemon-token-keys, rust-durable-streams]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/riptide-electric-proxy
+      stack: humanlayer/riptide-electric-proxy/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      arm64: true
+      docker-cache-key: apps/riptide-electric-proxy/Dockerfile-arm64-v2
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  riptide-api:
+    needs: [rds-postgres, daemon-token-keys, stripe, memorydb, rust-durable-streams]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/riptide-api
+      stack: humanlayer/riptide-api/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      arm64: true
+      docker-cache-key: apps/riptide-api/Dockerfile-arm64-v2
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  admin-dashboard-api:
+    needs: [rds-postgres, memorydb]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: apps/admin-dashboard-api
+      stack: humanlayer/admin-dashboard-api/prod
+      action: up
+      ref: ${{ inputs.ref }}
+      arm64: true
+      docker-cache-key: apps/admin-dashboard-api/Dockerfile-arm64-v2
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  bastion:
+    needs: [admin-dashboard-api, memorydb, rivet]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/bastion
+      stack: humanlayer/bastion/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  production-debugging-access:
+    needs: bastion
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/production-debugging-access
+      stack: humanlayer/production-debugging-access/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  monitoring:
+    needs: [core, rds-postgres, electric-sql, rivet, rust-durable-streams, riptide-api, riptide-electric-proxy, admin-dashboard-api]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: pulumi-infra/monitoring
+      stack: humanlayer/monitoring/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  # Level 5: Depends on upstream services (parallel)
+  riptide-cloud:
+    needs: [riptide-api, riptide-electric-proxy]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/riptide-cloud
+      stack: humanlayer/riptide-cloud/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  riptide-ui:
+    needs: [riptide-api, riptide-electric-proxy]
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.public_sha }}
+      dry_run: ${{ inputs.dry_run == true }}
+      project-path: deploy/riptide-ui
+      stack: humanlayer/riptide-ui/prod
+      action: up
+      ref: ${{ inputs.ref }}
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
