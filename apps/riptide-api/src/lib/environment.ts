@@ -57,19 +57,20 @@ export function isBillingEnforcementEnabled(): boolean {
 }
 
 /**
- * Whether new organization creation is blocked for this environment (e.g. the
- * deprecated beta env). Controlled by the BLOCK_NEW_ORG_CREATION env var.
+ * Whether new organization creation is blocked for this environment. HumanLayer
+ * Cloud blocks it everywhere while it shuts down. Controlled by the
+ * BLOCK_NEW_ORG_CREATION env var.
  */
 export function isNewOrgCreationBlocked(): boolean {
 	return process.env.BLOCK_NEW_ORG_CREATION === 'true'
 }
 
 /**
- * Message shown when new organization creation is blocked. Worded to be
- * palatable to enterprise customers still landing on the beta environment.
+ * Message shown when new organization creation is blocked. Generic across
+ * environments: HumanLayer Cloud is shutting down as HumanLayer joins Factory.
  */
 export const BLOCK_NEW_ORG_CREATION_MESSAGE =
-	'This is the HumanLayer beta environment, which is no longer accepting new organization signups. Please get an invite to your team’s existing org, or create a new organization at cloud.humanlayer.com to proceed.'
+	'HumanLayer Cloud is shutting down as HumanLayer joins Factory (https://humanlayer.com/blog/humanlayer-joins-factory), so it no longer accepts new organizations. If your team already has an org, ask a teammate for an invite. To keep using HumanLayer, self-host the open source version: https://github.com/humanlayer/humanlayer'
 
 /**
  * Check if the current environment is a dev environment (local or devcloud).

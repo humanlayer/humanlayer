@@ -357,7 +357,7 @@ describe('organizations.create', async () => {
 			expect(thrown).toBeDefined()
 			const orpcError = thrown as { code?: string; data?: { message?: string } }
 			expect(orpcError.code).toBe('BAD_REQUEST')
-			expect(orpcError.data?.message).toContain('no longer accepting new organization signups')
+			expect(orpcError.data?.message).toContain('HumanLayer Cloud is shutting down')
 
 			expect(workos._organizations.size).toBe(0)
 		} finally {
