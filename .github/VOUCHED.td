@@ -18,6 +18,7 @@ alabamamike
 allisoneer
 balanceiskey
 breadstick-crumbs
+dannomayernotabot LGTM :)
 hellovai
 pepijnsenders
 smorin
