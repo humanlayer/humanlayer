@@ -1,12 +1,12 @@
-import { join, resolve } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 
 /**
  * Check if a resolved path is within a boundary directory.
- * Uses resolve() to canonicalize paths and trailing-slash prefix check.
+ * Uses resolve() to canonicalize paths and trailing-separator prefix check.
  */
 export function isPathWithinBoundary(resolvedPath: string, boundaryDir: string): boolean {
 	const normalizedPath = resolve(resolvedPath)
-	const normalizedBoundary = `${resolve(boundaryDir)}/`
+	const normalizedBoundary = resolve(boundaryDir) + sep
 	return normalizedPath.startsWith(normalizedBoundary)
 }
 
