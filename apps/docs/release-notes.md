@@ -2,6 +2,23 @@
 
 This page lists changes in each HumanLayer release. Download the latest build from [cloud.humanlayer.com/install](https://cloud.humanlayer.com/install).
 
+## 0.202.0 — November 14, 2026
+
+This release keeps the minimalist UI usable after your laptop wakes, makes the System theme follow your OS, and gets the daemon working on Windows. It also fixes the npm install of the CLI and adds a guide for self-hosting HumanLayer.
+
+**Highlights**
+
+- **Composer stays open when a host is offline (Minimalist UI)** - After your laptop wakes, a live host no longer shows as offline for 10 to 20 seconds. If a host really is offline, you can still type. Only Send is blocked, and the button names the daemon to start.
+- **System theme follows your OS** - Picking System in the desktop app now matches your OS appearance and switches the moment the OS does, with no reload.
+- **Windows daemon fixes** - Artifacts now sync to disk on Windows, and reads and writes to artifact files are auto-approved, as they already were on macOS and Linux.
+- **Self-hosting guide** - The open source repo now has a `self-host-humanlayer` skill with reference Pulumi stacks, deploy workflows, and a list of every secret to fill in.
+
+**Other Changes**
+
+- **CLI installs from npm again** - `npm i -g @humanlayer/cli` once more installs the `humanlayer` command. The 0.40.x packages shipped without it.
+- **Repos with no commits work** - Starting a task in a freshly initialized repo no longer fails with "Unable to resolve source ref". The daemon makes an initial empty commit for you.
+- **Relative worktree paths** - A worktree path like `.worktrees/task` in `workspace.json` now resolves against the repo root instead of failing to launch.
+
 ## 0.201.0 — November 2, 2026
 
 In the minimalist UI, a task started on a directory now runs in its own worktrees instead of editing your checkout. Comments in fullscreen diff review now work on every file, and the changes view loads even if you open it before the first diff. The daemon also hides its `.shadow` folder from git, so agents no longer commit it.
