@@ -39,7 +39,9 @@ A build from source sends nothing to us: Sentry, PostHog, and the WorkOS client 
 
 ## Self-hosting
 
-HumanLayer Cloud runs this code. Guides for running it yourself are in progress.
+HumanLayer Cloud runs this code on AWS. [`.claude/skills/self-host-humanlayer/`](.claude/skills/self-host-humanlayer/SKILL.md) holds a reference copy of our Pulumi stacks and GitHub Actions workflows, with every secret and HumanLayer-specific value replaced by a placeholder. It also covers the services, the order to deploy them in, and what you must change. Open it in Claude Code, or another agent that reads skills, and ask it to help you self-host HumanLayer.
+
+It's a reference, not a supported install: expect to adapt it.
 
 
 ⚠️ note - If you use the Docker Compose file as a starter for self hosting, please note that it uses default/simple passwords that should be updated before you deploy.

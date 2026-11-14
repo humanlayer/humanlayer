@@ -1,0 +1,8 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  updater-signing-keys:privateKey: PLACEHOLDER_PRIVATE_KEY_PLACEHOLDER  # secret: pulumi config set --secret updater-signing-keys:privateKey <value>
+  updater-signing-keys:publicKey: PLACEHOLDER_PUBLIC_KEY_PLACEHOLDER

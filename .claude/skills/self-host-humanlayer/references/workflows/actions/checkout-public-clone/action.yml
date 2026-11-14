@@ -1,0 +1,53 @@
+name: Clone the public repo into humanlayer/
+description: >-
+  For jobs that need synclayer and the public code together (Pulumi deploys, the PR check, the admin
+  image). Check out synclayer first; this clones the public repo into ./humanlayer, exports
+  HUMANLAYER_SHA for the Pulumi programs, and installs from the synclayer root.
+
+inputs:
+  public_repo:
+    description: Public repo to clone
+    default: humanlayer/humanlayer
+  public_sha:
+    description: Commit to check out. Empty means the repo's default branch.
+    default: ""
+  token:
+    description: Token that can read public_repo. Only a private stand-in needs one.
+    default: ""
+  install:
+    description: Run bun install from the synclayer root. Needs Bun set up first.
+    default: "true"
+  frozen_lockfile:
+    description: >-
+      Install with --frozen-lockfile. Deploys fail closed when the public dependency graph has
+      drifted from synclayer's reviewed lockfile; regenerate the lockfile instead of resolving at
+      deploy time.
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Check out the public repo
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      with:
+        repository: ${{ inputs.public_repo }}
+        ref: ${{ inputs.public_sha }}
+        token: ${{ inputs.token || github.token }}
+        path: humanlayer
+        persist-credentials: false
+
+    - name: Export HUMANLAYER_SHA
+      shell: bash
+      run: echo "HUMANLAYER_SHA=$(git -C humanlayer rev-parse HEAD)" >> "$GITHUB_ENV"
+
+    - name: Install dependencies
+      if: inputs.install == 'true'
+      shell: bash
+      env:
+        FROZEN: ${{ inputs.frozen_lockfile }}
+      run: |
+        if [ "$FROZEN" = true ]; then
+          bun install --frozen-lockfile
+        else
+          bun install
+        fi

@@ -1,0 +1,7 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${alphanum(6)}
+  resend:apiKey: PLACEHOLDER_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret resend:apiKey <value>

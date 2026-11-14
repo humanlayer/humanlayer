@@ -1,0 +1,11 @@
+name: core
+description: Core Riptide Infrastructure - VPC, ECS Cluster, DNS, SNS
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

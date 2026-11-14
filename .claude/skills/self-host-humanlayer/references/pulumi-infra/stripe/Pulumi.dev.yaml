@@ -1,0 +1,9 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  stripe:mode: testing
+  stripe:billingEnforcementEnabled: true
+  stripe:stripeSecretKey: PLACEHOLDER_STRIPE_SECRET_KEY_PLACEHOLDER  # secret: pulumi config set --secret stripe:stripeSecretKey <value>

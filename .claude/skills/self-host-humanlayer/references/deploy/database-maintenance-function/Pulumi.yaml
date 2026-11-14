@@ -1,0 +1,11 @@
+name: database-maintenance-function
+description: Database maintenance Lambda function
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

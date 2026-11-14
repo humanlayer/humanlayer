@@ -1,0 +1,17 @@
+{
+	"name": "@humanlayer/pulumi-rds-postgres",
+	"type": "module",
+	"main": "pulumi.ts",
+	"scripts": {
+		"typecheck": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@pulumi/aws": "catalog:",
+		"@pulumi/pulumi": "catalog:",
+		"@pulumi/random": "catalog:"
+	}
+}

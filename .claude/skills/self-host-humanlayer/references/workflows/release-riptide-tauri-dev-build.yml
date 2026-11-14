@@ -1,0 +1,607 @@
+name: Build Riptide Tauri Dev
+
+on:
+  workflow_call:
+    inputs:
+      public_repo:
+        description: Public repo to build from
+        required: false
+        type: string
+        default: humanlayer/humanlayer
+      public_sha:
+        description: Public commit to build
+        required: true
+        type: string
+      dry_run:
+        description: Skip the Sentry release and sourcemap upload
+        required: false
+        type: boolean
+        default: false
+      skip_signing:
+        description: Skip code signing and notarization
+        required: false
+        type: boolean
+        default: false
+      use_office_runner:
+        description: Opt in to office runners for trusted main dev builds
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      has_updater_artifacts:
+        description: Whether signed updater artifacts were produced
+        value: ${{ jobs.build.outputs.has_updater_artifacts }}
+      release_version:
+        description: Derived Tauri dev release version
+        value: ${{ jobs.build.outputs.release_version }}
+      release_tag:
+        description: Tauri dev release tag
+        value: ${{ jobs.build.outputs.release_tag }}
+      dmg_filename:
+        description: Versioned DMG filename
+        value: ${{ jobs.build.outputs.dmg_filename }}
+      canonical_dmg_filename:
+        description: Canonical DMG filename
+        value: ${{ jobs.build.outputs.canonical_dmg_filename }}
+      updater_artifact_name:
+        description: Updater archive filename
+        value: ${{ jobs.build.outputs.updater_artifact_name }}
+
+permissions:
+  contents: read
+
+env:
+  # Sentry DSNs baked into each client; builds from public source have none, so Sentry stays off there.
+  VITE_PUBLIC_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_DAEMON_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_NATIVE_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_ELECTRON_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  DO_NOT_TRACK: "1"
+  TURBO_UI: stream
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    if: >-
+      !inputs.use_office_runner ||
+      github.ref == 'refs/heads/main'
+    runs-on: ${{ inputs.use_office_runner && fromJSON('["self-hosted", "macOS", "ARM64", "humanlayer-office-runner"]') || 'blacksmith-12vcpu-macos-15' }}
+    timeout-minutes: ${{ inputs.use_office_runner && 90 || 360 }}
+    permissions:
+      contents: read
+    outputs:
+      has_updater_artifacts: ${{ steps.updater_artifacts.outputs.has_updater_artifacts }}
+      release_version: ${{ steps.version.outputs.release_version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      dmg_filename: ${{ steps.version.outputs.dmg_filename }}
+      canonical_dmg_filename: ${{ steps.version.outputs.canonical_dmg_filename }}
+      updater_artifact_name: ${{ steps.version.outputs.updater_artifact_name }}
+    env:
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.RIPTIDE_SENTRY_PROJECT }}
+      # Unset in a dry run, so the Vite build uploads no sourcemaps.
+      SENTRY_AUTH_TOKEN: ${{ !inputs.dry_run && secrets.SENTRY_AUTH_TOKEN || '' }}
+      VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+      NODE_ENV: production
+      # Sentry-enabled Vite exceeds the default heap, including the repeated
+      # beforeBuildCommand inside both signed and unsigned Tauri builds.
+      NODE_OPTIONS: --max-old-space-size=8192
+
+    steps:
+      - name: Isolate home and tool configuration
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          umask 077
+          PILOT_HOME="$(mktemp -d "$RUNNER_TEMP/tauri-dev-home.XXXXXX")"
+          echo "PILOT_HOME=$PILOT_HOME" >> "$GITHUB_ENV"
+          # Use the tested Electron isolation on hosted builds too, so signing
+          # never changes the account's real default keychain or search list.
+          # HOME isolation is configuration isolation, not a security sandbox.
+          mkdir -p "$PILOT_HOME/.config" "$PILOT_HOME/signing" "$PILOT_HOME/tmp" \
+            "$PILOT_HOME/Library/Keychains" "$PILOT_HOME/Library/Preferences"
+          {
+            echo "PILOT_KEYCHAIN_HOME=$PILOT_HOME"
+            echo "HOME=$PILOT_HOME"
+            echo "XDG_CONFIG_HOME=$PILOT_HOME/.config"
+            echo "BUN_INSTALL=$PILOT_HOME/.bun"
+            echo "BUN_INSTALL_CACHE_DIR=$PILOT_HOME/.bun/install/cache"
+            echo "NPM_CONFIG_USERCONFIG=$PILOT_HOME/.npmrc"
+            echo "GIT_CONFIG_GLOBAL=$PILOT_HOME/.gitconfig"
+            echo "PULUMI_HOME=$PILOT_HOME/.pulumi"
+            # Cargo fingerprints include source paths: keep these stable per
+            # runner, even though HOME/RUSTUP_HOME are unique to each job.
+            # Only declare the path here; checkout must clean it before use.
+            echo "CARGO_HOME=$GITHUB_WORKSPACE/.tauri-dev-cache/cargo"
+            echo "RUSTUP_HOME=$PILOT_HOME/.rustup"
+            echo "TMPDIR=$PILOT_HOME/tmp/"
+            echo "TAURI_KEYCHAIN_PATH=$PILOT_HOME/signing/tauri-signing.keychain-db"
+          } >> "$GITHUB_ENV"
+
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ inputs.public_sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+          # Tauri's beforeBuildCommand reuses bin/riptided if it exists. Clean
+          # ignored binaries, bundles and generated config before restoring caches.
+          clean: true
+          # Full history: generate-version.ts derives the dev version from
+          # the number of commits since the base version last changed
+          fetch-depth: 0
+
+      - name: Setup Bun
+        id: setup-bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+          no-cache: true
+
+      - name: Verify isolated Bun installation
+        env:
+          INSTALLED_BUN_PATH: ${{ steps.setup-bun.outputs.bun-path }}
+        run: |
+          test "$INSTALLED_BUN_PATH" = "$HOME/.bun/bin/bun"
+          test "$(command -v bun)" = "$INSTALLED_BUN_PATH"
+          test "$(bun --version)" = 1.3.14
+
+      - name: Generate version
+        id: version
+        run: bun run ci-scripts/generate-version.ts >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_RELEASE_TYPE: dev
+
+      - name: Derive daemon version
+        id: daemon_version
+        run: echo "version=$(bun run ci-scripts/derive-daemon-version.ts 2>/dev/null || echo dev)" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_RELEASE_TYPE: dev
+
+      - name: Stamp derived version into build files
+        run: bun run ci-scripts/stamp-version.ts
+        env:
+          VERSION: ${{ steps.version.outputs.release_version }}
+
+      - name: Stamp derived plugin versions
+        run: bun run ci-scripts/stamp-plugin-versions.ts
+
+      - name: Install pulumi
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.137.0
+
+      - name: Fetch Pulumi stack outputs
+        id: pulumi
+        run: |
+          API_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-api/dev)
+          SYNC_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-electric-proxy/dev)
+          CLOUD_URL=$(pulumi stack output cloudUrl --stack humanlayer/riptide-cloud/dev)
+          BILLING_ENFORCEMENT_ENABLED=$(pulumi stack output billingEnforcementEnabled --stack humanlayer/stripe/dev)
+          APP_URL=$(pulumi stack output appUrl --stack humanlayer/riptide-ui/dev)
+          {
+            echo "api_url=$API_URL"
+            echo "sync_url=$SYNC_URL"
+            echo "cloud_url=$CLOUD_URL"
+            echo "billing_enforcement_enabled=$BILLING_ENFORCEMENT_ENABLED"
+            echo "app_url=$APP_URL"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Setup Rust
+        id: rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+
+      - name: Prepare portable dependency cache paths
+        run: |
+          # Cache archives retain absolute paths. Keep cache payloads relative
+          # to the checkout, not under the random HOME of a previous job/runner.
+          # Cargo must see stable source paths directly, not via random HOME
+          # symlinks. Cache only registry/git, never Cargo bins/config/credentials.
+          mkdir -p "$CARGO_HOME/registry" "$CARGO_HOME/git" .tauri-dev-cache/bun
+          mkdir -p "$HOME/.bun/install"
+          ln -s "$GITHUB_WORKSPACE/.tauri-dev-cache/bun" "$HOME/.bun/install/cache"
+
+      # Explicit restore/save replaces rust-cache's post-job save: that save
+      # runs cargo metadata after always() cleanup has removed the isolated HOME.
+      # Office slots have different absolute workspaces, so scope fingerprints
+      # to the runner as well as keeping source paths stable between its jobs.
+      - name: Restore Rust cache
+        id: rust-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            .tauri-dev-cache/cargo/registry
+            .tauri-dev-cache/cargo/git
+            apps/riptide-native/target
+          key: tauri-dev-rust-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.use_office_runner && runner.name || 'hosted' }}-${{ steps.rust.outputs.cachekey }}-${{ hashFiles('apps/riptide-native/Cargo.lock') }}
+          restore-keys: |
+            tauri-dev-rust-v2-${{ runner.os }}-${{ runner.arch }}-${{ inputs.use_office_runner && runner.name || 'hosted' }}-${{ steps.rust.outputs.cachekey }}-
+
+      - name: Remove restored bundle products
+        run: rm -rf apps/riptide-native/target/release/bundle
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Restore bun dependencies
+        id: bun-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tauri-dev-cache/bun
+          key: bun-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # === Code Signing Steps (skipped when skip_signing is true) ===
+
+      - name: Import codesigning certificate
+        if: ${{ inputs.skip_signing != true }}
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          umask 077
+          security() { HOME="$PILOT_KEYCHAIN_HOME" /usr/bin/security "$@"; }
+          CERTIFICATE_PATH="$PILOT_HOME/signing/tauri-signing.p12"
+          trap 'rm -f "$CERTIFICATE_PATH"' EXIT
+          # create-keychain can itself change the search list. Snapshot first,
+          # atomically, so cleanup can also recover from a partial import.
+          security list-keychains -d user > "$PILOT_HOME/signing/search-list.pending"
+          mv "$PILOT_HOME/signing/search-list.pending" "$PILOT_HOME/signing/search-list"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$TAURI_KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$TAURI_KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$TAURI_KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -k "$TAURI_KEYCHAIN_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$TAURI_KEYCHAIN_PATH"
+          KEYCHAINS=()
+          while IFS= read -r line; do
+            line="${line#"${line%%[![:space:]]*}"}"
+            line="${line#\"}"
+            line="${line%\"}"
+            [[ -z "$line" ]] || KEYCHAINS+=("$line")
+          done < "$PILOT_HOME/signing/search-list"
+          # Tauri/codesign discover the already-imported identity via this
+          # HOME-scoped search list. No default-keychain change is necessary.
+          security list-keychains -d user -s "$TAURI_KEYCHAIN_PATH" "${KEYCHAINS[@]}"
+
+      - name: Complete and verify signing chain
+        if: ${{ inputs.skip_signing != true }}
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          export HOME="$PILOT_KEYCHAIN_HOME"
+          # Public Apple intermediate only; never put a private key in login.
+          # Office prerequisite: the real login keychain also contains this
+          # public G2 for native codesign's chain discovery (already provisioned).
+          CA_PATH="$PILOT_HOME/signing/DeveloperIDG2CA.cer"
+          curl --fail --silent --show-error --location --retry 3 \
+            --proto '=https' --proto-redir '=https' \
+            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            --output "$CA_PATH"
+          printf '%s  %s\n' \
+            f16cd3c54c7f83cea4bf1a3e6a0819c8aaa8e4a1528fd144715f350643d2df3a \
+            "$CA_PATH" | shasum -a 256 -c -
+          security import "$CA_PATH" -k "$TAURI_KEYCHAIN_PATH" -t cert -f x509
+          security find-identity -v -p codesigning "$TAURI_KEYCHAIN_PATH" > "$PILOT_HOME/signing/valid-identities"
+          cat "$PILOT_HOME/signing/valid-identities"
+          # find-identity exits successfully even with zero valid identities.
+          test -n "$APPLE_SIGNING_IDENTITY"
+          grep -F -- "$APPLE_SIGNING_IDENTITY" "$PILOT_HOME/signing/valid-identities"
+
+      - name: Build riptide-ui
+        if: ${{ inputs.skip_signing != true }}
+        run: bun run --cwd apps/riptide-ui build:dev
+        env:
+          NODE_ENV: production
+          SENTRY_ENVIRONMENT: devcloud
+          VITE_PUBLIC_SENTRY_ENVIRONMENT: devcloud
+          VITE_PUBLIC_BUILD_TYPE: dev
+          VITE_PUBLIC_BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          VITE_PUBLIC_DAEMON_VERSION: ${{ steps.daemon_version.outputs.version }}
+          VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          VITE_PUBLIC_POSTHOG_KEY: PLACEHOLDER_DEV_POSTHOG_KEY_PLACEHOLDER
+          VITE_PUBLIC_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          VITE_PUBLIC_RIPTIDE_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          VITE_PUBLIC_WORKOS_CLIENT_ID: PLACEHOLDER_DEV_WORKOS_CLIENT_ID_PLACEHOLDER
+          VITE_PUBLIC_DEEP_LINK_SCHEME: riptide-dev
+          VITE_PUBLIC_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          VITE_PUBLIC_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_BILLING_ENFORCEMENT_ENABLED: ${{ steps.pulumi.outputs.billing_enforcement_enabled }}
+
+      - name: Build riptided daemon
+        if: ${{ inputs.skip_signing != true }}
+        run: |
+          bun run --cwd apps/riptide-daemon build:dev
+          mkdir -p apps/riptide-native/bin
+          cp apps/riptide-daemon/dist/daemon apps/riptide-native/bin/riptided
+        env:
+          BUILD_TYPE: dev
+          BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          NODE_ENV: production
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          SENTRY_ENVIRONMENT: devcloud
+
+      - name: Sign riptided daemon
+        if: ${{ inputs.skip_signing != true }}
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          codesign -f --timestamp \
+            --entitlements apps/riptide-daemon/entitlements.plist \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            --options runtime \
+            --keychain "$TAURI_KEYCHAIN_PATH" \
+            apps/riptide-native/bin/riptided
+
+      - name: Verify riptided signature
+        if: ${{ inputs.skip_signing != true }}
+        run: |
+          echo "Verifying riptided code signature..."
+          codesign --verify --deep --strict apps/riptide-native/bin/riptided
+          echo "Signature details:"
+          codesign -d --verbose=2 apps/riptide-native/bin/riptided
+
+      - name: Notarize riptided daemon
+        if: ${{ inputs.skip_signing != true }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          NOTARIZE_ZIP="$PILOT_HOME/signing/riptided-notarize.zip"
+          trap 'rm -f "$NOTARIZE_ZIP"' EXIT
+          ditto -c -k apps/riptide-native/bin/riptided "$NOTARIZE_ZIP"
+          xcrun notarytool submit "$NOTARIZE_ZIP" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_PASSWORD" \
+            --wait --output-format json | tee "$PILOT_HOME/signing/daemon-notarization.json"
+          jq -e '.status == "Accepted"' "$PILOT_HOME/signing/daemon-notarization.json"
+
+      - name: Upload signed riptided artifact
+        if: ${{ inputs.skip_signing != true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: riptided-dev-signed
+          path: apps/riptide-native/bin/riptided
+          if-no-files-found: error
+
+      - name: Build Riptide Dev
+        if: ${{ inputs.skip_signing == true }}
+        run: bun --bun run --cwd apps/riptide-native build:dev
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+          BUILD_TYPE: dev
+          BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          NODE_ENV: production
+          SENTRY_ENVIRONMENT: devcloud
+          VITE_PUBLIC_SENTRY_ENVIRONMENT: devcloud
+          VITE_PUBLIC_BUILD_TYPE: dev
+          VITE_PUBLIC_BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          VITE_PUBLIC_DAEMON_VERSION: ${{ steps.daemon_version.outputs.version }}
+          VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          VITE_PUBLIC_POSTHOG_KEY: PLACEHOLDER_DEV_POSTHOG_KEY_PLACEHOLDER
+          VITE_PUBLIC_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          VITE_PUBLIC_RIPTIDE_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          VITE_PUBLIC_WORKOS_CLIENT_ID: PLACEHOLDER_DEV_WORKOS_CLIENT_ID_PLACEHOLDER
+          VITE_PUBLIC_DEEP_LINK_SCHEME: riptide-dev
+          VITE_PUBLIC_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          VITE_PUBLIC_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_BILLING_ENFORCEMENT_ENABLED: ${{ steps.pulumi.outputs.billing_enforcement_enabled }}
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+
+      - name: Build Riptide Dev (signed)
+        if: ${{ inputs.skip_signing != true }}
+        run: bun --bun run --cwd apps/riptide-native build:dev
+        env:
+          # Tauri CLI 2.11.0 uses the existing search-list identity when only
+          # APPLE_SIGNING_IDENTITY is supplied. APPLE_CERTIFICATE + PASSWORD
+          # would create a second keychain/certificate and mutate the search list.
+          # See crates/tauri-bundler/src/bundle/macos/sign.rs at tauri-cli-v2.11.0.
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUILD_TYPE: dev
+          BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          NODE_ENV: production
+          SENTRY_ENVIRONMENT: devcloud
+          VITE_PUBLIC_SENTRY_ENVIRONMENT: devcloud
+          VITE_PUBLIC_BUILD_TYPE: dev
+          VITE_PUBLIC_BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          VITE_PUBLIC_DAEMON_VERSION: ${{ steps.daemon_version.outputs.version }}
+          VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          VITE_PUBLIC_POSTHOG_KEY: PLACEHOLDER_DEV_POSTHOG_KEY_PLACEHOLDER
+          VITE_PUBLIC_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          VITE_PUBLIC_RIPTIDE_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          VITE_PUBLIC_WORKOS_CLIENT_ID: PLACEHOLDER_DEV_WORKOS_CLIENT_ID_PLACEHOLDER
+          VITE_PUBLIC_DEEP_LINK_SCHEME: riptide-dev
+          VITE_PUBLIC_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          VITE_PUBLIC_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_BILLING_ENFORCEMENT_ENABLED: ${{ steps.pulumi.outputs.billing_enforcement_enabled }}
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_DEV }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+      - name: Install Sentry CLI
+        uses: ./.github/actions/install-sentry-cli
+
+      - name: Create Sentry releases
+        if: ${{ !inputs.dry_run }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: humanlayer-00
+          VERSION: ${{ steps.version.outputs.release_tag }}
+        run: |
+          sentry-cli releases new "$VERSION" --project riptide-ui --project riptide-daemon --project riptide-native
+          sentry-cli releases set-commits --auto --ignore-missing "$VERSION"
+          sentry-cli releases deploys "$VERSION" new -e devcloud
+          sentry-cli releases finalize "$VERSION"
+
+      - name: Verify riptided binary
+        run: bun run ci-scripts/verify-binaries.ts
+        env:
+          BINARIES_DIR: apps/riptide-native/bin
+          REQUIRED_BINARIES: riptided
+
+      - name: Verify app bundle signature
+        if: ${{ inputs.skip_signing != true }}
+        working-directory: apps/riptide-native
+        run: |
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" | head -1)
+          if [ -n "$APP_PATH" ]; then
+            echo "Verifying app bundle signature: $APP_PATH"
+            codesign --verify --deep --strict "$APP_PATH"
+            echo "App bundle signature details:"
+            codesign -d --verbose=2 "$APP_PATH"
+            xcrun stapler validate "$APP_PATH"
+            spctl --assess --type execute --verbose=4 "$APP_PATH"
+          else
+            echo "No .app bundle found!"
+            exit 1
+          fi
+
+      - name: Rename DMG
+        id: dmg_rename
+        working-directory: apps/riptide-native
+        run: |
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" | head -1)
+          if [ -n "$DMG_PATH" ]; then
+            NEW_NAME="target/release/bundle/dmg/${{ steps.version.outputs.dmg_filename }}"
+            CANONICAL_NAME="target/release/bundle/dmg/${{ steps.version.outputs.canonical_dmg_filename }}"
+            mv "$DMG_PATH" "$NEW_NAME"
+            cp "$NEW_NAME" "$CANONICAL_NAME"
+            echo "dmg_path=$NEW_NAME" >> "$GITHUB_OUTPUT"
+            echo "canonical_dmg_path=$CANONICAL_NAME" >> "$GITHUB_OUTPUT"
+          else
+            echo "No DMG file found!"
+            exit 1
+          fi
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: riptide-dev-macos-dmg
+          path: |
+            apps/riptide-native/${{ steps.dmg_rename.outputs.dmg_path }}
+            apps/riptide-native/${{ steps.dmg_rename.outputs.canonical_dmg_path }}
+          if-no-files-found: error
+
+      - name: Locate updater artifacts
+        id: updater_artifacts
+        working-directory: apps/riptide-native
+        run: |
+          TAR_GZ=$(find target/release/bundle/macos -name "*.app.tar.gz" | head -1)
+          SIG=$(find target/release/bundle/macos -name "*.app.tar.gz.sig" | head -1)
+          if [ -z "$TAR_GZ" ] || [ -z "$SIG" ]; then
+            echo "WARNING: Updater artifacts not found. createUpdaterArtifacts may not be configured."
+            echo "has_updater_artifacts=false" >> "$GITHUB_OUTPUT"
+          else
+            NEW_TAR="target/release/bundle/macos/Riptide-Dev.app.tar.gz"
+            NEW_SIG="target/release/bundle/macos/Riptide-Dev.app.tar.gz.sig"
+            mv "$TAR_GZ" "$NEW_TAR"
+            mv "$SIG" "$NEW_SIG"
+            {
+              echo "tar_gz_path=$NEW_TAR"
+              echo "sig_path=$NEW_SIG"
+              echo "has_updater_artifacts=true"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stage release products
+        run: |
+          mkdir -p release-products
+          cp "apps/riptide-native/${{ steps.dmg_rename.outputs.dmg_path }}" release-products/
+          cp "apps/riptide-native/${{ steps.dmg_rename.outputs.canonical_dmg_path }}" release-products/
+          if [ "${{ steps.updater_artifacts.outputs.has_updater_artifacts }}" = "true" ]; then
+            cp "apps/riptide-native/${{ steps.updater_artifacts.outputs.tar_gz_path }}" release-products/
+            cp "apps/riptide-native/${{ steps.updater_artifacts.outputs.sig_path }}" release-products/
+          fi
+
+      - name: Upload release products
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: riptide-dev-release-products
+          path: release-products/
+          if-no-files-found: error
+
+      - name: Remove bundle products before caching
+        run: rm -rf apps/riptide-native/target/release/bundle
+
+      - name: Save Rust cache before home cleanup
+        if: steps.rust-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            .tauri-dev-cache/cargo/registry
+            .tauri-dev-cache/cargo/git
+            apps/riptide-native/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
+
+      - name: Save bun dependencies before home cleanup
+        if: steps.bun-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .tauri-dev-cache/bun
+          key: ${{ steps.bun-cache.outputs.cache-primary-key }}
+
+      - name: Restore isolated keychain search list and remove home
+        if: ${{ always() }}
+        shell: bash
+        working-directory: ${{ runner.temp }}
+        run: |
+          # Includes skip_signing, checkout failure and partial certificate import.
+          status=0
+          # Remove ALL Cargo state, even when HOME initialization failed.
+          rm -rf -- "$GITHUB_WORKSPACE/.tauri-dev-cache" || status=1
+          [[ -n "${PILOT_HOME:-}" ]] || exit "$status"
+          security() { HOME="${PILOT_KEYCHAIN_HOME:-$PILOT_HOME}" /usr/bin/security "$@"; }
+          if [[ -f "$PILOT_HOME/signing/search-list" ]]; then
+            KEYCHAINS=()
+            while IFS= read -r line; do
+              line="${line#"${line%%[![:space:]]*}"}"
+              line="${line#\"}"
+              line="${line%\"}"
+              [[ -z "$line" ]] || KEYCHAINS+=("$line")
+            done < "$PILOT_HOME/signing/search-list"
+            security list-keychains -d user -s "${KEYCHAINS[@]}" || status=1
+          fi
+          if [[ -f "$PILOT_HOME/signing/tauri-signing.keychain-db" ]]; then
+            security delete-keychain "$PILOT_HOME/signing/tauri-signing.keychain-db" || status=1
+          fi
+          # Includes partial p12 imports, private keys, Pulumi auth and tool config.
+          rm -rf -- "$PILOT_HOME" || status=1
+          # Checkout's post action changes HOME but still honors GIT_CONFIG_GLOBAL.
+          # Give it an empty isolated file, retained until runner-temp cleanup.
+          POST_GIT_CONFIG="$(mktemp "$RUNNER_TEMP/tauri-post-gitconfig.XXXXXX")"
+          echo "GIT_CONFIG_GLOBAL=$POST_GIT_CONFIG" >> "$GITHUB_ENV"
+          exit "$status"

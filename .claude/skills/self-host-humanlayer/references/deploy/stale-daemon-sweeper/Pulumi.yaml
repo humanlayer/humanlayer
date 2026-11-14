@@ -1,0 +1,11 @@
+name: stale-daemon-sweeper
+description: Marks timed-out Riptide daemons offline
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

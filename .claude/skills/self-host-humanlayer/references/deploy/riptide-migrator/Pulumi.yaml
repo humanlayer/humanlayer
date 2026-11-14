@@ -1,0 +1,11 @@
+name: migrator-function
+description: Database migrator Lambda function
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

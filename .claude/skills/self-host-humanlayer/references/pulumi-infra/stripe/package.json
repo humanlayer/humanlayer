@@ -1,0 +1,18 @@
+{
+  "name": "@humanlayer/pulumi-infra-stripe",
+  "type": "module",
+  "main": "pulumi.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@humanlayer/pulumi-stripe": "0.1.3",
+    "@pulumi/aws": "catalog:",
+    "@pulumi/pulumi": "catalog:",
+    "@pulumi/random": "catalog:"
+  }
+}
