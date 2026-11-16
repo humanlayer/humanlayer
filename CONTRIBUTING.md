@@ -6,9 +6,9 @@ Thanks for helping. Bug reports, feature requests, and feedback are welcome from
 
 To send code, a maintainer has to vouch for you first. We use [Vouch](https://github.com/mitchellh/vouch). The list lives in [`.github/VOUCHED.td`](.github/VOUCHED.td). A bot closes pull requests from authors who aren't on it, so read this before you write code.
 
-1. Install the HumanLayer RPI plugin in Claude Code:
+1. Install the HumanLayer RPI plugin in Claude Code. From the root of your clone:
    ```
-   /plugin marketplace add humanlayer/riptide-rpi
+   /plugin marketplace add ./apps/riptide-rpi-claude-plugin
    /plugin install riptide-rpi@humanlayer-riptide-rpi
    ```
 2. In your clone, run `/rpi:create-design-discussion` with the problem and the change you want to make.
