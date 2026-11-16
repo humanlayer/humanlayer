@@ -85,18 +85,15 @@ export function TargetMenu({
 	)
 }
 
-/** Every host with its status, version and usage. Offline hosts, and others when `lockedTo` is set, can't be picked. */
+/** Every host with its status, version and usage. Offline hosts can't be picked. */
 export function HostMenu({
 	anchor,
 	open,
 	onClose,
 	selectedId,
-	lockedTo,
 	onPick,
 }: MenuProps & {
 	selectedId: string | null
-	/** A directory task stays on the host that has its directory. */
-	lockedTo: string | null
 	onPick: (hostId: string) => void
 }) {
 	const { hosts, isReady } = useHosts()
@@ -129,7 +126,7 @@ export function HostMenu({
 						.filter(Boolean)
 						.join(' · ')}
 					checked={selectedId === entry.host.host_id}
-					disabled={!entry.online || (lockedTo !== null && entry.host.host_id !== lockedTo)}
+					disabled={!entry.online}
 					onSelect={() => {
 						onPick(entry.host.host_id)
 						onClose()

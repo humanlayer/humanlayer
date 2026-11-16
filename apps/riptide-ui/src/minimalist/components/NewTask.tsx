@@ -95,14 +95,18 @@ export function NewTask({
 		? existingWorkspace.data?.workspace.projectId
 		: existing.task?.project_id
 	const [hostId, setHostId] = useState<string | null>(requestedHostId ?? null)
-	// A project task's workspace can be set up on any host; a directory task stays where the directory is.
-	const movable = Boolean(existing.task?.workspace_id)
 	const taskHost = hosts.find((entry) => entry.host.host_id === latestExisting?.host_id) ?? null
 	const host = launchHost(hosts, {
 		picked: hostId,
-		task: existingTaskId && latestExisting?.host_id ? { hostId: latestExisting.host_id, movable } : null,
+		task: existingTaskId && latestExisting?.host_id ? { hostId: latestExisting.host_id } : null,
 	})
 	const directories = useRecentDirectories(host?.host.host_id ?? null)
+	const taskDirectory = latestExisting?.working_directory ?? existing.task?.default_working_directory ?? null
+	const moved = Boolean(
+		existingTaskId && host && latestExisting?.host_id && host.host.host_id !== latestExisting.host_id,
+	)
+	const directoryTask = Boolean(existingTaskId && existing.task && !existing.task.workspace_id)
+	const sessionDirectory = resolveSessionDirectory({ taskDirectory, moved, directoryTask, directories })
 	const [target, setTarget] = useState<Target | null>(null)
 	const [draft, setDraft] = useDraft(newTaskDraftKey(existingTaskId))
 	const [ticket, setTicket] = useState<Ticket | null>(null)
@@ -166,9 +170,7 @@ export function NewTask({
 				? { kind: 'project', project: targetProject }
 				: null
 	const composerDirectory = existingTaskId
-		? movable && latestExisting?.host_id !== host?.host.host_id
-			? null
-			: (latestExisting?.working_directory ?? existing.task?.default_working_directory ?? null)
+		? sessionDirectory
 		: effectiveTarget?.kind === 'directory'
 			? effectiveTarget.path
 			: null
@@ -192,7 +194,7 @@ export function NewTask({
 	// A project repository with no checkout on this host is cloned by the host on first launch.
 	const copy = workingCopy({
 		inTask: Boolean(existingTaskId),
-		project: effectiveTarget?.kind === 'project',
+		project: existingTaskId ? Boolean(existing.task?.workspace_id) : effectiveTarget?.kind === 'project',
 		clonesFirst: missingRepositorySources(sources.data?.sources).length > 0,
 		hostName: host?.name ?? 'The host',
 		movedFrom: host && taskHost && host !== taskHost ? taskHost.name : null,
@@ -220,6 +222,7 @@ export function NewTask({
 		!existing.task?.default_working_directory
 	)
 		blocker = 'Choose a task with a workspace or directory'
+	else if (host && moved && directoryTask && !sessionDirectory) blocker = `Choose a directory on ${host.name}`
 
 	const launch = async () => {
 		if (
@@ -242,8 +245,7 @@ export function NewTask({
 					eventId: ids.eventId,
 					text: withAttachments(draft, existing.task.slug ?? '', attachments.metadata),
 					hostId,
-					workingDirectory:
-						latestExisting?.working_directory ?? existing.task.default_working_directory ?? '',
+					workingDirectory: sessionDirectory ?? taskDirectory ?? '',
 					settings,
 				})
 				rememberSettings(settings)
@@ -382,7 +384,6 @@ export function NewTask({
 				open={menu === 'host'}
 				onClose={() => setMenu(null)}
 				selectedId={host?.host.host_id ?? null}
-				lockedTo={existingTaskId && !movable ? (latestExisting?.host_id ?? null) : null}
 				// A picked directory stays picked. Dropping it fell back to the default target, often a
 				// project, and launched a worktree of the wrong repository instead of running in place.
 				onPick={setHostId}
@@ -429,6 +430,23 @@ export function NewTask({
 	) : (
 		page
 	)
+}
+
+/**
+ * The directory a new session in a task runs in. On the task's host it is the task's directory.
+ * On another host, a project task's workspace is set up again by the server (null here); a
+ * directory task keeps its directory only when that host has used it recently, and otherwise
+ * has none until one is chosen on that host.
+ */
+function resolveSessionDirectory(state: {
+	taskDirectory: string | null
+	moved: boolean
+	directoryTask: boolean
+	directories: readonly string[]
+}): string | null {
+	if (!state.moved) return state.taskDirectory
+	if (!state.directoryTask || !state.taskDirectory) return null
+	return state.directories.includes(state.taskDirectory) ? state.taskDirectory : null
 }
 
 /** The greeting over the composer, naming the selected project or directory. */
