@@ -38,7 +38,7 @@ export const launchSessionProcedure = apiBaseOrgRequired.sessions.launch
 			eventId,
 			draftId,
 			taskId,
-			title,
+			title: requestedTitle,
 			text,
 			workingDirectory,
 			repositoryDirectory,
@@ -51,6 +51,9 @@ export const launchSessionProcedure = apiBaseOrgRequired.sessions.launch
 			permissionsMode,
 			updateTaskDefaultWorkingDirectory,
 		} = input
+		// A blank title means "untitled", stored as null so title generation can fill it in
+		// (it only writes rows whose title IS NULL). Same rule as sessions.v2.create.
+		const title = requestedTitle?.trim() ? requestedTitle : null
 
 		if (!isEffortSupported(codingAgent, provider, model, effort)) {
 			throw new ORPCError('BAD_REQUEST', {

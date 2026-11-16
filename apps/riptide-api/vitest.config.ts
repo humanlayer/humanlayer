@@ -40,6 +40,7 @@ export default mergeConfig(
 							'test/learning/**',
 							'test/procedures/events-create-status-advance.test.ts',
 							'test/procedures/tasks-create-title-generation.test.ts',
+							'test/procedures/sessions-launch-title-generation.test.ts',
 						],
 						globalSetup: ['test/utils/global-setup.ts'],
 						// Each unit test file provisions its own unique random Postgres
@@ -60,6 +61,7 @@ export default mergeConfig(
 							// shared `unit` registry (isolate: false) applies mocks
 							// order-dependently across files.
 							'test/procedures/tasks-create-title-generation.test.ts',
+							'test/procedures/sessions-launch-title-generation.test.ts',
 						],
 						globalSetup: ['test/utils/global-setup.ts'],
 					},
