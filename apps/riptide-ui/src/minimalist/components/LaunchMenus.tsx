@@ -21,8 +21,7 @@ export function TargetMenu({
 }: MenuProps & { host: HostView | null; target: Target | null; onPick: (target: Target) => void }) {
 	const navigate = useNavigate()
 	const projects = useProjects()
-	const directories = useRecentDirectories(host?.host.host_id ?? null)
-	const [typedPath, setTypedPath] = useState('')
+	const typedPath = useState('')
 	const pick = (next: Target) => {
 		onPick(next)
 		onClose()
@@ -49,6 +48,60 @@ export function TargetMenu({
 				}}
 			/>
 			<MenuSeparator />
+			<DirectoryItems
+				host={host}
+				selected={target?.kind === 'directory' ? target.path : null}
+				onPick={(path) => pick({ kind: 'directory', path })}
+				typedPath={typedPath}
+			/>
+		</Menu>
+	)
+}
+
+/** Recent directories on the host, then a path to type, for a session that needs a directory there. */
+export function DirectoryMenu({
+	anchor,
+	open,
+	onClose,
+	host,
+	selected,
+	onPick,
+}: MenuProps & { host: HostView | null; selected: string | null; onPick: (path: string) => void }) {
+	const typedPath = useState('')
+	return (
+		<Menu anchor={anchor} open={open} onClose={onClose} placement="above-start" width={340}>
+			<DirectoryItems
+				host={host}
+				selected={selected}
+				onPick={(path) => {
+					onPick(path)
+					onClose()
+				}}
+				typedPath={typedPath}
+			/>
+		</Menu>
+	)
+}
+
+/**
+ * The "Directories on <host>" part of a menu: the host's recent directories and a field for any
+ * other path. The typed path is held by the menu, which stays mounted while it is closed, so a
+ * half-typed path is still there when the menu opens again.
+ */
+function DirectoryItems({
+	host,
+	selected,
+	onPick,
+	typedPath: [typedPath, setTypedPath],
+}: {
+	host: HostView | null
+	selected: string | null
+	onPick: (path: string) => void
+	typedPath: [string, (path: string) => void]
+}) {
+	const directories = useRecentDirectories(host?.host.host_id ?? null)
+	return (
+		<>
 			<MenuLabel>Directories on {host?.name ?? 'this host'}</MenuLabel>
 			{directories.slice(0, 8).map((path) => (
 				<MenuItem
@@ -56,8 +109,8 @@ export function TargetMenu({
 					icon={<Folder className="i sm" strokeWidth={1.6} />}
 					label={basename(path)}
 					detail={shortPath(path)}
-					checked={target?.kind === 'directory' && target.path === path}
-					onSelect={() => pick({ kind: 'directory', path })}
+					checked={selected === path}
+					onSelect={() => onPick(path)}
 				/>
 			))}
 			<MenuSeparator />
@@ -66,7 +119,7 @@ export function TargetMenu({
 				onSubmit={(event) => {
 					event.preventDefault()
 					if (!typedPath.trim()) return
-					pick({ kind: 'directory', path: typedPath.trim() })
+					onPick(typedPath.trim())
 					setTypedPath('')
 				}}
 			>
@@ -81,7 +134,7 @@ export function TargetMenu({
 					Use directory
 				</button>
 			</form>
-		</Menu>
+		</>
 	)
 }
 

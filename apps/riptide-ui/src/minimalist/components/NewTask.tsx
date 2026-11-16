@@ -18,7 +18,7 @@ import { uuidv7 } from 'uuidv7'
 import { missingRepositorySources } from '@/lib/repository-sources'
 import { Composer } from '@/minimalist/components/Composer'
 import { IssueDialog } from '@/minimalist/components/IssueDialog'
-import { HostIcon, HostMenu, TargetMenu } from '@/minimalist/components/LaunchMenus'
+import { DirectoryMenu, HostIcon, HostMenu, TargetMenu } from '@/minimalist/components/LaunchMenus'
 import { Menu, MenuItem, MenuSeparator } from '@/minimalist/components/Menu'
 import { WiredTaskNavigation } from '@/minimalist/components/WiredTaskNavigation'
 import { withAttachments } from '@/minimalist/lib/attachments'
@@ -106,7 +106,15 @@ export function NewTask({
 		existingTaskId && host && latestExisting?.host_id && host.host.host_id !== latestExisting.host_id,
 	)
 	const directoryTask = Boolean(existingTaskId && existing.task && !existing.task.workspace_id)
-	const sessionDirectory = resolveSessionDirectory({ taskDirectory, moved, directoryTask, directories })
+	// A directory chosen for a moved directory task belongs to the host it was chosen on.
+	const [pickedDirectory, setPickedDirectory] = useState<{ hostId: string; path: string } | null>(null)
+	const sessionDirectory = resolveSessionDirectory({
+		taskDirectory,
+		moved,
+		directoryTask,
+		directories,
+		picked: pickedDirectory && pickedDirectory.hostId === host?.host.host_id ? pickedDirectory.path : null,
+	})
 	const [target, setTarget] = useState<Target | null>(null)
 	const [draft, setDraft] = useDraft(newTaskDraftKey(existingTaskId))
 	const [ticket, setTicket] = useState<Ticket | null>(null)
@@ -118,10 +126,11 @@ export function NewTask({
 	const catalog = modelCatalog(host?.host)
 	const [picked, setSettings] = useState(savedSettings)
 	const settings = fitSettings(picked, catalog)
-	const [menu, setMenu] = useState<'target' | 'host' | null>(null)
+	const [menu, setMenu] = useState<'target' | 'host' | 'directory' | null>(null)
 	const [taskSize, setTaskSize] = useTaskSize()
 	const [smallAutoAdvance] = useSmallTaskAutoAdvance()
 	const targetAnchor = useRef<HTMLButtonElement>(null)
+	const directoryAnchor = useRef<HTMLButtonElement>(null)
 	useEffect(() => {
 		if (!existingTaskId || !taskSidebarOpen || !matchMedia('(max-width: 1050px)').matches) return
 		const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -282,7 +291,18 @@ export function NewTask({
 
 	const strip = (
 		<div className="envstrip">
-			{existingTaskId ? (
+			{moved && directoryTask ? (
+				<button
+					type="button"
+					ref={directoryAnchor}
+					title={sessionDirectory ?? undefined}
+					onClick={() => setMenu('directory')}
+				>
+					<FolderGit2 className="i sm" strokeWidth={1.6} />
+					{sessionDirectory ? basename(sessionDirectory) : 'Choose a directory'}
+					<ChevronDown className="i sm" />
+				</button>
+			) : existingTaskId ? (
 				<span>
 					<FolderGit2 className="i sm" strokeWidth={1.6} />
 					{latestExisting
@@ -386,7 +406,21 @@ export function NewTask({
 				selectedId={host?.host.host_id ?? null}
 				// A picked directory stays picked. Dropping it fell back to the default target, often a
 				// project, and launched a worktree of the wrong repository instead of running in place.
-				onPick={setHostId}
+				// A directory chosen for a session in a task is only good on its host, so it goes.
+				onPick={(id) => {
+					setHostId(id)
+					if (id !== host?.host.host_id) setPickedDirectory(null)
+				}}
+			/>
+			<DirectoryMenu
+				anchor={directoryAnchor}
+				open={menu === 'directory'}
+				onClose={() => setMenu(null)}
+				host={host}
+				selected={sessionDirectory}
+				onPick={(path) => {
+					if (host) setPickedDirectory({ hostId: host.host.host_id, path })
+				}}
 			/>
 			{issueDialog ? (
 				<IssueDialog
@@ -434,18 +468,21 @@ export function NewTask({
 
 /**
  * The directory a new session in a task runs in. On the task's host it is the task's directory.
- * On another host, a project task's workspace is set up again by the server (null here); a
- * directory task keeps its directory only when that host has used it recently, and otherwise
- * has none until one is chosen on that host.
+ * On another host, a project task's workspace is set up again by the server (null here). A
+ * directory task uses the directory you chose on that host; without one, it keeps its own
+ * directory only when that host has used it recently, and otherwise has none until you choose.
  */
 function resolveSessionDirectory(state: {
 	taskDirectory: string | null
 	moved: boolean
 	directoryTask: boolean
 	directories: readonly string[]
+	picked: string | null
 }): string | null {
 	if (!state.moved) return state.taskDirectory
-	if (!state.directoryTask || !state.taskDirectory) return null
+	if (!state.directoryTask) return null
+	if (state.picked) return state.picked
+	if (!state.taskDirectory) return null
 	return state.directories.includes(state.taskDirectory) ? state.taskDirectory : null
 }
 
