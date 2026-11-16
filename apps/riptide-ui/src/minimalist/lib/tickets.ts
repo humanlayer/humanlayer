@@ -5,7 +5,7 @@ import { useSettingsStore } from '@/hooks/stores/settingsStore'
 import { useGitHubIssuePreviewSource } from '@/hooks/useGitHubIssuePreviewSource'
 import { useTicketAutoFetch } from '@/hooks/useTicketAutoFetch'
 import { parseLinearIssueInput } from '@/lib/linear-issue-input'
-import { generateTaskSlug } from '@/lib/task-slug'
+import { generatePrefixedTaskSlug, generateTaskSlug } from '@/lib/task-slug'
 import type { LauncherV3TicketAttachment } from '@/modules/launcher-v3/launcher-v3-form'
 import { ticketArtifactFileName } from '@/modules/launcher-v3/launcher-v3-launch'
 import { useRiptideApi } from '@/orpc/client'
@@ -121,7 +121,10 @@ function githubTicket(
 		provider: 'github',
 		ticketId: String(issue.issueNumber),
 		name: `[${fullName}#${issue.issueNumber}] ${issue.title}`,
-		slug: `${fullName.replace('/', '-')}-${issue.issueNumber}-${generateTaskSlug(issue.title)}`.toLowerCase(),
+		slug: generatePrefixedTaskSlug(
+			`${fullName.replace('/', '-')}-${issue.issueNumber}-`.toLowerCase(),
+			issue.title,
+		),
 		url: issue.url,
 		githubRepository: repository,
 	}

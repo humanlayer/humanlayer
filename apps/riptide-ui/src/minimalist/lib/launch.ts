@@ -282,6 +282,18 @@ function launchFailure(error: unknown): string | null {
 	if (code === 'BILLING_REQUIRED')
 		return 'The organization needs a billing plan. An admin can add one in Settings → Billing.'
 	if (code === 'FORBIDDEN') return "Your account can't start tasks here."
+	if (code === 'INPUT_VALIDATION_FAILED') {
+		const data = (error as { data?: unknown }).data as { fieldErrors?: Record<string, string[]> } | undefined
+		const fieldErrors = data?.fieldErrors
+		if (fieldErrors) {
+			const entry = Object.entries(fieldErrors)[0]
+			if (entry) {
+				const [field, messages] = entry
+				if (messages?.[0]) return `The ${field} is not valid: ${messages[0].toLowerCase()}`
+			}
+		}
+		return 'The server rejected the request. Check the task name and try again.'
+	}
 	return null
 }
 

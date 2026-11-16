@@ -15,3 +15,16 @@ export function generateTaskSlug(name: string): string {
 
 	return truncateTaskSlug(slug)
 }
+
+/**
+ * Builds `${prefix}${slug}` where the total length is capped at
+ * `TASK_SLUG_MAX_LENGTH`. The prefix is kept as is and the slug body is
+ * truncated to fit. When nothing remains after truncation the trailing
+ * separator on the prefix is stripped so the result is never `prefix-`.
+ */
+export function generatePrefixedTaskSlug(prefix: string, name: string): string {
+	const available = Math.max(0, TASK_SLUG_MAX_LENGTH - prefix.length)
+	const body = generateTaskSlug(name).slice(0, available).replace(/-+$/, '')
+	const result = body ? `${prefix}${body}` : prefix.replace(/-+$/, '')
+	return truncateTaskSlug(result)
+}

@@ -85,7 +85,7 @@ import {
 	getTaskCreationError,
 	isTaskPersistenceUncertain,
 } from '@/lib/task-creation-error'
-import { generateTaskSlug } from '@/lib/task-slug'
+import { generatePrefixedTaskSlug, generateTaskSlug } from '@/lib/task-slug'
 import type { DirectoryAxisPreferences } from '@/lib/task-workspace-preferences'
 import { isLookupError, type TicketLookupError } from '@/lib/ticket-lookup-error'
 import { openCloudUrl, openExternal } from '@/lib/url-opener'
@@ -1631,7 +1631,10 @@ export function WiredMobileNewTaskPage({
 		? `[${githubIssueSource.preview.repository.fullName}#${githubIssueSource.preview.issueNumber}] ${githubIssueSource.preview.title}`
 		: null
 	const githubSlug = githubIssueSource.preview
-		? `${githubIssueSource.preview.repository.fullName.replace('/', '-')}-${githubIssueSource.preview.issueNumber}-${generateTaskSlug(githubIssueSource.preview.title)}`.toLowerCase()
+		? generatePrefixedTaskSlug(
+				`${githubIssueSource.preview.repository.fullName.replace('/', '-')}-${githubIssueSource.preview.issueNumber}-`.toLowerCase(),
+				githubIssueSource.preview.title,
+			)
 		: null
 	const ticketDerivedNameByIssueSource = {
 		inline: null,

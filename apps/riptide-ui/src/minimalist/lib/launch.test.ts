@@ -106,6 +106,20 @@ describe('launchError', () => {
 		expect(launchError(new ORPCError('FORBIDDEN', { status: 403 }))).toContain("can't start tasks here")
 	})
 
+	it('names the failing field for a validation rejection', () => {
+		const error = new ORPCError('INPUT_VALIDATION_FAILED', {
+			status: 400,
+			data: { fieldErrors: { slug: ['String must contain at most 100 character(s)'] } },
+		})
+		expect(launchError(error)).toContain('slug is not valid')
+		expect(launchError(error)).toContain('string must contain at most 100 character(s)')
+	})
+
+	it('gives a fallback when validation carries no field errors', () => {
+		const error = new ORPCError('INPUT_VALIDATION_FAILED', { status: 400, data: {} })
+		expect(launchError(error)).toContain('The server rejected the request')
+	})
+
 	it('keeps to the plain message otherwise', () => {
 		expect(launchError(new Error('boom'))).toBe(`Could not start the task. ${kept}`)
 	})
