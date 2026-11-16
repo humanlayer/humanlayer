@@ -23,29 +23,36 @@ function OrganizationCreationBlocked() {
 			<Card className="w-md p-6">
 				<CardHeader className="flex flex-col gap-2 w-full items-center text-center">
 					<Building2 className="mx-auto mb-4 size-12 text-muted-foreground" />
-					<p className="text-xl font-semibold">Organization Signups Closed</p>
+					<p className="text-xl font-semibold">New Organizations Closed</p>
 				</CardHeader>
 				<Separator className="my-4" />
 				<div className="flex flex-col gap-4 text-sm text-muted-foreground">
 					<p>
-						This is the HumanLayer beta environment, which is no longer accepting new organization signups.
-					</p>
-					<p>
-						Please get an invite to your team’s existing org, or create a new organization at{' '}
+						HumanLayer Cloud is shutting down as HumanLayer joins Factory, so it no longer accepts new
+						organizations.{' '}
 						<a
-							href="https://cloud.humanlayer.com"
+							href="https://humanlayer.com/blog/humanlayer-joins-factory"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="underline text-foreground hover:text-primary"
 						>
-							cloud.humanlayer.com
-						</a>{' '}
-						to proceed.
+							Read the announcement
+						</a>
+						.
 					</p>
-					<p>You can uninstall this beta build with</p>
-					<pre className="rounded bg-muted px-3 py-2 font-mono text-foreground">
-						brew uninstall riptide-beta
-					</pre>
+					<p>If your team already has an org, ask a teammate for an invite.</p>
+					<p>
+						To keep using HumanLayer, self-host the open source version from{' '}
+						<a
+							href="https://github.com/humanlayer/humanlayer"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="underline text-foreground hover:text-primary"
+						>
+							github.com/humanlayer/humanlayer
+						</a>
+						.
+					</p>
 				</div>
 			</Card>
 		</div>
