@@ -11,7 +11,7 @@ import { useGitHubIssuePreviewSource } from '@/hooks/useGitHubIssuePreviewSource
 import { useTicketAutoFetch } from '@/hooks/useTicketAutoFetch'
 import { formatShortcut, hotkeysCatalog } from '@/hotkeysCatalog'
 import { parseLinearIssueInput } from '@/lib/linear-issue-input'
-import { generateTaskSlug } from '@/lib/task-slug'
+import { generatePrefixedTaskSlug, generateTaskSlug } from '@/lib/task-slug'
 import type {
 	LauncherV3FormValues,
 	LauncherV3TicketAttachment,
@@ -173,7 +173,10 @@ export function LauncherAttachmentControlWired({ control, onAddFiles, disabled }
 				provider: 'github',
 				ticketId: String(issueNumber),
 				name: `[${repository.fullName}#${issueNumber}] ${title}`,
-				slug: `${repository.fullName.replace('/', '-')}-${issueNumber}-${generateTaskSlug(title)}`.toLowerCase(),
+				slug: generatePrefixedTaskSlug(
+					`${repository.fullName.replace('/', '-')}-${issueNumber}-`.toLowerCase(),
+					title,
+				),
 				url,
 				githubRepository: github.selectedRepository,
 			}

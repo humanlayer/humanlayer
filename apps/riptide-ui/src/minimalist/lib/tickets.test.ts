@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { generatePrefixedTaskSlug, TASK_SLUG_MAX_LENGTH } from '@/lib/task-slug'
 import { githubFullName, parseJiraKey, type Ticket, ticketFields, withTicket } from '@/minimalist/lib/tickets'
 
 describe('parseJiraKey', () => {
@@ -47,6 +48,19 @@ describe('withTicket', () => {
 		expect(withTicket('', 'acme-app-42-fix', issue)).toBe(
 			'Work on acme/app#42. See @.humanlayer/tasks/acme-app-42-fix/acme-app-42.md',
 		)
+	})
+})
+
+describe('GitHub ticket slug length', () => {
+	it('keeps the slug within the server limit for a long issue title', () => {
+		const longTitle =
+			'implement comprehensive end to end testing framework for all microservices across the platform with full coverage'
+		const fullName = 'my-organization/my-repository'
+		const issueNumber = 42
+		const slug = generatePrefixedTaskSlug(`${fullName.replace('/', '-')}-${issueNumber}-`.toLowerCase(), longTitle)
+		expect(slug.length).toBeLessThanOrEqual(TASK_SLUG_MAX_LENGTH)
+		expect(slug).toMatch(/^my-organization-my-repository-42-/)
+		expect(slug).not.toMatch(/-$/)
 	})
 })
 
