@@ -59,10 +59,16 @@ describe('launchHost', () => {
 		expect(launchHost(hosts, { picked: null, task: null })?.host.host_id).toBe('box')
 	})
 
-	it('keeps a directory task on its host, even offline, and moves a project task off an offline one', () => {
-		expect(launchHost(hosts, { picked: 'vm', task: { hostId: 'mac', movable: false } })?.host.host_id).toBe('mac')
-		expect(launchHost(hosts, { picked: null, task: { hostId: 'mac', movable: true } })?.host.host_id).toBe('box')
-		expect(launchHost(hosts, { picked: null, task: { hostId: 'vm', movable: true } })?.host.host_id).toBe('vm')
+	it('a picked host wins for any task; otherwise the task stays on its host while it is online', () => {
+		expect(launchHost(hosts, { picked: 'vm', task: { hostId: 'mac' } })?.host.host_id).toBe('vm')
+		expect(launchHost(hosts, { picked: 'box', task: { hostId: 'vm' } })?.host.host_id).toBe('box')
+		expect(launchHost(hosts, { picked: null, task: { hostId: 'mac' } })?.host.host_id).toBe('box')
+		expect(launchHost(hosts, { picked: null, task: { hostId: 'vm' } })?.host.host_id).toBe('vm')
+	})
+
+	it('stays on an offline task host when no host is online', () => {
+		const offline = [{ host: { host_id: 'mac' }, online: false }]
+		expect(launchHost(offline, { picked: null, task: { hostId: 'mac' } })?.host.host_id).toBe('mac')
 	})
 })
 
@@ -86,6 +92,15 @@ describe('workingCopy', () => {
 	it('says nothing for a session in a task unless it moved hosts', () => {
 		expect(workingCopy({ ...base, inTask: true })).toBeNull()
 		expect(workingCopy({ ...base, inTask: true, movedFrom: 'mac' })?.title).toContain('stay on mac')
+	})
+
+	it('keeps a moved directory task in its directory, with no branch to check out', () => {
+		expect(workingCopy({ ...base, inTask: true, project: false })).toBeNull()
+		expect(workingCopy({ ...base, inTask: true, project: false, movedFrom: 'mac' })).toEqual({
+			label: 'In this directory',
+			title: 'The agent edits your checkout directly',
+			branch: false,
+		})
 	})
 })
 
