@@ -17,6 +17,7 @@ import { useArchive } from '@/minimalist/lib/use-archive'
 import { useCopy } from '@/minimalist/lib/use-copy'
 import { useTaskUnread, useUnreadActions } from '@/minimalist/lib/use-unread'
 import { useRiptideApi } from '@/orpc/client'
+import { getTaskShareUrl } from '@/utils/sharing-links'
 
 /** A task in the sidebar: its name and state, archive on hover, and a menu on right-click or "More". */
 export function TaskItem({ row, selected }: { row: TaskRow; selected: boolean }) {
@@ -37,6 +38,7 @@ export function TaskItem({ row, selected }: { row: TaskRow; selected: boolean })
 		setOpen(false)
 		void archiver.archive({ kind: 'task', id: taskId }, true)
 	}
+	// A new window opens in this app; a copied link opens the web app, which can hand off to the desktop app.
 	const link = `${window.location.origin}/tasks/${taskId}`
 	return (
 		<div
@@ -109,7 +111,11 @@ export function TaskItem({ row, selected }: { row: TaskRow; selected: boolean })
 					label="Copy link"
 					onSelect={() => {
 						setOpen(false)
-						copy(link, 'Link copied', 'Could not copy the link. Copy it from the address bar.')
+						copy(
+							getTaskShareUrl(taskId),
+							'Link copied',
+							'Could not copy the link. Copy it from the address bar.',
+						)
 					}}
 				/>
 				<MenuItem

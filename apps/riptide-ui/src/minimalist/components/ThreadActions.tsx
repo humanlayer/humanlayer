@@ -14,6 +14,7 @@ import { sessionName } from '@/minimalist/lib/session-name'
 import { useArchive } from '@/minimalist/lib/use-archive'
 import { useCopy } from '@/minimalist/lib/use-copy'
 import { useRiptideApi } from '@/orpc/client'
+import { getSessionShareUrl } from '@/utils/sharing-links'
 
 export function ThreadActions({ session }: { session: Session }) {
 	const taskId = session.task_id
@@ -112,7 +113,7 @@ export function ThreadActions({ session }: { session: Session }) {
 					onSelect={() => {
 						setOpen(false)
 						copy(
-							`${location.origin}/sessions/${session.id}`,
+							getSessionShareUrl(session.id),
 							'Session link copied',
 							'Could not copy the session link. Copy the address from your browser.',
 						)
