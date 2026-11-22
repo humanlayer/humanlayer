@@ -65,6 +65,7 @@ describe('Slack automation procedures', () => {
 
 		runtime = createRuntimeWithTestPostgresLayer(db, {
 			slack: Layer.succeed(SlackService, {
+				configured: true,
 				createInstallUrl: () => Effect.die('createInstallUrl not used'),
 				exchangeCode: () => Effect.die('exchangeCode not used'),
 				getStatus: () => Effect.die('getStatus not used'),

@@ -40,6 +40,7 @@ const resendOperationError = (retryable: boolean) =>
 
 function fakeResendLayer(store: FakeResendStore) {
 	return Layer.succeed(ResendService, {
+		configured: true,
 		sendPlaintext: () => Effect.fail(resendOperationError(false)),
 		schedulePlaintext: () => Effect.fail(resendOperationError(false)),
 		cancelScheduled: () => Effect.succeed(undefined),
@@ -325,6 +326,7 @@ describe('OnboardingService.recordRpiTaskCreated', () => {
 			message: 'Contact not found',
 		})
 		const resendLayer = Layer.succeed(ResendService, {
+			configured: true,
 			sendPlaintext: () => Effect.fail(resendOperationError(false)),
 			schedulePlaintext: () => Effect.fail(resendOperationError(false)),
 			cancelScheduled: () => Effect.succeed(undefined),

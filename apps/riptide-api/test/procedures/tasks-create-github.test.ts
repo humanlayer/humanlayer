@@ -14,6 +14,7 @@ import { uuidv7 } from 'uuidv7'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
 import {
+	GitHubIntegrationNotConfiguredError,
 	GitHubIntegrationUnavailableError,
 	GitHubIssueInputInvalidError,
 	GitHubRepositoryNotAccessibleError,
@@ -166,6 +167,21 @@ describe('api/tasks/create GitHub import', () => {
 		expect(await db.select().from(tasks).where(eq(tasks.id, taskId))).toHaveLength(0)
 	})
 
+	test('answers a GitHub import on a deployment without GitHub with a 400, not a 500', async () => {
+		const taskId = uuidv7()
+		await expect(
+			call(
+				createTaskProcedure,
+				{ ...githubInput(taskId), ticketId: 'github-not-set-up' },
+				{ context: context() },
+			),
+		).rejects.toMatchObject({
+			code: 'BAD_REQUEST',
+			data: { message: 'GitHub is not set up on this deployment' },
+		})
+		expect(await db.select().from(tasks).where(eq(tasks.id, taskId))).toHaveLength(0)
+	})
+
 	test('rejects a repository selected through another organization before insertion', async () => {
 		const taskId = uuidv7()
 		await expect(
@@ -214,6 +230,7 @@ const makeGitHubServiceLayer = (input: {
 	readonly canonicalRepositoryFullName: string
 }) =>
 	Layer.succeed(GitHubService, {
+		configured: true,
 		createInstallUrl: () => Effect.die('createInstallUrl not used'),
 		completeInstallation: () => Effect.die('completeInstallation not used'),
 		mutatePullRequest: () => Effect.die('mutatePullRequest not used'),
@@ -230,6 +247,9 @@ const makeGitHubServiceLayer = (input: {
 			}
 			if (request.issueInput === '503') {
 				return Effect.fail(new GitHubIntegrationUnavailableError({ cause: 'provider unavailable' }))
+			}
+			if (request.issueInput === 'github-not-set-up') {
+				return Effect.fail(new GitHubIntegrationNotConfiguredError({ operation: 'prepare_issue_import' }))
 			}
 			if (request.issueInput.includes('other/repo')) {
 				return Effect.fail(new GitHubIssueInputInvalidError({ reason: 'repository_mismatch' }))

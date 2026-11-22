@@ -14,6 +14,10 @@ export const disconnectGitHubProcedure = effectOrpcBaseForOrganizationAdmin.inte
 					// Local rows are preserved on a GitHub failure; the UI surfaces a retry.
 					GitHubDisconnectFailedError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
 					GitHubIntegrationUnavailableError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
+					GitHubIntegrationNotConfiguredError: () =>
+						Effect.fail(
+							errors.BAD_REQUEST({ data: { message: 'GitHub is not set up on this deployment' } }),
+						),
 				}),
 			)
 		return { success: result.success }

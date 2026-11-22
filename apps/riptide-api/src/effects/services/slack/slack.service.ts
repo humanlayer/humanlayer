@@ -3,8 +3,10 @@ import * as Config from 'effect/Config'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 
 import { Sentry } from '../../../instrument'
+import { SlackKeyGroup } from '../../../lib/integration-key-groups'
+import { loadIntegrationKeyGroup } from '../integration-configuration/integration-key-group'
 import { SlackHttpClientLive } from './slack-http-client.layer'
-import { SlackProviderClient, SlackProviderClientLive } from './slack.client'
+import { makeSlackProviderClient } from './slack.client'
 import { dispatchArtifactEvent, dispatchCommentEvent } from './slack.dispatch'
 import {
 	SlackIntegrationUnavailableError,
@@ -32,13 +34,20 @@ import {
 	setSlackIntegrationEnabled,
 } from './slack.persistence'
 import type { SlackServiceShape } from './slack.types'
+import { unconfiguredSlackService } from './slack.unconfigured'
 
 export class SlackService extends Context.Service<SlackService, SlackServiceShape>()('SlackService') {}
 
 const SlackServiceImplementationLive = Layer.effect(
 	SlackService,
 	Effect.gen(function* () {
+		// Decide once, before any SLACK_* read, whether this deployment has a Slack app. Without it
+		// the service is a stand-in and the provider client is never built.
+		const slackConfigured = yield* loadIntegrationKeyGroup(SlackKeyGroup)
+		if (!slackConfigured) return unconfiguredSlackService
+
 		const clientId = yield* Config.String('SLACK_CLIENT_ID')
+		const clientSecret = yield* Config.Redacted('SLACK_CLIENT_SECRET')
 		const appId = yield* Config.String('SLACK_APP_ID')
 		const signingSecret = yield* Config.Redacted('SLACK_SIGNING_SECRET')
 		const apiBaseUrl = yield* Config.String('SLACK_API_BASE_URL').pipe(Config.withDefault('https://slack.com'))
@@ -53,8 +62,9 @@ const SlackServiceImplementationLive = Layer.effect(
 		const scopes = yield* Config.String('SLACK_BOT_SCOPES').pipe(
 			Config.withDefault('chat:write,chat:write.public,channels:read,groups:read'),
 		)
-		const slack = yield* SlackProviderClient
+		const slack = yield* makeSlackProviderClient({ clientId, clientSecret, oauthRedirectUrl })
 		return {
+			configured: true,
 			createInstallUrl: Effect.fn('slack.create_install_url')(function* ({ organizationId, requestedByUserId }) {
 				yield* Effect.annotateCurrentSpan({ organization_id: organizationId })
 				const { state, expiresAt } = yield* createSlackInstallState({ organizationId, requestedByUserId })
@@ -208,10 +218,6 @@ const SlackServiceImplementationLive = Layer.effect(
 	}),
 )
 
-const SlackProviderClientConfiguredLive = SlackProviderClientLive.pipe(Layer.provide(SlackHttpClientLive))
-
-export const SlackServiceLiveBase = SlackServiceImplementationLive.pipe(
-	Layer.provideMerge(SlackProviderClientConfiguredLive),
-)
+export const SlackServiceLiveBase = SlackServiceImplementationLive.pipe(Layer.provide(SlackHttpClientLive))
 
 export const SlackServiceLive = SlackServiceLiveBase.pipe(Layer.provide(FetchHttpClient.layer))

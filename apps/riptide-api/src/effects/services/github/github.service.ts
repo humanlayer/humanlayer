@@ -4,6 +4,8 @@ import type { HttpClient } from 'effect/http/HttpClient'
 import { importPKCS8 } from 'jose'
 
 import { Sentry } from '../../../instrument'
+import { GitHubKeyGroup } from '../../../lib/integration-key-groups'
+import { loadIntegrationKeyGroup } from '../integration-configuration/integration-key-group'
 import type { PostgresDb } from '../postgres/postgres-db.service'
 import { PrStatusStream } from '../pr-status-stream/pr-status-stream.service'
 import { getOrRefreshGitHubInstallationToken, signGitHubAppJwt } from './github.auth'
@@ -35,6 +37,7 @@ import {
 	terminalDeleteGitHubInstallation,
 } from './github.persistence'
 import type { GitHubServiceShape } from './github.types'
+import { unconfiguredGitHubService } from './github.unconfigured'
 import {
 	computeGitHubSignature,
 	type GitHubPrChangedWebhookEvent,
@@ -170,6 +173,10 @@ const recordPullRequestDelivery = (event: GitHubPrChangedWebhookEvent) =>
 export const GitHubServiceLive = Layer.effect(
 	GitHubService,
 	Effect.gen(function* () {
+		// Decide once, before any GITHUB_APP_* read, whether this deployment has a GitHub App.
+		const githubConfigured = yield* loadIntegrationKeyGroup(GitHubKeyGroup)
+		if (!githubConfigured) return unconfiguredGitHubService
+
 		const appId = yield* Config.String('GITHUB_APP_ID')
 		const clientId = yield* Config.String('GITHUB_APP_CLIENT_ID')
 		const appSlug = yield* Config.String('GITHUB_APP_SLUG')
@@ -363,6 +370,7 @@ export const GitHubServiceLive = Layer.effect(
 			})
 
 		return GitHubService.of({
+			configured: true,
 			createInstallUrl: ({ organizationId, requestedByUserId, repairConnectionId }) => {
 				const installStateInput: {
 					organizationId: string

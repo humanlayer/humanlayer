@@ -229,6 +229,7 @@ describe('POST /webhooks/slack/interactions', () => {
 	test('returns 200 even when the forked handler defects', async () => {
 		const fakePayload: SlackInteractionPayload = { type: 'block_actions' }
 		const defectSlackLayer = Layer.succeed(SlackService, {
+			configured: true,
 			createInstallUrl: () => Effect.die('createInstallUrl not used'),
 			exchangeCode: () => Effect.die('exchangeCode not used'),
 			getStatus: () => Effect.die('getStatus not used'),

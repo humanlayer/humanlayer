@@ -53,6 +53,14 @@ export class ResendNotCancelableError extends Data.TaggedError('ResendNotCancela
 	readonly cause: ResendResourceMissingError
 }> {}
 
+/**
+ * This deployment cannot send email: at least one of RESEND_API_KEY, RESEND_FROM_EMAIL, or
+ * RESEND_PRODUCT_USERS_SEGMENT_ID is missing. Callers that send in the background skip it quietly.
+ */
+export class EmailNotConfiguredError extends Data.TaggedError('EmailNotConfiguredError')<{
+	readonly operation: string
+}> {}
+
 export type ResendOperationErrorCategory =
 	| 'authentication'
 	| 'invalid_request'
@@ -82,4 +90,4 @@ export type ResendProviderError =
 	| ResendUnexpectedResponseError
 	| ResendResponseDecodeError
 
-export type ResendError = ResendOperationError | ResendNotCancelableError
+export type ResendError = ResendOperationError | ResendNotCancelableError | EmailNotConfiguredError

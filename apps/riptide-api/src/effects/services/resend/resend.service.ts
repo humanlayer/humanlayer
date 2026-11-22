@@ -56,6 +56,12 @@ export type ResendContact = {
 }
 
 export type ResendServiceShape = {
+	/**
+	 * Whether this deployment can send email (RESEND_API_KEY, RESEND_FROM_EMAIL, and
+	 * RESEND_PRODUCT_USERS_SEGMENT_ID all set). When false, the service is a stand-in whose sends
+	 * fail with `EmailNotConfiguredError`.
+	 */
+	readonly configured: boolean
 	readonly sendPlaintext: (
 		input: ResendSendPlaintextInput,
 	) => Effect.Effect<{ readonly emailId: string }, ResendError>

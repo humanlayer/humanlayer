@@ -1,13 +1,12 @@
-import { Layer, Redacted } from 'effect'
+import { ConfigProvider } from 'effect'
 
-import { ResendConfig, type ResendConfigShape } from '../../src/effects/services/resend/resend-config.service'
-
-export const ResendConfigTest = (config: Partial<ResendConfigShape> = {}) =>
-	Layer.succeed(ResendConfig, {
-		apiKey: Redacted.make('re_test_key'),
-		apiBaseUrl: 'https://resend.example.test',
-		fromEmail: 'test@example.com',
-		cloudOrigin: 'https://cloud.example.com',
-		appOrigin: 'https://app.example.com',
-		...config,
-	})
+/** The link origins `AccessRequestServiceLive` reads from config for its admin notification. */
+export const AccessRequestLinkOriginsTestConfig = (
+	origins: { readonly cloudOrigin?: string; readonly appOrigin?: string } = {},
+) =>
+	ConfigProvider.layer(
+		ConfigProvider.fromUnknown({
+			CLOUD_ORIGIN: origins.cloudOrigin ?? 'https://cloud.example.com',
+			APP_ORIGIN: origins.appOrigin ?? 'https://app.example.com',
+		}),
+	)

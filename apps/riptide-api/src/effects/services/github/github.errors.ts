@@ -111,6 +111,14 @@ export class GitHubIntegrationUnavailableError extends Data.TaggedError('GitHubI
 }> {}
 
 /**
+ * This deployment has no GitHub App: at least one GITHUB_APP_* key is missing. Not a failure of
+ * Postgres or GitHub, so background paths skip it quietly and user actions answer with a 400.
+ */
+export class GitHubIntegrationNotConfiguredError extends Data.TaggedError('GitHubIntegrationNotConfiguredError')<{
+	readonly operation: string
+}> {}
+
+/**
  * The installation is suspended in GitHub. Suspension is a distinct lifecycle from
  * reauthorization: the binding, permissions, and repository inventory remain, but GitHub
  * blocks installation access until the suspending party reverses it. Carries only the safe

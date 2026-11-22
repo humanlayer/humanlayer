@@ -1,13 +1,15 @@
 import { Duration, Effect, Layer, Predicate, Schedule } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 
+import { EmailKeyGroup } from '../../../lib/integration-key-groups'
+import { loadIntegrationKeyGroup } from '../integration-configuration/integration-key-group'
 import { cancelScheduledEmail } from './procedures/cancel-scheduled-email'
 import { createContact } from './procedures/create-contact'
 import { getContact } from './procedures/get-contact'
 import { sendEmail } from './procedures/send-email'
 import { sendEvent } from './procedures/send-event'
 import { updateContact } from './procedures/update-contact'
-import { ResendConfig } from './resend-config.service'
+import { ResendConfig, ResendConfigLive } from './resend-config.service'
 import { narrowProviderErrors, observeResendErrors } from './resend-error-handling'
 import { ResendNotCancelableError } from './resend-errors'
 import type { ResendProviderError } from './resend-errors'
@@ -25,6 +27,7 @@ import type {
 	ResendServiceShape,
 	ResendUpsertContactInput,
 } from './resend.service'
+import { unconfiguredResendService } from './resend.unconfigured'
 
 const resendRetrySchedule = Schedule.exponential(Duration.millis(250)).pipe(
 	Schedule.setInputType<ResendProviderError>(),
@@ -121,6 +124,7 @@ export const ResendServiceLive = Layer.effect(
 		const config = yield* ResendConfig
 		const http = yield* ResendHttpClient
 		const service: ResendServiceShape = {
+			configured: true,
 			sendPlaintext: (input) => sendPlaintext(http, config.fromEmail, input),
 			schedulePlaintext: (input) => schedulePlaintext(http, config.fromEmail, input),
 			cancelScheduled: (input) => cancelScheduled(http, input),
@@ -135,6 +139,23 @@ export const ResendServiceLive = Layer.effect(
 
 const ResendHttpClientWithFetchLive = ResendHttpClientLive.pipe(Layer.provide(FetchHttpClient.layer))
 
-export const ResendServiceWithFetchHttpClientLive = ResendServiceLive.pipe(
-	Layer.provideMerge(ResendHttpClientWithFetchLive),
+/** The authenticated transport plus the config it was built from, both read only when email is set up. */
+const ResendDeliveryDependenciesLive = ResendHttpClientWithFetchLive.pipe(Layer.provideMerge(ResendConfigLive))
+
+const ConfiguredResendServiceWithFetchHttpClientLive = ResendServiceLive.pipe(
+	Layer.provide(ResendDeliveryDependenciesLive),
+)
+
+/**
+ * The application's ResendService. When any key of the email group is missing, the startup log
+ * says which, and the service is the stand-in: nothing reads RESEND_API_KEY or RESEND_FROM_EMAIL.
+ */
+export const ResendServiceWithFetchHttpClientLive = Layer.unwrap(
+	loadIntegrationKeyGroup(EmailKeyGroup).pipe(
+		Effect.map((emailConfigured) =>
+			emailConfigured
+				? ConfiguredResendServiceWithFetchHttpClientLive
+				: Layer.succeed(ResendService, unconfiguredResendService),
+		),
+	),
 )

@@ -31,6 +31,10 @@ export const getGitHubIssuePreviewProcedure =
 					GitHubIssueInputInvalidError: (error) =>
 						Effect.fail(errors.BAD_REQUEST({ data: { message: error.reason } })),
 					GitHubIntegrationUnavailableError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
+					GitHubIntegrationNotConfiguredError: () =>
+						Effect.fail(
+							errors.BAD_REQUEST({ data: { message: 'GitHub is not set up on this deployment' } }),
+						),
 				}),
 			)
 		return {

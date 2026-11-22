@@ -419,6 +419,13 @@ export const createTaskProcedure = apiBaseOrgRequired.tasks.create
 											Effect.fail(errors.BAD_REQUEST({ data: { message: error.reason } })),
 										GitHubIntegrationUnavailableError: () =>
 											Effect.fail(errors.SERVICE_UNAVAILABLE()),
+										// Without this, the error reaches the outer catch as a 500 and a Sentry report.
+										GitHubIntegrationNotConfiguredError: () =>
+											Effect.fail(
+												errors.BAD_REQUEST({
+													data: { message: 'GitHub is not set up on this deployment' },
+												}),
+											),
 									}),
 								)
 						}),

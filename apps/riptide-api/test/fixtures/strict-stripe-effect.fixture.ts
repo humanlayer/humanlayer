@@ -7,6 +7,7 @@ const unused = (method: keyof StripeServiceShape) => () => Effect.die(`Unexpecte
 
 export function strictStripeEffectLayer(overrides: Partial<StripeServiceShape>) {
 	return Layer.succeed(StripeService, {
+		configured: true,
 		createCheckoutSession: unused('createCheckoutSession'),
 		createProUpgradeCheckoutSession: unused('createProUpgradeCheckoutSession'),
 		retrieveCheckoutSession: unused('retrieveCheckoutSession'),

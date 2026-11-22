@@ -10,6 +10,7 @@ import { listPaidInvoices } from './procedures/list-paid-invoices'
 import { retrieveCheckoutSession } from './procedures/retrieve-checkout-session'
 import { retrieveSubscription } from './procedures/retrieve-subscription'
 import { synchronizeStripeCustomerBillingCache } from './stripe-billing-sync'
+import { loadStripeDeployment } from './stripe-deployment'
 import {
 	narrowCheckoutSessionRetrieveErrors,
 	narrowProviderErrors,
@@ -18,6 +19,7 @@ import {
 	observeStripeErrors,
 } from './stripe-error-handling'
 import { StripeHttpClientLive } from './stripe-http-client.layer'
+import { StripeHttpClient } from './stripe-http-client.service'
 import { decodeStripeServiceInput } from './stripe-service-input'
 import { parseVerifiedWebhook } from './stripe-webhook'
 import { makeStripeWebhookSignatureVerifier } from './stripe-webhook-signature-verifier'
@@ -33,6 +35,7 @@ import {
 	SyncCustomerBillingToKvInput,
 } from './stripe.types'
 import type { StripeServiceShape } from './stripe.types'
+import { unconfiguredStripeHttpClient, unconfiguredStripeService } from './stripe.unconfigured'
 
 export const StripeServiceLive = Layer.effect(
 	StripeService,
@@ -47,6 +50,7 @@ export const StripeServiceLive = Layer.effect(
 		})
 
 		const service: StripeServiceShape = {
+			configured: true,
 			processWebhook: (input) =>
 				Effect.gen(function* () {
 					const verifiedEvent = yield* webhookSignatureVerifier.constructWebhookEvent(input)
@@ -283,4 +287,22 @@ const StripeHttpClientWithFetchLive = StripeHttpClientLive.pipe(Layer.provide(Fe
 
 export const StripeServiceWithFetchHttpClientLive = StripeServiceLive.pipe(
 	Layer.provideMerge(StripeHttpClientWithFetchLive),
+)
+
+const UnconfiguredStripeLive = Layer.mergeAll(
+	Layer.succeed(StripeService, unconfiguredStripeService),
+	Layer.succeed(StripeHttpClient, unconfiguredStripeHttpClient),
+)
+
+/**
+ * The application's Stripe service and transport. Real Stripe when billing enforcement is on (a
+ * missing STRIPE_* key fails startup naming it) or when every key is set; otherwise the stand-in,
+ * and the startup log names the missing keys.
+ */
+export const StripeServiceForDeploymentLive = Layer.unwrap(
+	loadStripeDeployment.pipe(
+		Effect.map((deployment) =>
+			deployment.stripeConfigured ? StripeServiceWithFetchHttpClientLive : UnconfiguredStripeLive,
+		),
+	),
 )

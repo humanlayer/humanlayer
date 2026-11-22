@@ -115,6 +115,7 @@ describe('integrations.github.pullRequests.ensureStream', async () => {
 		db = testDb.db
 		runtime = createRuntimeWithTestPostgresLayer(db, {
 			github: Layer.succeed(GitHubService, {
+				configured: true,
 				createInstallUrl: () => Effect.die('not used'),
 				completeInstallation: () => Effect.die('not used'),
 				listConnections: () => Effect.die('not used'),

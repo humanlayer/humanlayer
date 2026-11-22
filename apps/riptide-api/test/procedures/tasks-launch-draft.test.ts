@@ -538,6 +538,7 @@ describe('api/tasks/launchDraft', async () => {
 
 const makeGitHubServiceLayer = () =>
 	Layer.succeed(GitHubService, {
+		configured: true,
 		createInstallUrl: () => Effect.die('createInstallUrl not used'),
 		completeInstallation: () => Effect.die('completeInstallation not used'),
 		mutatePullRequest: () => Effect.die('mutatePullRequest not used'),

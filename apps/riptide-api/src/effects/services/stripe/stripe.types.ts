@@ -149,6 +149,12 @@ export const CheckoutSessionCreateResult = Schema.Struct({ url: Schema.NonEmptyS
 export type CheckoutSessionCreateResult = Schema.Schema.Type<typeof CheckoutSessionCreateResult>
 
 export type StripeServiceShape = {
+	/**
+	 * Whether this deployment has a Stripe account: always true with billing enforcement on (a
+	 * missing key stops startup), and true with it off only when every STRIPE_* key is set. When
+	 * false, the service is a stand-in whose methods fail with `BillingNotConfiguredError`.
+	 */
+	readonly configured: boolean
 	createCheckoutSession: (
 		input: CreateCheckoutSessionInput,
 	) => Effect.Effect<CheckoutSessionCreateResult, StripeCheckoutSessionCreateError, StripeHttpClient>

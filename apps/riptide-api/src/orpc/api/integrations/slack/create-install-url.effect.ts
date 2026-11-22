@@ -8,5 +8,13 @@ export const createSlackInstallUrlProcedure =
 		const slack = yield* SlackService
 		return yield* slack
 			.createInstallUrl({ organizationId: context.auth.organizationId, requestedByUserId: context.auth.userId })
-			.pipe(Effect.catchTag('SlackIntegrationUnavailableError', () => Effect.fail(errors.SERVICE_UNAVAILABLE())))
+			.pipe(
+				Effect.catchTags({
+					SlackIntegrationUnavailableError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
+					SlackIntegrationNotConfiguredError: () =>
+						Effect.fail(
+							errors.BAD_REQUEST({ data: { message: 'Slack is not set up on this deployment' } }),
+						),
+				}),
+			)
 	})

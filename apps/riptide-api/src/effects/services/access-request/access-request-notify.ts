@@ -120,6 +120,16 @@ export function notifyAdmin(args: {
 			scheduledAt: reminderResult.scheduledAt,
 		}
 	}).pipe(
+		// No email on this deployment: the admin still sees the request in the app. Skipped before
+		// the capture below so a missing email setup is not reported as a failure.
+		Effect.catchTag('EmailNotConfiguredError', () =>
+			Effect.succeed({
+				ok: false as const,
+				skipped: true as const,
+				admin: args.admin,
+				error: 'email_not_configured',
+			}),
+		),
 		Effect.tapError((error) => logError(`notifyAdmin(${args.admin.userId})`, error)),
 		Effect.catch((error) =>
 			Effect.succeed({

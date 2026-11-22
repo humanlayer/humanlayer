@@ -24,7 +24,7 @@ import { ResendOperationError } from '../../src/effects/services/resend/resend-e
 import { ResendService } from '../../src/effects/services/resend/resend.service'
 import { WorkosServerError } from '../../src/effects/services/workos/workos.errors'
 import { WorkosService } from '../../src/effects/services/workos/workos.service'
-import { ResendConfigTest } from '../fixtures/resend-config-test-layer'
+import { AccessRequestLinkOriginsTestConfig } from '../fixtures/resend-config-test-layer'
 import { makeTestWorkosService } from '../utils/effect-procedure-test-runtime'
 import { requireExternalTestServices } from '../utils/external-test-services'
 import { createTestDb } from '../utils/test-db'
@@ -100,6 +100,7 @@ function makeFakeResendLayer(
 	opts: { failOnSend?: boolean; failOnSchedule?: boolean; rateLimitOnSend?: boolean } = {},
 ) {
 	return Layer.succeed(ResendService, {
+		configured: true,
 		sendPlaintext: (input) => {
 			if (opts.rateLimitOnSend) {
 				return Effect.fail(resendOperationError(true))
@@ -191,7 +192,7 @@ describe('AccessRequestService.createAccessRequest', () => {
 				PostgresDbLive(db),
 				makeFakeWorkosLayer(admins),
 				makeFakeResendLayer(resendStore, resendOpts),
-				ResendConfigTest(),
+				AccessRequestLinkOriginsTestConfig(),
 			),
 		)
 	}
@@ -217,7 +218,12 @@ describe('AccessRequestService.createAccessRequest', () => {
 		})
 		const layer = Layer.provideMerge(
 			AccessRequestServiceLive,
-			Layer.mergeAll(PostgresDbLive(db), workosLayer, makeFakeResendLayer(store), ResendConfigTest()),
+			Layer.mergeAll(
+				PostgresDbLive(db),
+				workosLayer,
+				makeFakeResendLayer(store),
+				AccessRequestLinkOriginsTestConfig(),
+			),
 		)
 		const requesterEmail = `requester-already-invited-${randomUUID()}@example.com`
 
@@ -439,6 +445,7 @@ describe('AccessRequestService.createAccessRequest', () => {
 
 		// First admin succeeds, second fails on sendPlaintext
 		const partialResendLayer = Layer.succeed(ResendService, {
+			configured: true,
 			sendPlaintext: (input) => {
 				sendCallCount++
 				if (sendCallCount % 2 === 0) {
@@ -474,7 +481,12 @@ describe('AccessRequestService.createAccessRequest', () => {
 
 		const layer = Layer.provideMerge(
 			AccessRequestServiceLive,
-			Layer.mergeAll(PostgresDbLive(db), makeFakeWorkosLayer(admins), partialResendLayer, ResendConfigTest()),
+			Layer.mergeAll(
+				PostgresDbLive(db),
+				makeFakeWorkosLayer(admins),
+				partialResendLayer,
+				AccessRequestLinkOriginsTestConfig(),
+			),
 		)
 
 		const requesterEmail = `requester-partial-${randomUUID()}@example.com`
@@ -600,7 +612,12 @@ describe('AccessRequestService.sendInviteAndResolveRequests', () => {
 
 		return Layer.provideMerge(
 			AccessRequestServiceLive,
-			Layer.mergeAll(PostgresDbLive(db), workosLayer, makeFakeResendLayer(resendStore), ResendConfigTest()),
+			Layer.mergeAll(
+				PostgresDbLive(db),
+				workosLayer,
+				makeFakeResendLayer(resendStore),
+				AccessRequestLinkOriginsTestConfig(),
+			),
 		)
 	}
 
@@ -762,7 +779,12 @@ describe('AccessRequestService.backfillRequesterUserId', () => {
 		const resendStore = new FakeResendStore()
 		return Layer.provideMerge(
 			AccessRequestServiceLive,
-			Layer.mergeAll(PostgresDbLive(db), workosLayer, makeFakeResendLayer(resendStore), ResendConfigTest()),
+			Layer.mergeAll(
+				PostgresDbLive(db),
+				workosLayer,
+				makeFakeResendLayer(resendStore),
+				AccessRequestLinkOriginsTestConfig(),
+			),
 		)
 	}
 

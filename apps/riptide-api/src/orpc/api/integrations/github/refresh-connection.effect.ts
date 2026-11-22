@@ -18,6 +18,10 @@ export const refreshGitHubConnectionProcedure =
 					GitHubInstallationSuspendedError: () =>
 						Effect.fail(errors.BAD_REQUEST({ data: { message: 'installation_suspended' } })),
 					GitHubIntegrationUnavailableError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
+					GitHubIntegrationNotConfiguredError: () =>
+						Effect.fail(
+							errors.BAD_REQUEST({ data: { message: 'GitHub is not set up on this deployment' } }),
+						),
 				}),
 			)
 		return { connection }
