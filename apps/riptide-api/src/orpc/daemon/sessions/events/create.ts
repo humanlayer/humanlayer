@@ -408,8 +408,10 @@ async function advanceLinearStatus(
 	taskId: string,
 	advanceStatus: string,
 ): Promise<void> {
+	const { db, linear } = services
+	// No Linear keys on this deployment: nothing to advance, and nothing worth a Sentry report.
+	if (!linear) return
 	try {
-		const { db, linear } = services
 		const [task] = await db
 			.select({ ticketId: tasks.ticket_id, ticketProvider: tasks.ticket_provider })
 			.from(tasks)

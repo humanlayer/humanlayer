@@ -4,12 +4,13 @@ import { eq } from 'drizzle-orm'
 
 import { Sentry } from '../../../instrument'
 import logger from '../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 import { captureInvalidBillingOrganizationRow } from './organization-billing-schema'
 
-export const createPortalSessionProcedure = apiBaseForOrganizationAdmin.billing.createPortalSession.handler(
-	async ({ input, context, errors }) => {
+export const createPortalSessionProcedure = apiBaseForOrganizationAdmin.billing.createPortalSession
+	.use(requiresStripe)
+	.handler(async ({ input, context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, stripe } = context.services
 		const { returnUrl } = input
@@ -65,5 +66,4 @@ export const createPortalSessionProcedure = apiBaseForOrganizationAdmin.billing.
 
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to create portal session' } })
 		}
-	},
-)
+	})

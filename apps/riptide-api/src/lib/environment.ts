@@ -24,14 +24,6 @@ export function getWorkosWebhookSecret(): string {
 	return requireEnvironment('WORKOS_WEBHOOK_SECRET')
 }
 
-export function getResendApiKey(): string {
-	return requireEnvironment('RESEND_API_KEY')
-}
-
-export function getResendWebhookSecret(): string {
-	return requireEnvironment('RESEND_WEBHOOK_SECRET')
-}
-
 export function getKvUrl(): string {
 	return requireEnvironment('KV_URL')
 }

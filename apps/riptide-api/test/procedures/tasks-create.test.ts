@@ -125,8 +125,8 @@ describe('api/tasks/create', async () => {
 		uid?: string
 		orgId?: string
 		workosOrgId?: string
-		linear?: ReturnType<typeof createMockLinearService>
-		jira?: ReturnType<typeof createMockJiraService>
+		linear?: ReturnType<typeof createMockLinearService> | null
+		jira?: ReturnType<typeof createMockJiraService> | null
 		s3?: ReturnType<typeof createMockS3Service>
 		billingAccess?: TestRuntimeOptions['billingAccess']
 		effectRuntime?: AppRuntime
@@ -1386,6 +1386,25 @@ describe('api/tasks/create', async () => {
 		).rejects.toMatchObject({ code })
 		expect(await db.select().from(tasks).where(eq(tasks.id, taskId))).toHaveLength(0)
 	})
+
+	test.each([
+		{ provider: 'jira' as const, ticketId: 'OPS-7', message: 'Jira is not set up on this deployment' },
+		{ provider: 'linear' as const, ticketId: 'ENG-42', message: 'Linear is not set up on this deployment' },
+	])(
+		'rejects a $provider ticket with BAD_REQUEST when $provider is not set up',
+		async ({ provider, ticketId, message }) => {
+			const taskId = uuidv7()
+
+			await expect(
+				call(
+					createTaskProcedure,
+					{ id: taskId, name: `unconfigured ${provider} task`, ticketProvider: provider, ticketId },
+					{ context: makeContext({ [provider]: null }) },
+				),
+			).rejects.toMatchObject({ code: 'BAD_REQUEST', data: { message } })
+			expect(await db.select().from(tasks).where(eq(tasks.id, taskId))).toHaveLength(0)
+		},
+	)
 
 	test('atomically creates an empty done setup row and first session when no workspace spec exists', async () => {
 		const result = await call(

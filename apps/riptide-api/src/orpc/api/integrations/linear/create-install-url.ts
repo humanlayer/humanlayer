@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node'
 
 import logger from '../../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../../base'
+import { apiBaseForOrganizationAdmin, requiresLinear } from '../../../base'
 
 /**
  * Mints the one-time OAuth state row and returns Linear's consent URL.
@@ -11,8 +11,9 @@ import { apiBaseForOrganizationAdmin } from '../../../base'
  * to be told `FORBIDDEN`. The onboarding "tracker connected" milestone moved to the callback
  * route, where the exchange actually succeeds.
  */
-export const createLinearInstallUrlProcedure = apiBaseForOrganizationAdmin.integrations.linear.createInstallUrl.handler(
-	async ({ input, context, errors }) => {
+export const createLinearInstallUrlProcedure = apiBaseForOrganizationAdmin.integrations.linear.createInstallUrl
+	.use(requiresLinear)
+	.handler(async ({ input, context, errors }) => {
 		const {
 			auth,
 			services: { linear },
@@ -28,5 +29,4 @@ export const createLinearInstallUrlProcedure = apiBaseForOrganizationAdmin.integ
 			Sentry.captureException(error, { tags: { error_type: 'linear_install_url' } })
 			throw errors.INTERNAL_SERVER_ERROR()
 		}
-	},
-)
+	})

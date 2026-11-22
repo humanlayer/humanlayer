@@ -49,7 +49,8 @@ export const adminReactivateUserProcedure = apiBaseForOrganizationAdmin.auth.adm
 						}),
 					)
 				: null
-			const isStarter = cache?.priceId === stripe.prices.starter
+			// Without Stripe there is no plan, so the Starter seat limit does not apply.
+			const isStarter = stripe !== null && cache?.priceId === stripe.prices.starter
 
 			if (isStarter) {
 				const [activeMembers, pendingInvitations] = await Promise.all([

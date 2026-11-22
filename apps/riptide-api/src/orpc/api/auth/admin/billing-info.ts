@@ -10,7 +10,7 @@ import { billingTierForPriceId, priceIdByTierFromEnvironment } from '../../../..
 import { Sentry } from '../../../../instrument'
 import { STARTER_FREE_CAPACITY } from '../../../../lib/free-capacity'
 import { logger } from '../../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../../base'
 import { logAndCaptureBillingProcedureError } from '../../billing/errors'
 import { captureInvalidBillingOrganizationRow } from '../../billing/organization-billing-schema'
 
@@ -28,8 +28,9 @@ function toBillingSubscriptionStatus(status: string | null | undefined): Billing
 	}
 }
 
-export const billingInfoProcedure = apiBaseForOrganizationAdmin.auth.admin.billing.info.handler(
-	async ({ context, errors }) => {
+export const billingInfoProcedure = apiBaseForOrganizationAdmin.auth.admin.billing.info
+	.use(requiresStripe)
+	.handler(async ({ context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, effectRuntime, stripe, workos } = context.services
 
@@ -151,5 +152,4 @@ export const billingInfoProcedure = apiBaseForOrganizationAdmin.auth.admin.billi
 
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to fetch billing information' } })
 		}
-	},
-)
+	})

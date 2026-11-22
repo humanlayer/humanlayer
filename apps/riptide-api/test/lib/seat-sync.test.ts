@@ -61,6 +61,19 @@ function createWorkosCounter(input: { count?: number; error?: Error }) {
 }
 
 describe('syncOrganizationSeatQuantity', () => {
+	test('returns skipped without Stripe and does not count memberships', async () => {
+		const organization = await insertOrganization()
+		const workos = createWorkosCounter({ count: 3 })
+
+		const result = await syncOrganizationSeatQuantity(
+			{ organizationId: organization.id, reason: 'workos_webhook' },
+			{ workosService: workos.service, stripeService: null, db },
+		)
+
+		expect(result).toEqual({ skipped: 'billing_not_configured' })
+		expect(workos.calls).toHaveLength(0)
+	})
+
 	test('counts active WorkOS memberships and sets Stripe quantity with prorations', async () => {
 		const organization = await insertOrganization()
 		const workos = createWorkosCounter({ count: 3 })

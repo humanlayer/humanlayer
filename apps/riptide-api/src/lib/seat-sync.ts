@@ -14,14 +14,20 @@ export type SeatSyncReason =
 	| 'customer_force_sync'
 	| 'admin_force_sync'
 
+export type SeatSyncStripeService = Pick<
+	IStripeService,
+	'prices' | 'findCurrentSubscriptionItemForCustomer' | 'updateSubscriptionItemQuantity'
+>
+
 export type SeatSyncDependencies = {
 	workosService: Pick<WorkosSdkAdapter, 'countActiveOrganizationMemberships'>
-	stripeService: Pick<
-		IStripeService,
-		'prices' | 'findCurrentSubscriptionItemForCustomer' | 'updateSubscriptionItemQuantity'
-	>
+	/** `null` when this deployment has no Stripe; seat sync then does nothing. */
+	stripeService: SeatSyncStripeService | null
 	db: PostgresJsDatabase
 }
+
+/** Returned instead of a sync when this deployment has no Stripe. */
+export type SeatSyncSkipped = { skipped: 'billing_not_configured' }
 
 export type SeatSyncResult = {
 	organizationId: string
@@ -34,14 +40,31 @@ export type SeatSyncResult = {
 	stripeQuantityChanged: boolean
 }
 
+type SeatSyncInput = {
+	organizationId: string
+	reason: SeatSyncReason
+	prorationBehavior?: Stripe.SubscriptionItemUpdateParams.ProrationBehavior
+}
+
+/**
+ * Sets the Stripe subscription quantity to the organization's active member count. Without
+ * Stripe (`stripeService: null`) it returns `{ skipped: 'billing_not_configured' }` and touches
+ * nothing, so callers pass the service through without their own check.
+ */
 export async function syncOrganizationSeatQuantity(
-	input: {
-		organizationId: string
-		reason: SeatSyncReason
-		prorationBehavior?: Stripe.SubscriptionItemUpdateParams.ProrationBehavior
-	},
+	input: SeatSyncInput,
+	deps: SeatSyncDependencies & { stripeService: SeatSyncStripeService },
+): Promise<SeatSyncResult>
+export async function syncOrganizationSeatQuantity(
+	input: SeatSyncInput,
 	deps: SeatSyncDependencies,
-): Promise<SeatSyncResult> {
+): Promise<SeatSyncResult | SeatSyncSkipped>
+export async function syncOrganizationSeatQuantity(
+	input: SeatSyncInput,
+	deps: SeatSyncDependencies,
+): Promise<SeatSyncResult | SeatSyncSkipped> {
+	const { stripeService } = deps
+	if (!stripeService) return { skipped: 'billing_not_configured' }
 	const organizationId = normalizeRequiredId(input.organizationId, 'organizationId')
 	const [organization] = await deps.db
 		.select()
@@ -66,7 +89,7 @@ export async function syncOrganizationSeatQuantity(
 	if (!stripeCustomerId) {
 		throw new Error(`Organization ${organizationId} is not linked to Stripe billing while syncing seat quantity`)
 	}
-	const subscriptionItem = await deps.stripeService.findCurrentSubscriptionItemForCustomer(stripeCustomerId)
+	const subscriptionItem = await stripeService.findCurrentSubscriptionItemForCustomer(stripeCustomerId)
 	if (!subscriptionItem) {
 		throw new Error(`No active Stripe subscription item found for organization ${organizationId}`)
 	}
@@ -75,11 +98,11 @@ export async function syncOrganizationSeatQuantity(
 		parsedOrganization.data.workos_organization_id,
 	)
 	const targetQuantity =
-		subscriptionItem.priceId === deps.stripeService.prices.starter ||
-		subscriptionItem.priceId === deps.stripeService.prices.pro
+		subscriptionItem.priceId === stripeService.prices.starter ||
+		subscriptionItem.priceId === stripeService.prices.pro
 			? seatCount
 			: 1
-	const updatedSubscriptionItem = await deps.stripeService.updateSubscriptionItemQuantity({
+	const updatedSubscriptionItem = await stripeService.updateSubscriptionItemQuantity({
 		subscriptionItemId: subscriptionItem.subscriptionItemId,
 		quantity: targetQuantity,
 		prorationBehavior: input.prorationBehavior ?? 'create_prorations',

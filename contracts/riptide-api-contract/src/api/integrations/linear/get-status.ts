@@ -7,6 +7,11 @@ export const GetLinearStatusOutputSchema = z.object({
 	enabled: z.boolean(),
 	connected: z.boolean(),
 	needsReauth: z.boolean(),
+	/**
+	 * False when this deployment has no Linear keys; the other fields then say not connected.
+	 * Optional so older clients and servers stay compatible.
+	 */
+	configured: z.boolean().optional(),
 })
 export const getLinearStatusContract = contractBuilder
 	.input(GetLinearStatusInputSchema)

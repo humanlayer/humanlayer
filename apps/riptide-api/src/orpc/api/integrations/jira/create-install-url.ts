@@ -1,10 +1,11 @@
 import * as Sentry from '@sentry/node'
 
 import logger from '../../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../../base'
+import { apiBaseForOrganizationAdmin, requiresJira } from '../../../base'
 
-export const createJiraInstallUrlProcedure = apiBaseForOrganizationAdmin.integrations.jira.createInstallUrl.handler(
-	async ({ input, context, errors }) => {
+export const createJiraInstallUrlProcedure = apiBaseForOrganizationAdmin.integrations.jira.createInstallUrl
+	.use(requiresJira)
+	.handler(async ({ input, context, errors }) => {
 		const {
 			auth,
 			services: { jira },
@@ -20,5 +21,4 @@ export const createJiraInstallUrlProcedure = apiBaseForOrganizationAdmin.integra
 			Sentry.captureException(error, { tags: { error_type: 'jira_install_url' } })
 			throw errors.INTERNAL_SERVER_ERROR()
 		}
-	},
-)
+	})

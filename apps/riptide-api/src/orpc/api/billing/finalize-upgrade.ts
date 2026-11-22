@@ -3,13 +3,14 @@ import { ORPCError } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 
 import { refreshStripeBillingCache } from '../../../effects/services/billing/billing-access.service'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 import { captureInvalidBillingOrganizationRow } from './organization-billing-schema'
 
 /** @deprecated Retained for clients released before server-owned checkout completion. Remove after 2026-08-11. */
-export const finalizeUpgradeProcedure = apiBaseForOrganizationAdmin.billing.finalizeUpgrade.handler(
-	async ({ context, errors }) => {
+export const finalizeUpgradeProcedure = apiBaseForOrganizationAdmin.billing.finalizeUpgrade
+	.use(requiresStripe)
+	.handler(async ({ context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, effectRuntime, stripe } = context.services
 
@@ -64,5 +65,4 @@ export const finalizeUpgradeProcedure = apiBaseForOrganizationAdmin.billing.fina
 			if (error instanceof ORPCError) throw error
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to finalize upgrade' } })
 		}
-	},
-)
+	})

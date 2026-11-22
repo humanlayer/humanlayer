@@ -7,12 +7,13 @@ import { Effect } from 'effect'
 import { refreshStripeBillingCache } from '../../../effects/services/billing/billing-access.service'
 import { canDowngradeToStarter, STARTER_FREE_CAPACITY } from '../../../lib/free-capacity'
 import logger from '../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 import { captureInvalidBillingOrganizationRow } from './organization-billing-schema'
 
-export const downgradeToStarterProcedure = apiBaseForOrganizationAdmin.billing.downgradeToStarter.handler(
-	async ({ context, errors }) => {
+export const downgradeToStarterProcedure = apiBaseForOrganizationAdmin.billing.downgradeToStarter
+	.use(requiresStripe)
+	.handler(async ({ context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, effectRuntime, stripe, workos } = context.services
 
@@ -135,5 +136,4 @@ export const downgradeToStarterProcedure = apiBaseForOrganizationAdmin.billing.d
 			if (error instanceof ORPCError) throw error
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to downgrade to Starter' } })
 		}
-	},
-)
+	})

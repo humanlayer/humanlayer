@@ -24,9 +24,15 @@ import { logger } from '../logger'
 export type Services = {
 	workos: WorkosSdkAdapter
 	s3: IS3Service
-	jira: IJiraService
-	linear: ILinearService
-	stripe: IStripeService
+	/** `null` when this deployment has no Jira keys. Use `requiresJira` or check by hand. */
+	jira: IJiraService | null
+	/** `null` when this deployment has no Linear keys. Use `requiresLinear` or check by hand. */
+	linear: ILinearService | null
+	/**
+	 * `null` when billing enforcement is off and a STRIPE_* key is missing. With enforcement on,
+	 * startup fails instead. Use `requiresStripe` or check by hand.
+	 */
+	stripe: IStripeService | null
 	db: PostgresJsDatabase
 	dbReadReplica: PostgresJsDatabase
 	/**
@@ -87,6 +93,35 @@ export const requireOrganization = os.middleware(async ({ context, next, errors 
 	}
 	// TypeScript knows auth is AuthContext after type guard
 	return next({ context: { auth: context.auth, services: context.services } })
+})
+
+/** The 400 message for a request that needs an integration this deployment does not have. */
+export function integrationNotSetUpMessage(integration: 'Jira' | 'Linear' | 'Billing'): string {
+	return `${integration} is not set up on this deployment`
+}
+
+/**
+ * Rejects the request with BAD_REQUEST when this deployment has no Jira keys; otherwise passes
+ * `services.jira` on typed as not null.
+ */
+export const requiresJira = os.middleware(async ({ context, next, errors }) => {
+	const { jira } = context.services
+	if (!jira) throw errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Jira') } })
+	return next({ context: { services: { ...context.services, jira } } })
+})
+
+/** `requiresJira` for Linear. */
+export const requiresLinear = os.middleware(async ({ context, next, errors }) => {
+	const { linear } = context.services
+	if (!linear) throw errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Linear') } })
+	return next({ context: { services: { ...context.services, linear } } })
+})
+
+/** `requiresJira` for Stripe. Every billing procedure that calls Stripe uses it. */
+export const requiresStripe = os.middleware(async ({ context, next, errors }) => {
+	const { stripe } = context.services
+	if (!stripe) throw errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Billing') } })
+	return next({ context: { services: { ...context.services, stripe } } })
 })
 
 /**
@@ -383,6 +418,20 @@ export const requiresDaemonBillingMiddleware = daemonOs.middleware<
 		})
 		throw errors.SERVICE_UNAVAILABLE()
 	}
+})
+
+/** `requiresJira` for daemon procedures. */
+export const requiresDaemonJira = daemonOs.middleware(async ({ context, next, errors }) => {
+	const { jira } = context.services
+	if (!jira) throw errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Jira') } })
+	return next({ context: { services: { ...context.services, jira } } })
+})
+
+/** `requiresLinear` for daemon procedures. */
+export const requiresDaemonLinear = daemonOs.middleware(async ({ context, next, errors }) => {
+	const { linear } = context.services
+	if (!linear) throw errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Linear') } })
+	return next({ context: { services: { ...context.services, linear } } })
 })
 
 /**

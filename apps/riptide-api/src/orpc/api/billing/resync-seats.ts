@@ -1,11 +1,12 @@
 import { ORPCError } from '@orpc/server'
 
 import { syncOrganizationSeatQuantity } from '../../../lib/seat-sync'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 
-export const resyncSeatsProcedure = apiBaseForOrganizationAdmin.billing.resyncSeats.handler(
-	async ({ context, errors }) => {
+export const resyncSeatsProcedure = apiBaseForOrganizationAdmin.billing.resyncSeats
+	.use(requiresStripe)
+	.handler(async ({ context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, stripe, workos } = context.services
 
@@ -35,5 +36,4 @@ export const resyncSeatsProcedure = apiBaseForOrganizationAdmin.billing.resyncSe
 
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to re-sync seat count' } })
 		}
-	},
-)
+	})

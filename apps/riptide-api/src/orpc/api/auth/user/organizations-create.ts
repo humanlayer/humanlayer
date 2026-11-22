@@ -111,59 +111,66 @@ export const createOrganizationProcedure = apiBaseNoOrg.auth.user.organizations.
 			throw errors.INTERNAL_SERVER_ERROR()
 		}
 
-		let provisioning: ProvisioningStepResult
+		// Null when this deployment has no Stripe: the org gets no customer or subscription.
+		let provisioning: ProvisioningStepResult | null = null
 		let provisionedCustomerId: string | null = null
 		let createdStripeCustomer = false
 		try {
-			const user = await workos.userManagement.getUser(auth.userId)
-			const customer = await stripe.ensureStripeCustomerForOrg({
-				organizationId: dbOrg.id,
-				organizationName: dbOrg.name,
-				adminEmail: user.email,
-				existingCustomerId: dbOrg.stripe_customer_id,
-			})
+			if (stripe) {
+				const user = await workos.userManagement.getUser(auth.userId)
+				const customer = await stripe.ensureStripeCustomerForOrg({
+					organizationId: dbOrg.id,
+					organizationName: dbOrg.name,
+					adminEmail: user.email,
+					existingCustomerId: dbOrg.stripe_customer_id,
+				})
 
-			provisionedCustomerId = customer.customerId
-			createdStripeCustomer = customer.created
+				provisionedCustomerId = customer.customerId
+				createdStripeCustomer = customer.created
 
-			const [updatedOrg] = await db
-				.update(organizations)
-				.set({ stripe_customer_id: customer.customerId })
-				.where(eq(organizations.id, dbOrg.id))
-				.returning()
+				const [updatedOrg] = await db
+					.update(organizations)
+					.set({ stripe_customer_id: customer.customerId })
+					.where(eq(organizations.id, dbOrg.id))
+					.returning()
 
-			if (!updatedOrg) {
-				throw new Error('Failed to persist Stripe customer id on organization')
+				if (!updatedOrg) {
+					throw new Error('Failed to persist Stripe customer id on organization')
+				}
+
+				dbOrg = updatedOrg
+
+				await stripe.ensureBillingOrgMappings({
+					organizationId: dbOrg.id,
+					customerId: customer.customerId,
+				})
 			}
 
-			dbOrg = updatedOrg
-
-			await stripe.ensureBillingOrgMappings({
-				organizationId: dbOrg.id,
-				customerId: customer.customerId,
-			})
-
-			await workos.organizations.updateOrganization({
+			// Runs with or without Stripe: login reads internal_org_id from this metadata.
+			const workosOrganizationUpdate: Parameters<typeof workos.organizations.updateOrganization>[0] = {
 				organization: workosOrg.id,
-				stripeCustomerId: customer.customerId,
 				metadata: {
 					internal_org_id: dbOrg.id,
 				},
-			})
+			}
+			if (provisionedCustomerId) workosOrganizationUpdate.stripeCustomerId = provisionedCustomerId
+			await workos.organizations.updateOrganization(workosOrganizationUpdate)
 
-			const quantity = await workos.countActiveOrganizationMemberships(workosOrg.id)
+			if (stripe && provisionedCustomerId) {
+				const quantity = await workos.countActiveOrganizationMemberships(workosOrg.id)
 
-			const subscription = await stripe.ensureStarterSubscription({
-				customerId: customer.customerId,
-				quantity,
-			})
-			await context.services.effectRuntime.runPromise(refreshStripeBillingCache(customer.customerId))
+				const subscription = await stripe.ensureStarterSubscription({
+					customerId: provisionedCustomerId,
+					quantity,
+				})
+				await context.services.effectRuntime.runPromise(refreshStripeBillingCache(provisionedCustomerId))
 
-			provisioning = {
-				customerId: customer.customerId,
-				createdCustomer: customer.created,
-				subscriptionId: subscription.subscriptionId,
-				createdSubscription: subscription.created,
+				provisioning = {
+					customerId: provisionedCustomerId,
+					createdCustomer: createdStripeCustomer,
+					subscriptionId: subscription.subscriptionId,
+					createdSubscription: subscription.created,
+				}
 			}
 		} catch (error) {
 			logger.error(
@@ -215,7 +222,7 @@ export const createOrganizationProcedure = apiBaseNoOrg.auth.user.organizations.
 				})
 			}
 
-			if (createdStripeCustomer && provisionedCustomerId) {
+			if (stripe && createdStripeCustomer && provisionedCustomerId) {
 				try {
 					await stripe.deleteCustomer(provisionedCustomerId)
 				} catch (cleanupError) {
@@ -277,16 +284,20 @@ export const createOrganizationProcedure = apiBaseNoOrg.auth.user.organizations.
 			})
 		}
 
-		logger.info(
-			{
-				organizationId: dbOrg.id,
-				stripeCustomerId: provisioning.customerId,
-				stripeSubscriptionId: provisioning.subscriptionId,
-				createdStripeCustomer: provisioning.createdCustomer,
-				createdStripeSubscription: provisioning.createdSubscription,
-			},
-			'Created organization with Stripe Starter billing provisioning',
-		)
+		if (provisioning) {
+			logger.info(
+				{
+					organizationId: dbOrg.id,
+					stripeCustomerId: provisioning.customerId,
+					stripeSubscriptionId: provisioning.subscriptionId,
+					createdStripeCustomer: provisioning.createdCustomer,
+					createdStripeSubscription: provisioning.createdSubscription,
+				},
+				'Created organization with Stripe Starter billing provisioning',
+			)
+		} else {
+			logger.info({ organizationId: dbOrg.id }, 'Created organization without billing: Stripe is not set up')
+		}
 
 		// Fire-and-forget onboarding enrollment on the shared app Effect runtime.
 		// `runFork` returns synchronously with a background root fiber, so organization
@@ -318,7 +329,7 @@ export const createOrganizationProcedure = apiBaseNoOrg.auth.user.organizations.
 			organizationId: dbOrg.id,
 			workosOrganizationId: workosOrg.id,
 			organizationName: workosOrg.name,
-			stripeCustomerId: provisioning.customerId,
+			stripeCustomerId: provisioning?.customerId,
 			failedInvites,
 		}
 	},

@@ -11,7 +11,8 @@ import { logger } from '../logger'
 
 type WorkosWebhookDeps = {
 	workosService: WorkosSdkAdapter
-	stripeService: IStripeService
+	/** `null` when this deployment has no Stripe; seat sync then reports it skipped. */
+	stripeService: IStripeService | null
 	db: PostgresJsDatabase
 	/**
 	 * Backfill `access_requests.requester_user_id` for anonymous requests matching an

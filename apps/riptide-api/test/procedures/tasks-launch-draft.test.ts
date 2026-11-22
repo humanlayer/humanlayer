@@ -272,6 +272,30 @@ describe('api/tasks/launchDraft', async () => {
 		)
 	})
 
+	test.each([
+		{ provider: 'jira' as const, ticketId: 'OPS-99', message: 'Jira is not set up on this deployment' },
+		{ provider: 'linear' as const, ticketId: 'ENG-1234', message: 'Linear is not set up on this deployment' },
+	])(
+		'rejects a $provider ticket with BAD_REQUEST when $provider is not set up',
+		async ({ provider, ticketId, message }) => {
+			const request = input({ ticketProvider: provider, ticketId })
+			const unconfiguredContext = createMockApiContext({
+				auth: createMockApiAuth({ userId: ownerUserId, organizationId, workosOrganizationId }),
+				services: { db, dbReadReplica: db, effectRuntime: runtime, [provider]: null },
+			})
+
+			await expect(
+				call(launchTaskDraftProcedure, request, { context: unconfiguredContext }),
+			).rejects.toMatchObject({
+				code: 'BAD_REQUEST',
+				data: { message },
+			})
+			const rows = await countLaunchRows(request.draftId)
+			expect(rows.taskRows).toHaveLength(0)
+			expect(rows.launchRows).toHaveLength(0)
+		},
+	)
+
 	test('imports an attached GitHub issue and references it from task.md', async () => {
 		const request = input({
 			ticketProvider: 'github',

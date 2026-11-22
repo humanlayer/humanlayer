@@ -4,12 +4,13 @@ import { eq } from 'drizzle-orm'
 
 import { refreshStripeBillingCache } from '../../../effects/services/billing/billing-access.service'
 import logger from '../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 import { captureInvalidBillingOrganizationRow } from './organization-billing-schema'
 
-export const syncCheckoutSessionProcedure = apiBaseForOrganizationAdmin.billing.syncCheckoutSession.handler(
-	async ({ context, errors }) => {
+export const syncCheckoutSessionProcedure = apiBaseForOrganizationAdmin.billing.syncCheckoutSession
+	.use(requiresStripe)
+	.handler(async ({ context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, effectRuntime } = context.services
 
@@ -58,5 +59,4 @@ export const syncCheckoutSessionProcedure = apiBaseForOrganizationAdmin.billing.
 
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to sync checkout session' } })
 		}
-	},
-)
+	})

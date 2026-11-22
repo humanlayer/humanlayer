@@ -1,10 +1,11 @@
 import * as Sentry from '@sentry/node'
 
 import logger from '../../../../logger'
-import { daemonBase, requiresDaemonBillingMiddleware } from '../../../base'
+import { daemonBase, requiresDaemonBillingMiddleware, requiresDaemonLinear } from '../../../base'
 
 export const createLinearAttachmentProcedure = daemonBase.integrations.linear.createAttachment
 	.use(requiresDaemonBillingMiddleware)
+	.use(requiresDaemonLinear)
 	.handler(async ({ input, context, errors }) => {
 		const { organizationId } = context.auth
 		const { linear } = context.services

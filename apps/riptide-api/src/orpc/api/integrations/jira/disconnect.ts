@@ -1,10 +1,11 @@
 import * as Sentry from '@sentry/node'
 
 import logger from '../../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../../base'
+import { apiBaseForOrganizationAdmin, requiresJira } from '../../../base'
 
-export const disconnectJiraProcedure = apiBaseForOrganizationAdmin.integrations.jira.disconnect.handler(
-	async ({ context, errors }) => {
+export const disconnectJiraProcedure = apiBaseForOrganizationAdmin.integrations.jira.disconnect
+	.use(requiresJira)
+	.handler(async ({ context, errors }) => {
 		const {
 			auth,
 			services: { jira },
@@ -16,5 +17,4 @@ export const disconnectJiraProcedure = apiBaseForOrganizationAdmin.integrations.
 			Sentry.captureException(error, { tags: { error_type: 'jira_disconnect' } })
 			throw errors.INTERNAL_SERVER_ERROR()
 		}
-	},
-)
+	})

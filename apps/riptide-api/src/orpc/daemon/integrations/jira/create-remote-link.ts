@@ -1,10 +1,11 @@
 import * as Sentry from '@sentry/node'
 
 import logger from '../../../../logger'
-import { daemonBase, requiresDaemonBillingMiddleware } from '../../../base'
+import { daemonBase, requiresDaemonBillingMiddleware, requiresDaemonJira } from '../../../base'
 
 export const createJiraRemoteLinkProcedure = daemonBase.integrations.jira.createRemoteLink
 	.use(requiresDaemonBillingMiddleware)
+	.use(requiresDaemonJira)
 	.handler(async ({ input, context, errors }) => {
 		const { organizationId } = context.auth
 		const { jira } = context.services

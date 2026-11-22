@@ -12,6 +12,7 @@ import { TaskLaunchService } from '../../../effects/services/task-launch/task-la
 import { formatJiraTicketMd } from '../../../lib/format-jira-ticket'
 import { LinearIssueUnavailableError } from '../../../lib/linear-service'
 import { LinearArtifactService, type PreparedTicketArtifactBundle } from '../../../lib/linear-ticket-artifacts'
+import { integrationNotSetUpMessage } from '../../base'
 import { effectOrpcBaseOrganizationRequired, requiresBillingEffectMiddleware } from '../../effect-base'
 import { TASK_ID_IN_USE_MESSAGE, slugInTaskUsedMessage } from './task-conflict-messages'
 
@@ -28,16 +29,20 @@ export const launchTaskDraftProcedure = effectOrpcBaseOrganizationRequired.tasks
 		const { ticketProvider, ticketId } = input
 
 		if (ticketProvider === 'linear' && ticketId) {
+			const { linear } = context.services
+			if (!linear) {
+				return yield* Effect.fail(
+					errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Linear') } }),
+				)
+			}
 			importedTicket = yield* Effect.tryPromise({
 				try: () =>
-					new LinearArtifactService(context.services.linear, context.services.s3).prepareTicketArtifactBundle(
-						{
-							organizationId: context.auth.organizationId,
-							ticketId,
-							taskId: input.draftId,
-							importAttemptId,
-						},
-					),
+					new LinearArtifactService(linear, context.services.s3).prepareTicketArtifactBundle({
+						organizationId: context.auth.organizationId,
+						ticketId,
+						taskId: input.draftId,
+						importAttemptId,
+					}),
 				catch: (cause) =>
 					cause instanceof LinearIssueUnavailableError
 						? errors.NOT_FOUND({ data: { message: `Couldn't load Linear ticket ${cause.issueId}` } })
@@ -77,8 +82,12 @@ export const launchTaskDraftProcedure = effectOrpcBaseOrganizationRequired.tasks
 		}
 
 		if (ticketProvider === 'jira' && ticketId) {
+			const { jira } = context.services
+			if (!jira) {
+				return yield* Effect.fail(errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Jira') } }))
+			}
 			const issue = yield* Effect.tryPromise({
-				try: () => context.services.jira.getIssue(context.auth.organizationId, ticketId),
+				try: () => jira.getIssue(context.auth.organizationId, ticketId),
 				catch: () => errors.SERVICE_UNAVAILABLE(),
 			})
 			const content = formatJiraTicketMd(issue)
