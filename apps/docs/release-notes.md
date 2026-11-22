@@ -2,6 +2,14 @@
 
 This page lists changes in each HumanLayer release. Download the latest build from [cloud.humanlayer.com/install](https://cloud.humanlayer.com/install).
 
+## 0.203.0 — November 22, 2026
+
+This release changes what people see when they try to create a new organization. Every environment now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, and links to the announcement and to the open source repo for self-hosting.
+
+**Highlights**
+
+- **Clearer message when new organizations are blocked** - Creating an organization now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo so you can self-host. If your team already has an org, ask a teammate for an invite. ([#1167](https://github.com/humanlayer/humanlayer/pull/1167) - [@dexhorthy](https://github.com/dexhorthy))
+
 ## 0.202.0 — November 14, 2026
 
 This release keeps the minimalist UI usable after your laptop wakes, makes the System theme follow your OS, and gets the daemon working on Windows. It also fixes the npm install of the CLI and adds a guide for self-hosting HumanLayer.
