@@ -1,8 +1,7 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import * as path from 'path'
 import { URL } from 'url'
 
-import { write } from 'bun'
 import fetch from 'node-fetch'
 
 /**
@@ -93,7 +92,7 @@ export async function downloadImage(url: string, outputPath: string, token?: str
 	const dir = path.dirname(outputPath)
 	await mkdir(dir, { recursive: true })
 
-	await write(outputPath, buffer)
+	await writeFile(outputPath, buffer)
 }
 
 /**
