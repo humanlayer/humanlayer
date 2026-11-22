@@ -20,6 +20,20 @@ const CONTENT_TYPES: Record<ImageExtension, string> = {
 }
 
 /**
+ * True only when the URL's host is exactly uploads.linear.app over https.
+ * A substring check would match attacker hosts like `uploads.linear.app.evil.com`
+ * or a path containing the text, and leak the org's Linear token to them.
+ */
+export function isLinearUploadUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url)
+		return parsed.protocol === 'https:' && parsed.hostname === 'uploads.linear.app'
+	} catch {
+		return false
+	}
+}
+
+/**
  * Extract image URLs from markdown content.
  * Matches markdown image syntax: ![altText](url)
  * Only returns URLs that look like actual images (from uploads.linear.app or with image extensions).
@@ -36,7 +50,7 @@ export function extractImageUrls(markdown: string): Array<{ url: string; altText
 		// Only include URLs that look like image URLs
 		if (
 			url.startsWith('http') &&
-			(url.includes('uploads.linear.app') ||
+			(isLinearUploadUrl(url) ||
 				url.includes('github.com/user-attachments/assets/') ||
 				IMAGE_EXTENSION_PATTERN.test(url))
 		) {
@@ -110,8 +124,9 @@ export async function downloadTicketImage(
 	const headers: Record<string, string> = {}
 
 	// If URL contains a signature parameter, it's already authenticated (signed URL)
-	// Otherwise, add auth header for Linear uploads
-	if (url.includes('uploads.linear.app') && !url.includes('signature=') && authHeader) {
+	// Otherwise, add auth header for Linear uploads. The host must be exactly
+	// uploads.linear.app: never send the token anywhere else.
+	if (isLinearUploadUrl(url) && !url.includes('signature=') && authHeader) {
 		headers.Authorization = authHeader
 	}
 

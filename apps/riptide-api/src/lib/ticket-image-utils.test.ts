@@ -1,6 +1,78 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { extractFilenameFromUrl, extractImageUrls, getContentType, getFileExtension } from './ticket-image-utils'
+import {
+	downloadTicketImage,
+	extractFilenameFromUrl,
+	extractImageUrls,
+	getContentType,
+	getFileExtension,
+	isLinearUploadUrl,
+} from './ticket-image-utils'
+
+describe('isLinearUploadUrl', () => {
+	test('accepts https URLs whose host is exactly uploads.linear.app', () => {
+		expect(isLinearUploadUrl('https://uploads.linear.app/abc/image.png')).toBe(true)
+		expect(isLinearUploadUrl('https://uploads.linear.app/abc/file?signature=xyz')).toBe(true)
+	})
+
+	test('rejects look-alike hosts and URLs that merely contain the text', () => {
+		expect(isLinearUploadUrl('https://uploads.linear.app.evil.com/image.png')).toBe(false)
+		expect(isLinearUploadUrl('https://evil.com/uploads.linear.app/image.png')).toBe(false)
+		expect(isLinearUploadUrl('https://evil.com/?next=uploads.linear.app')).toBe(false)
+		expect(isLinearUploadUrl('https://uploads.linear.app@evil.com/image.png')).toBe(false)
+		expect(isLinearUploadUrl('https://evil.com/#uploads.linear.app')).toBe(false)
+		expect(isLinearUploadUrl('http://uploads.linear.app/image.png')).toBe(false)
+		expect(isLinearUploadUrl('not a url uploads.linear.app')).toBe(false)
+	})
+})
+
+describe('downloadTicketImage auth header', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	function stubFetch() {
+		const fetchMock = vi.fn(async () => {
+			return new Response(new Uint8Array([1, 2, 3]), {
+				status: 200,
+				headers: { 'content-type': 'image/png', 'content-length': '3' },
+			})
+		})
+		vi.stubGlobal('fetch', fetchMock)
+		return fetchMock
+	}
+
+	function sentHeaders(fetchMock: ReturnType<typeof vi.fn>): Record<string, string> {
+		const init = fetchMock.mock.calls[0]?.[1] as { headers?: Record<string, string> } | undefined
+		return init?.headers ?? {}
+	}
+
+	test('sends the auth header to uploads.linear.app', async () => {
+		const fetchMock = stubFetch()
+		await downloadTicketImage('https://uploads.linear.app/abc/image.png', 'Bearer secret')
+		expect(sentHeaders(fetchMock).Authorization).toBe('Bearer secret')
+	})
+
+	test('does not send the auth header to a host that only contains the text uploads.linear.app', async () => {
+		for (const url of [
+			'https://uploads.linear.app.evil.com/image.png',
+			'https://evil.com/uploads.linear.app/image.png',
+			'https://evil.com/image.png?ref=uploads.linear.app',
+			'https://uploads.linear.app@evil.com/image.png',
+		]) {
+			const fetchMock = stubFetch()
+			await downloadTicketImage(url, 'Bearer secret')
+			expect(sentHeaders(fetchMock).Authorization, url).toBeUndefined()
+			vi.unstubAllGlobals()
+		}
+	})
+
+	test('does not send the auth header to signed Linear URLs', async () => {
+		const fetchMock = stubFetch()
+		await downloadTicketImage('https://uploads.linear.app/abc/file?signature=xyz', 'Bearer secret')
+		expect(sentHeaders(fetchMock).Authorization).toBeUndefined()
+	})
+})
 
 describe('extractImageUrls', () => {
 	test('extracts markdown images from Linear uploads', () => {
@@ -57,6 +129,13 @@ More text
 		const markdown = '![a](https://uploads.linear.app/1.png) and ![b](https://uploads.linear.app/2.png)'
 		const result = extractImageUrls(markdown)
 		expect(result).toHaveLength(2)
+	})
+
+	test('does not treat a look-alike host as a Linear upload', () => {
+		const markdown =
+			'![img](https://uploads.linear.app.evil.com/file) ![img](https://evil.com/uploads.linear.app/file)'
+		const result = extractImageUrls(markdown)
+		expect(result).toEqual([])
 	})
 
 	test('returns empty array for content without images', () => {
