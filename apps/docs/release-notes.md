@@ -4,7 +4,7 @@ This page lists changes in each HumanLayer release. Download the latest build fr
 
 ## 0.203.0 — November 22, 2026
 
-This release fixes a security bug in the Linear ticket image importer, which could send your org's Linear token to a look-alike host. It also changes what people see when they try to create a new organization: every environment now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo for self-hosting. The minimalist UI gets four fixes: copied task and session links open in a browser, sessions started from the Next step card get their phase label, a directory task can start a session on any online host, and new sessions in directory tasks get a generated title.
+This release fixes a security bug in the Linear ticket image importer, which could send your org's Linear token to a look-alike host. It also changes what people see when they try to create a new organization: every environment now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo for self-hosting. Tasks started from Jira or GitHub issues with long titles now launch. The minimalist UI gets four fixes: copied task and session links open in a browser, sessions started from the Next step card get their phase label, a directory task can start a session on any online host, and new sessions in directory tasks get a generated title.
 
 **Highlights**
 
@@ -17,6 +17,7 @@ This release fixes a security bug in the Linear ticket image importer, which cou
 - **Next step sessions show their phase (Minimalist UI)** - A session started from the Next step card now gets its phase label, such as TDD or Implement, instead of the task falling back to the session's age. ([#1174](https://github.com/humanlayer/humanlayer/pull/1174) - [@dannomayernotabot](https://github.com/dannomayernotabot))
 - **Directory tasks can run on any online host (Minimalist UI)** - Starting another session in a directory task no longer locks you to the host the last session used. Pick any online host. If that host has used the task's directory before, the session runs there; otherwise you choose a directory on it. ([#1171](https://github.com/humanlayer/humanlayer/pull/1171) - [@dannomayernotabot](https://github.com/dannomayernotabot))
 - **New sessions in directory tasks get a title (Minimalist UI)** - Another session started in a directory task now gets a generated title a few seconds after launch, instead of staying "Untitled session" until you rename it. ([#1170](https://github.com/humanlayer/humanlayer/pull/1170) - [@dannomayernotabot](https://github.com/dannomayernotabot))
+- **Long ticket titles launch** - Starting a task from a Jira or GitHub issue with a long title no longer fails with "Could not start the task". The task slug is cut to fit the server's 100-character limit while keeping the ticket prefix. If the server does reject a field, the error now names it. ([#1168](https://github.com/humanlayer/humanlayer/pull/1168) - [@xtenzQ](https://github.com/xtenzQ))
 
 ## 0.202.0 — November 14, 2026
 
