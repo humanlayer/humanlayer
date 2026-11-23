@@ -1,0 +1,13 @@
+{
+	"name": "@humanlayer/pulumi-monitoring",
+	"type": "module",
+	"main": "pulumi.ts",
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@pulumi/aws": "catalog:",
+		"@pulumi/pulumi": "catalog:"
+	}
+}

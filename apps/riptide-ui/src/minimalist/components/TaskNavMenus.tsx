@@ -25,6 +25,7 @@ import { useArchive } from '@/minimalist/lib/use-archive'
 import { useCopy } from '@/minimalist/lib/use-copy'
 import { useRiptideApi } from '@/orpc/client'
 import { getAuthenticatedArtifactUrl } from '@/utils/artifact-links'
+import { getSessionShareUrl } from '@/utils/sharing-links'
 
 /** What a session row's menu asks its row to open once the menu closes. */
 export type SessionDialog = 'rename' | 'share'
@@ -51,6 +52,7 @@ export function SessionRowMenu({
 	const { canManageSession } = useSessionAccess(session)
 	const sharingEnabled = useSettingsStore((state) => state.orgSettings.multiplayerPromptingEnabled)
 	const unread = useUnreadStore((state) => state.unreadSessionIds.has(session.id))
+	// A new window opens in this app; a copied link opens the web app, which can hand off to the desktop app.
 	const link = `${window.location.origin}/sessions/${session.id}`
 	const run = (action: () => void) => () => {
 		onClose()
@@ -91,7 +93,11 @@ export function SessionRowMenu({
 			<MenuItem
 				label="Copy link"
 				onSelect={run(() =>
-					copy(link, 'Session link copied', 'Could not copy the link. Copy it from the address bar.'),
+					copy(
+						getSessionShareUrl(session.id),
+						'Session link copied',
+						'Could not copy the link. Copy it from the address bar.',
+					),
 				)}
 			/>
 			<MenuItem label="Open in new window" onSelect={run(() => window.open(link, '_blank', 'noopener'))} />

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { parseLinearIssueInput } from '@/lib/linear-issue-input'
-import { generateTaskSlug } from '@/lib/task-slug'
+import { generatePrefixedTaskSlug } from '@/lib/task-slug'
 import { getTicketLookupError } from '@/lib/ticket-lookup-error'
 import { useRiptideApi } from '@/orpc/client'
 
@@ -64,7 +64,7 @@ export function useTicketAutoFetch({
 	const jiraName = jiraIssue.data ? `[${trimmedJiraId.toUpperCase()}] ${jiraIssue.data.summary}` : null
 
 	const jiraSlug = jiraIssue.data
-		? `${trimmedJiraId.toLowerCase()}-${generateTaskSlug(jiraIssue.data.summary)}`
+		? generatePrefixedTaskSlug(`${trimmedJiraId.toLowerCase()}-`, jiraIssue.data.summary)
 		: null
 
 	const linearLookupError = watchedMode === 'linear' ? getTicketLookupError(linearMetadata.error) : null

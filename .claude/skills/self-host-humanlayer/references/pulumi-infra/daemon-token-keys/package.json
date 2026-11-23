@@ -1,0 +1,14 @@
+{
+	"name": "@humanlayer/pulumi-daemon-token-keys",
+	"type": "module",
+	"main": "pulumi.ts",
+	"devDependencies": {
+		"@types/node": "catalog:",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@pulumi/aws": "catalog:",
+		"@pulumi/pulumi": "catalog:",
+		"@pulumi/tls": "catalog:"
+	}
+}

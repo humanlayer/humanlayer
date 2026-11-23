@@ -1,0 +1,14 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  memorydb:nodeType: db.t4g.small
+  memorydb:numReplicasPerShard: 0
+  memorydb:snapshotRetentionLimit: 1
+  memorydb:maintenanceWindow: sun:03:00-sun:04:00
+  memorydb:snapshotWindow: 06:00-07:00
+  memorydb:port: 6379
+  memorydb:parameterGroupFamily: memorydb_redis7
+  memorydb:userName: riptide

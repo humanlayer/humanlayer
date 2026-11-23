@@ -1,0 +1,374 @@
+# The public repo's notify-release.yml dispatches this after its CI passes on main. It deploys
+# Pulumi dev and builds and publishes the dev channel from that public commit. The public CI run
+# is the check; this workflow doesn't run tests again.
+name: Main CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Public repo commit to build and deploy
+        required: true
+        type: string
+      public_repo:
+        description: Public repo to build from (a private stand-in during the rehearsal)
+        type: string
+        default: humanlayer/humanlayer
+      dry_run:
+        description: Build and sign everything, publish nothing, and preview Pulumi instead of up
+        type: boolean
+        default: false
+
+# A new dispatch cancels the entire older run, including called release workflows.
+concurrency:
+  group: main-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DO_NOT_TRACK: "1"
+  TURBO_UI: stream
+  RUST_DURABLE_STREAMS_IMAGE_TAG: 0.3.0-r1
+  RUST_DURABLE_STREAMS_REPOSITORY_PREFIX: rust-durable-streams
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  debounce:
+    runs-on: ubuntu-slim
+    timeout-minutes: 3
+    permissions: {}
+    steps:
+      - name: Wait for more merges
+        run: sleep 90
+
+  # Check the derived versions, not the latest commit's diff: earlier dispatches
+  # with package changes may have been canceled before they could publish.
+  detect-npm-changes:
+    needs: debounce
+    runs-on: ubuntu-latest
+    outputs:
+      cli: ${{ steps.cli.outputs.should_publish }}
+      linear_cli: ${{ steps.linear_cli.outputs.should_publish }}
+      rpi_cli: ${{ steps.rpi_cli.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ inputs.sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Check whether the derived CLI version is published
+        id: cli
+        env:
+          VERSION_FILE: apps/cli/package.json
+          # Keep in sync with COUNT_PATHS in release-humanlayer-cli.yml.
+          COUNT_PATHS: >-
+            apps/cli
+            apps/riptide-daemon
+            contracts/riptide-api-contract
+            scripts/bun-build-plugins/embed-photon-wasm.ts
+          PACKAGE: "@humanlayer%2fcli"
+          SUFFIX: -dev.0
+        run: &is-published |
+          VERSION="$(bun run ci-scripts/derive-package-version.ts)$SUFFIX"
+          # The root package is published last, after all platform packages.
+          # On registry errors, conservatively run the idempotent publisher.
+          STATUS=$(curl --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
+            "https://registry.npmjs.org/$PACKAGE/$VERSION") || STATUS=000
+          if [ "$STATUS" = "200" ]; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check whether the derived linear-cli version is published
+        id: linear_cli
+        env:
+          VERSION_FILE: apps/linear-cli/package.json
+          # Keep in sync with COUNT_PATHS in publish-linear-cli.yml.
+          COUNT_PATHS: apps/linear-cli
+          PACKAGE: "@humanlayer%2flinear-cli"
+          SUFFIX: ""
+        run: *is-published
+
+      - name: Check whether the derived rpi version is published
+        id: rpi_cli
+        env:
+          VERSION_FILE: apps/rpi-cli/package.json
+          # Keep in sync with COUNT_PATHS in publish-rpi-cli.yml.
+          COUNT_PATHS: apps/rpi-cli
+          PACKAGE: "@humanlayer%2frpi"
+          SUFFIX: ""
+        run: *is-published
+
+  rust-durable-streams-registry-dev:
+    needs: debounce
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      project-path: pulumi-infra/rust-durable-streams-registry
+      stack: humanlayer/rust-durable-streams-registry/dev
+      action: up
+      upsert: true
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  rust-durable-streams-registry-beta:
+    needs: debounce
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      project-path: pulumi-infra/rust-durable-streams-registry
+      stack: humanlayer/rust-durable-streams-registry/beta
+      action: up
+      upsert: true
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  rust-durable-streams-registry-prod:
+    needs: debounce
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      project-path: pulumi-infra/rust-durable-streams-registry
+      stack: humanlayer/rust-durable-streams-registry/prod
+      action: up
+      upsert: true
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  publish-rust-durable-streams-image:
+    name: Publish Rust Durable Streams ARM64 image
+    needs:
+      - rust-durable-streams-registry-dev
+      - rust-durable-streams-registry-beta
+      - rust-durable-streams-registry-prod
+    runs-on: blacksmith-8vcpu-ubuntu-2404-arm
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ inputs.sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Configure dev AWS credentials
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          aws-access-key-id: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Resolve dev repository and image
+        id: dev-ecr
+        run: |
+          repository_name="$RUST_DURABLE_STREAMS_REPOSITORY_PREFIX-dev"
+          repository_uri="$(aws ecr describe-repositories --repository-names "$repository_name" --query 'repositories[0].repositoryUri' --output text)"
+          echo "repository-name=$repository_name" >> "$GITHUB_OUTPUT"
+          echo "repository-uri=$repository_uri" >> "$GITHUB_OUTPUT"
+          if aws ecr describe-images --repository-name "$repository_name" --image-ids imageTag="$RUST_DURABLE_STREAMS_IMAGE_TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure production AWS credentials
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          aws-access-key-id: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Resolve beta and prod repositories and images
+        id: production-ecr
+        run: |
+          beta_repository_name="$RUST_DURABLE_STREAMS_REPOSITORY_PREFIX-beta"
+          prod_repository_name="$RUST_DURABLE_STREAMS_REPOSITORY_PREFIX-prod"
+          beta_repository_uri="$(aws ecr describe-repositories --repository-names "$beta_repository_name" --query 'repositories[0].repositoryUri' --output text)"
+          prod_repository_uri="$(aws ecr describe-repositories --repository-names "$prod_repository_name" --query 'repositories[0].repositoryUri' --output text)"
+          {
+            echo "beta-repository-name=$beta_repository_name"
+            echo "beta-repository-uri=$beta_repository_uri"
+            echo "prod-repository-name=$prod_repository_name"
+            echo "prod-repository-uri=$prod_repository_uri"
+          } >> "$GITHUB_OUTPUT"
+          if aws ecr describe-images --repository-name "$beta_repository_name" --image-ids imageTag="$RUST_DURABLE_STREAMS_IMAGE_TAG" >/dev/null 2>&1; then
+            echo "beta-exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "beta-exists=false" >> "$GITHUB_OUTPUT"
+          fi
+          if aws ecr describe-images --repository-name "$prod_repository_name" --image-ids imageTag="$RUST_DURABLE_STREAMS_IMAGE_TAG" >/dev/null 2>&1; then
+            echo "prod-exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prod-exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine whether publication is needed
+        id: publication
+        env:
+          DEV_EXISTS: ${{ steps.dev-ecr.outputs.exists }}
+          BETA_EXISTS: ${{ steps.production-ecr.outputs.beta-exists }}
+          PROD_EXISTS: ${{ steps.production-ecr.outputs.prod-exists }}
+        run: |
+          if [[ "$DEV_EXISTS" == true && "$BETA_EXISTS" == true && "$PROD_EXISTS" == true ]]; then
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            echo "Image $RUST_DURABLE_STREAMS_IMAGE_TAG already exists in every stage repository"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker builder
+        if: steps.publication.outputs.needed == 'true'
+        uses: useblacksmith/setup-docker-builder@19215110ab936351210feebdfa5b440b4493e184 # v2
+        with:
+          cache-key: docker/durable-streams-server/Dockerfile-arm64-v1
+
+      - name: Build ARM64 image once
+        if: steps.publication.outputs.needed == 'true'
+        run: |
+          docker buildx build \
+            --platform linux/arm64 \
+            --load \
+            --tag "rust-durable-streams:$RUST_DURABLE_STREAMS_IMAGE_TAG" \
+            --file docker/durable-streams-server/Dockerfile \
+            docker/durable-streams-server
+          test "$(docker image inspect "rust-durable-streams:$RUST_DURABLE_STREAMS_IMAGE_TAG" --format '{{.Architecture}}')" = arm64
+
+      - name: Configure dev AWS credentials for publish
+        if: steps.publication.outputs.needed == 'true' && !inputs.dry_run
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          aws-access-key-id: ${{ secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Publish to dev ECR
+        if: steps.publication.outputs.needed == 'true' && !inputs.dry_run
+        env:
+          REPOSITORY_NAME: ${{ steps.dev-ecr.outputs.repository-name }}
+          REPOSITORY_URI: ${{ steps.dev-ecr.outputs.repository-uri }}
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin "${REPOSITORY_URI%%/*}"
+          local_config_digest="$(docker image inspect "rust-durable-streams:$RUST_DURABLE_STREAMS_IMAGE_TAG" --format '{{.Id}}')"
+          if aws ecr describe-images --repository-name "$REPOSITORY_NAME" --image-ids imageTag="$RUST_DURABLE_STREAMS_IMAGE_TAG" >/dev/null 2>&1; then
+            manifest="$(aws ecr batch-get-image --repository-name "$REPOSITORY_NAME" --image-ids imageTag="$RUST_DURABLE_STREAMS_IMAGE_TAG" --accepted-media-types application/vnd.docker.distribution.manifest.v2+json --query 'images[0].imageManifest' --output text)"
+            test "$(jq -r '.config.digest' <<<"$manifest")" = "$local_config_digest"
+          else
+            docker tag "rust-durable-streams:$RUST_DURABLE_STREAMS_IMAGE_TAG" "$REPOSITORY_URI:$RUST_DURABLE_STREAMS_IMAGE_TAG"
+            docker push "$REPOSITORY_URI:$RUST_DURABLE_STREAMS_IMAGE_TAG"
+          fi
+
+      - name: Configure production AWS credentials for publish
+        if: steps.publication.outputs.needed == 'true' && !inputs.dry_run
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          aws-access-key-id: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Publish to beta and prod ECR
+        if: steps.publication.outputs.needed == 'true' && !inputs.dry_run
+        env:
+          BETA_REPOSITORY_NAME: ${{ steps.production-ecr.outputs.beta-repository-name }}
+          BETA_REPOSITORY_URI: ${{ steps.production-ecr.outputs.beta-repository-uri }}
+          PROD_REPOSITORY_NAME: ${{ steps.production-ecr.outputs.prod-repository-name }}
+          PROD_REPOSITORY_URI: ${{ steps.production-ecr.outputs.prod-repository-uri }}
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin "${BETA_REPOSITORY_URI%%/*}"
+          local_config_digest="$(docker image inspect "rust-durable-streams:$RUST_DURABLE_STREAMS_IMAGE_TAG" --format '{{.Id}}')"
+          for stage in BETA PROD; do
+            repository_name_var="${stage}_REPOSITORY_NAME"
+            repository_uri_var="${stage}_REPOSITORY_URI"
+            repository_name="${!repository_name_var}"
+            repository_uri="${!repository_uri_var}"
+            if aws ecr describe-images --repository-name "$repository_name" --image-ids imageTag="$RUST_DURABLE_STREAMS_IMAGE_TAG" >/dev/null 2>&1; then
+              manifest="$(aws ecr batch-get-image --repository-name "$repository_name" --image-ids imageTag="$RUST_DURABLE_STREAMS_IMAGE_TAG" --accepted-media-types application/vnd.docker.distribution.manifest.v2+json --query 'images[0].imageManifest' --output text)"
+              test "$(jq -r '.config.digest' <<<"$manifest")" = "$local_config_digest"
+            else
+              docker tag "rust-durable-streams:$RUST_DURABLE_STREAMS_IMAGE_TAG" "$repository_uri:$RUST_DURABLE_STREAMS_IMAGE_TAG"
+              docker push "$repository_uri:$RUST_DURABLE_STREAMS_IMAGE_TAG"
+            fi
+          done
+
+  deploy-live-pulumi:
+    needs: debounce
+    uses: ./.github/workflows/pulumi-deploy-live.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+
+  release-riptide-dev:
+    needs: publish-rust-durable-streams-image
+    uses: ./.github/workflows/release-riptide-dev.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      skip_cask_update: false
+      skip_signing: false
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: write
+
+  publish-humanlayer-cli:
+    needs: [detect-npm-changes, release-riptide-dev]
+    if: ${{ needs.detect-npm-changes.outputs.cli == 'true' }}
+    uses: ./.github/workflows/release-humanlayer-cli.yml
+    with:
+      release_type: dev
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
+    permissions:
+      contents: write
+
+  publish-linear-cli:
+    needs: detect-npm-changes
+    if: ${{ needs.detect-npm-changes.outputs.linear_cli == 'true' }}
+    uses: ./.github/workflows/publish-linear-cli.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
+
+  publish-rpi-cli:
+    needs: detect-npm-changes
+    if: ${{ needs.detect-npm-changes.outputs.rpi_cli == 'true' }}
+    uses: ./.github/workflows/publish-rpi-cli.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ inputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit

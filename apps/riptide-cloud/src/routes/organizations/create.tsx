@@ -38,23 +38,34 @@ function OrganizationCreationBlocked() {
 						<ArrowLeft className="h-4 w-4 mr-2" />
 						Back
 					</Button>
-					<CardTitle className="font-mono uppercase tracking-wider">Organization Signups Closed</CardTitle>
+					<CardTitle className="font-mono uppercase tracking-wider">New Organizations Closed</CardTitle>
 				</CardHeader>
 				<CardContent className="space-y-4 text-sm text-muted-foreground">
 					<p>
-						This is the HumanLayer beta environment, which is no longer accepting new organization signups.
-					</p>
-					<p>
-						Please get an invite to your team’s existing org, or create a new organization at{' '}
+						HumanLayer Cloud is shutting down as HumanLayer joins Factory, so it no longer accepts new
+						organizations.{' '}
 						<a
-							href="https://cloud.humanlayer.com"
+							href="https://humanlayer.com/blog/humanlayer-joins-factory"
 							target="_blank"
 							rel="noopener noreferrer"
 							className="underline text-foreground hover:text-primary"
 						>
-							cloud.humanlayer.com
-						</a>{' '}
-						to proceed.
+							Read the announcement
+						</a>
+						.
+					</p>
+					<p>If your team already has an org, ask a teammate for an invite.</p>
+					<p>
+						To keep using HumanLayer, self-host the open source version from{' '}
+						<a
+							href="https://github.com/humanlayer/humanlayer"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="underline text-foreground hover:text-primary"
+						>
+							github.com/humanlayer/humanlayer
+						</a>
+						.
 					</p>
 				</CardContent>
 			</Card>

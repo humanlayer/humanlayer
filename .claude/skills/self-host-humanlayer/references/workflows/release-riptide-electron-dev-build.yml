@@ -1,0 +1,374 @@
+name: Build Riptide Electron Dev
+
+on:
+  workflow_call:
+    inputs:
+      release_type:
+        description: Release channel to build
+        required: false
+        type: string
+        default: dev
+      public_repo:
+        description: Public repo to build from
+        required: false
+        type: string
+        default: humanlayer/humanlayer
+      public_sha:
+        description: Public commit to build
+        required: true
+        type: string
+      dry_run:
+        description: Skip the Sentry sourcemap upload
+        required: false
+        type: boolean
+        default: false
+      use_mac_mini:
+        description: Opt in to office runners (trusted main dev builds only)
+        required: false
+        type: boolean
+        default: false
+      artifact_suffix:
+        description: Optional suffix to keep artifacts distinct across parallel pilot builds
+        required: false
+        type: string
+        default: ""
+    outputs:
+      release_version:
+        description: Derived Electron release version
+        value: ${{ jobs.build.outputs.release_version }}
+      release_tag:
+        description: Electron-isolated release tag
+        value: ${{ jobs.build.outputs.release_tag }}
+      dmg_filename:
+        description: Verified signed DMG filename
+        value: ${{ jobs.build.outputs.dmg_filename }}
+      zip_filename:
+        description: Signed ZIP filename for auto-update
+        value: ${{ jobs.build.outputs.zip_filename }}
+      source_sha:
+        description: Public commit SHA used for the Electron build
+        value: ${{ jobs.build.outputs.source_sha }}
+
+permissions:
+  contents: read
+
+env:
+  # Sentry DSNs baked into each client; builds from public source have none, so Sentry stays off there.
+  VITE_PUBLIC_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_DAEMON_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_NATIVE_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_ELECTRON_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  CI: "true"
+  DO_NOT_TRACK: "1"
+  NODE_ENV: production
+  TURBO_UI: stream
+
+jobs:
+  build:
+    if: >-
+      !inputs.use_mac_mini ||
+      (inputs.release_type == 'dev' && github.ref == 'refs/heads/main')
+    runs-on: ${{ inputs.use_mac_mini && fromJSON('["self-hosted", "macOS", "ARM64", "humanlayer-office-runner"]') || 'blacksmith-12vcpu-macos-15' }}
+    timeout-minutes: ${{ inputs.use_mac_mini && 60 || 360 }}
+    outputs:
+      release_version: ${{ steps.release.outputs.release_version }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      dmg_filename: ${{ steps.release.outputs.dmg_filename }}
+      zip_filename: ${{ steps.release.outputs.zip_filename }}
+      source_sha: ${{ steps.release.outputs.source_sha }}
+    steps:
+      - name: Isolate Mac mini home and tool configuration
+        if: inputs.use_mac_mini
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          umask 077
+          PILOT_HOME="$(mktemp -d "$RUNNER_TEMP/mac-mini-electron-home.XXXXXX")"
+          echo "PILOT_HOME=$PILOT_HOME" >> "$GITHUB_ENV"
+          # Keep import, signing and cleanup on the SAME job-specific HOME.
+          # Verified on the Mini: security's user search lists are HOME-scoped.
+          # Never mutate the shared account search list with concurrent runners.
+          # This isolates configuration, not filesystem access or credentials.
+          mkdir -p "$PILOT_HOME/.config" "$PILOT_HOME/signing" \
+            "$PILOT_HOME/Library/Keychains" "$PILOT_HOME/Library/Preferences"
+          {
+            echo "PILOT_KEYCHAIN_HOME=$PILOT_HOME"
+            # setup-bun installs via os.homedir(), not BUN_INSTALL alone.
+            echo "HOME=$PILOT_HOME"
+            echo "XDG_CONFIG_HOME=$PILOT_HOME/.config"
+            echo "BUN_INSTALL=$PILOT_HOME/.bun"
+            echo "BUN_INSTALL_CACHE_DIR=$PILOT_HOME/.bun/install/cache"
+            echo "NPM_CONFIG_USERCONFIG=$PILOT_HOME/.npmrc"
+            echo "GIT_CONFIG_GLOBAL=$PILOT_HOME/.gitconfig"
+            echo "PULUMI_HOME=$PILOT_HOME/.pulumi"
+            echo "ELECTRON_BUILDER_CACHE=$PILOT_HOME/.cache/electron-builder"
+          } >> "$GITHUB_ENV"
+      - name: Check out
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ inputs.public_sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+          # Remove ignored generated binaries/config from the previous job.
+          clean: true
+          fetch-depth: 0
+      - name: Install Bun
+        id: setup-bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+          no-cache: ${{ inputs.use_mac_mini }}
+      - name: Verify isolated Bun installation
+        if: inputs.use_mac_mini
+        env:
+          INSTALLED_BUN_PATH: ${{ steps.setup-bun.outputs.bun-path }}
+        run: |
+          test "$INSTALLED_BUN_PATH" = "$HOME/.bun/bin/bun"
+          test "$(command -v bun)" = "$INSTALLED_BUN_PATH"
+          test "$(bun --version)" = 1.3.14
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Generate version
+        id: version
+        run: bun run ci-scripts/generate-version.ts >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_RELEASE_TYPE: ${{ inputs.release_type }}
+      - name: Derive daemon version
+        id: daemon_version
+        run: echo "version=$(bun run ci-scripts/derive-daemon-version.ts 2>/dev/null || echo dev)" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_RELEASE_TYPE: ${{ inputs.release_type }}
+      - name: Stamp derived version into build files
+        run: bun run ci-scripts/stamp-version.ts
+        env:
+          VERSION: ${{ steps.version.outputs.release_version }}
+      - name: Stamp derived plugin versions
+        run: bun run ci-scripts/stamp-plugin-versions.ts
+      - name: Install Pulumi
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.137.0
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Fetch current dev stack outputs
+        id: pulumi
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ inputs.release_type == 'dev' && secrets.DEV_CLOUD_AWS_ACCESS_KEY_ID || secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ inputs.release_type == 'dev' && secrets.DEV_CLOUD_AWS_SECRET_ACCESS_KEY || secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+        run: |
+          {
+            echo "api_url=$(pulumi stack output serviceUrl --stack humanlayer/riptide-api/${{ inputs.release_type }})"
+            echo "sync_url=$(pulumi stack output serviceUrl --stack humanlayer/riptide-electric-proxy/${{ inputs.release_type }})"
+            echo "cloud_url=$(pulumi stack output cloudUrl --stack humanlayer/riptide-cloud/${{ inputs.release_type }})"
+            echo "app_url=$(pulumi stack output appUrl --stack humanlayer/riptide-ui/${{ inputs.release_type }})"
+            echo "billing_enabled=$(pulumi stack output billingEnforcementEnabled --stack humanlayer/stripe/${{ inputs.release_type }})"
+          } >> "$GITHUB_OUTPUT"
+      - name: Import Developer ID certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          USE_MAC_MINI: ${{ inputs.use_mac_mini }}
+        shell: bash
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/electron-signing.keychain-db"
+          CERTIFICATE_PATH="$RUNNER_TEMP/electron-signing.p12"
+          if [[ "$USE_MAC_MINI" == true ]]; then
+            umask 077
+            KEYCHAIN_PATH="$PILOT_HOME/signing/electron-signing.keychain-db"
+            CERTIFICATE_PATH="$PILOT_HOME/signing/electron-signing.p12"
+            security() { HOME="$PILOT_KEYCHAIN_HOME" /usr/bin/security "$@"; }
+            # create-keychain itself can mutate the user search list. Snapshot
+            # first, atomically, so always() can recover even a partial import.
+            security list-keychains -d user > "$PILOT_HOME/signing/search-list.pending"
+            mv "$PILOT_HOME/signing/search-list.pending" "$PILOT_HOME/signing/search-list"
+            trap 'rm -f "$CERTIFICATE_PATH"' EXIT
+          fi
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERTIFICATE_PATH" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          if [[ "$USE_MAC_MINI" == true ]]; then
+            KEYCHAINS=()
+            while IFS= read -r line; do
+              line="${line#"${line%%[![:space:]]*}"}"
+              line="${line#\"}"
+              line="${line%\"}"
+              [[ -z "$line" ]] || KEYCHAINS+=("$line")
+            done < "$PILOT_HOME/signing/search-list"
+            security list-keychains -d user -s "$KEYCHAIN_PATH" "${KEYCHAINS[@]}"
+          else
+            security list-keychains -d user -s "$KEYCHAIN_PATH"
+          fi
+          echo "CSC_KEYCHAIN=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          rm "$CERTIFICATE_PATH"
+      - name: Complete and verify Mac mini signing chain
+        if: inputs.use_mac_mini
+        shell: bash
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          # GitHub's macOS images preinstall Developer ID G2; a plain Mac may
+          # only have G1. Import the public intermediate, NOT a new trust anchor.
+          export HOME="$PILOT_KEYCHAIN_HOME"
+          echo 'Signing certificate issuer:'
+          security find-certificate -c 'Developer ID Application' -p "$CSC_KEYCHAIN" |
+            openssl x509 -noout -issuer -dates
+          echo 'Valid identities before installing the Apple intermediate:'
+          security find-identity -v -p codesigning "$CSC_KEYCHAIN"
+          CA_PATH="$PILOT_HOME/signing/DeveloperIDG2CA.cer"
+          curl --fail --silent --show-error --location --retry 3 \
+            --proto '=https' --proto-redir '=https' \
+            https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            --output "$CA_PATH"
+          printf '%s  %s\n' \
+            f16cd3c54c7f83cea4bf1a3e6a0819c8aaa8e4a1528fd144715f350643d2df3a \
+            "$CA_PATH" | shasum -a 256 -c -
+          security import "$CA_PATH" -k "$CSC_KEYCHAIN" -t cert -f x509
+          echo 'Valid identities after installing the Apple intermediate:'
+          security find-identity -v -p codesigning "$CSC_KEYCHAIN" > "$PILOT_HOME/signing/valid-identities"
+          cat "$PILOT_HOME/signing/valid-identities"
+          # find-identity returns success even with zero valid identities.
+          test -n "$APPLE_SIGNING_IDENTITY"
+          grep -F -- "$APPLE_SIGNING_IDENTITY" "$PILOT_HOME/signing/valid-identities"
+      - name: Build renderer, daemon, and Electron host
+        working-directory: apps/riptide-electron
+        env:
+          # Vite's production build with Sentry sourcemaps exceeds Node's default heap.
+          NODE_OPTIONS: --max-old-space-size=8192
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.RIPTIDE_SENTRY_PROJECT }}
+          # Unset in a dry run, so the build uploads no sourcemaps.
+          SENTRY_AUTH_TOKEN: ${{ !inputs.dry_run && secrets.SENTRY_AUTH_TOKEN || '' }}
+          SENTRY_ENVIRONMENT: ${{ inputs.release_type == 'dev' && 'devcloud' || inputs.release_type }}
+          BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_RIPTIDE_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          VITE_PUBLIC_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          VITE_PUBLIC_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          VITE_PUBLIC_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          VITE_PUBLIC_DAEMON_VERSION: ${{ steps.daemon_version.outputs.version }}
+          VITE_PUBLIC_WORKOS_CLIENT_ID: ${{ inputs.release_type == 'dev' && secrets.DEV_WORKOS_CLIENT_ID || inputs.release_type == 'beta' && 'PLACEHOLDER_BETA_WORKOS_CLIENT_ID_PLACEHOLDER' || secrets.PROD_WORKOS_CLIENT_ID }}
+          VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          VITE_PUBLIC_POSTHOG_KEY: ${{ inputs.release_type == 'prod' && 'PLACEHOLDER_PROD_POSTHOG_KEY_PLACEHOLDER' || 'PLACEHOLDER_DEV_POSTHOG_KEY_PLACEHOLDER' }}
+          VITE_PUBLIC_BILLING_ENFORCEMENT_ENABLED: ${{ steps.pulumi.outputs.billing_enabled }}
+          VITE_PUBLIC_BLOCK_NEW_ORG_CREATION: ${{ inputs.release_type == 'beta' && 'true' || '' }}
+        run: bun run build:${{ inputs.release_type }}-package
+      - name: Package, sign, and notarize Electron app
+        working-directory: apps/riptide-electron
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "true"
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Match the HOME used when configuring the user keychain search list.
+          if [[ -n "${PILOT_KEYCHAIN_HOME:-}" ]]; then export HOME="$PILOT_KEYCHAIN_HOME"; fi
+          bunx electron-builder --mac --arm64 \
+            --config electron-builder.${{ inputs.release_type }}.yml \
+            --config.mac.notarize=true \
+            --config.forceCodeSigning=true \
+            --publish never
+      - name: Sign, notarize, and staple disk image
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -n "${PILOT_KEYCHAIN_HOME:-}" ]]; then export HOME="$PILOT_KEYCHAIN_HOME"; fi
+          PRODUCT_NAME="${{ inputs.release_type == 'dev' && 'HumanLayerElectronDev' || inputs.release_type == 'beta' && 'HumanLayerElectronBeta' || 'HumanLayerElectron' }}"
+          DMG_PATH="apps/riptide-electron/release/${PRODUCT_NAME}-${{ steps.version.outputs.release_version }}-arm64.dmg"
+          codesign --force --timestamp --keychain "$CSC_KEYCHAIN" --sign "$APPLE_SIGNING_IDENTITY" "$DMG_PATH"
+          xcrun notarytool submit "$DMG_PATH" --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --wait
+          xcrun stapler staple "$DMG_PATH"
+      - name: Verify signed and notarized package
+        env:
+          ELECTRON_APP_PATH: apps/riptide-electron/release/mac-arm64/${{ inputs.release_type == 'dev' && 'HumanLayerElectronDev' || inputs.release_type == 'beta' && 'HumanLayerElectronBeta' || 'HumanLayerElectron' }}.app
+          EXPECTED_ARCH: arm64
+          EXPECTED_APP_ID: ${{ inputs.release_type == 'dev' && 'com.humanlayer.electron.dev' || inputs.release_type == 'beta' && 'com.humanlayer.electron.beta' || 'com.humanlayer.electron' }}
+          EXPECTED_URL_SCHEMES: ${{ inputs.release_type == 'dev' && 'humanlayer-electron-dev' || inputs.release_type == 'beta' && 'humanlayer-electron-beta' || 'humanlayer-electron' }}
+          EXPECTED_UPDATER_URL: ${{ inputs.release_type == 'dev' && 'https://update.PLACEHOLDER_DEV_DOMAIN_PLACEHOLDER/dev' || inputs.release_type == 'beta' && 'https://update.PLACEHOLDER_BETA_DOMAIN_PLACEHOLDER/beta' || 'https://update.PLACEHOLDER_PROD_DOMAIN_PLACEHOLDER/stable' }}
+          EXPECTED_UPDATER_CACHE_DIR: ${{ inputs.release_type == 'dev' && 'humanlayer-electron-dev-updater' || inputs.release_type == 'beta' && 'humanlayer-electron-beta-updater' || 'humanlayer-electron-updater' }}
+          REQUIRE_SIGNED: "true"
+          APP_ENTITLEMENTS_FILE: apps/riptide-electron/entitlements.mac.plist
+          DAEMON_ENTITLEMENTS_FILE: apps/riptide-electron/entitlements.mac.plist
+        run: |
+          if [[ -n "${PILOT_KEYCHAIN_HOME:-}" ]]; then export HOME="$PILOT_KEYCHAIN_HOME"; fi
+          PRODUCT_NAME="${{ inputs.release_type == 'dev' && 'HumanLayerElectronDev' || inputs.release_type == 'beta' && 'HumanLayerElectronBeta' || 'HumanLayerElectron' }}"
+          DMG_PATH="apps/riptide-electron/release/${PRODUCT_NAME}-${{ steps.version.outputs.release_version }}-arm64.dmg"
+          APP_UPDATE_PATH="$ELECTRON_APP_PATH/Contents/Resources/app-update.yml"
+          test -f "$APP_UPDATE_PATH"
+          grep -Fx 'provider: generic' "$APP_UPDATE_PATH"
+          grep -Fx "url: $EXPECTED_UPDATER_URL" "$APP_UPDATE_PATH"
+          grep -Fx "updaterCacheDirName: $EXPECTED_UPDATER_CACHE_DIR" "$APP_UPDATE_PATH"
+          bun run ci-scripts/verify-binaries.ts
+          xcrun stapler validate "$ELECTRON_APP_PATH"
+          spctl --assess --type execute --verbose=4 "$ELECTRON_APP_PATH"
+          codesign --verify --verbose=4 "$DMG_PATH"
+          xcrun stapler validate "$DMG_PATH"
+          spctl --assess --type install --verbose=4 "$DMG_PATH"
+      - name: Read release metadata
+        id: release
+        run: |
+          VERSION="${{ steps.version.outputs.release_version }}"
+          TAG="${{ steps.version.outputs.release_tag }}"
+          TAG="${TAG/riptide-/humanlayer-electron-}"
+          PRODUCT_NAME="${{ inputs.release_type == 'dev' && 'HumanLayerElectronDev' || inputs.release_type == 'beta' && 'HumanLayerElectronBeta' || 'HumanLayerElectron' }}"
+          {
+            echo "release_version=$VERSION"
+            echo "release_tag=$TAG"
+            echo "dmg_filename=${PRODUCT_NAME}-${VERSION}-arm64.dmg"
+            echo "zip_filename=${PRODUCT_NAME}-${VERSION}-arm64.zip"
+            echo "source_sha=$(git rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
+      - name: Upload release products
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: riptide-electron-${{ inputs.release_type }}-release-products${{ inputs.artifact_suffix }}
+          path: |
+            apps/riptide-electron/release/${{ steps.release.outputs.dmg_filename }}
+            apps/riptide-electron/release/${{ steps.release.outputs.zip_filename }}
+          if-no-files-found: error
+      - name: Clean up signing keychain
+        if: ${{ always() && !inputs.use_mac_mini }}
+        run: security delete-keychain "$CSC_KEYCHAIN" || true
+      - name: Restore Mac mini keychains and remove isolated home
+        if: ${{ always() && inputs.use_mac_mini }}
+        shell: bash
+        run: |
+          # Also runs after a failed certificate import, before CSC_KEYCHAIN exists.
+          [[ -n "${PILOT_HOME:-}" ]] || exit 0
+          security() { HOME="$PILOT_KEYCHAIN_HOME" /usr/bin/security "$@"; }
+          status=0
+          if [[ -f "$PILOT_HOME/signing/search-list" ]]; then
+            KEYCHAINS=()
+            while IFS= read -r line; do
+              line="${line#"${line%%[![:space:]]*}"}"
+              line="${line#\"}"
+              line="${line%\"}"
+              [[ -z "$line" ]] || KEYCHAINS+=("$line")
+            done < "$PILOT_HOME/signing/search-list"
+            security list-keychains -d user -s "${KEYCHAINS[@]}" || status=1
+          fi
+          if [[ -f "$PILOT_HOME/signing/electron-signing.keychain-db" ]]; then
+            security delete-keychain "$PILOT_HOME/signing/electron-signing.keychain-db" || status=1
+          fi
+          # Includes any partial certificate, private key, Pulumi auth and tool caches.
+          rm -rf -- "$PILOT_HOME" || status=1
+          # Checkout's post action changes HOME but still honors GIT_CONFIG_GLOBAL.
+          # Give it an empty isolated file, retained until runner-temp cleanup.
+          POST_GIT_CONFIG="$(mktemp "$RUNNER_TEMP/electron-post-gitconfig.XXXXXX")"
+          echo "GIT_CONFIG_GLOBAL=$POST_GIT_CONFIG" >> "$GITHUB_ENV"
+          exit "$status"

@@ -1,0 +1,43 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  riptide-api:sentryEnvironment: devcloud
+  riptide-api:sentryDsn: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  riptide-api:posthogKey: PLACEHOLDER_POSTHOG_KEY_PLACEHOLDER
+  riptide-api:fargate:
+    cpu: 512
+    memory: 1024
+    desiredCount: 2
+  riptide-api:autoScaling:
+    enabled: false
+  riptide-api:dbPool:
+    max: 10
+    idleTimeout: 20
+    maxLifetime: 300
+    connectTimeout: 10
+  riptide-api:resendFromEmail: PLACEHOLDER_RESEND_FROM_EMAIL_PLACEHOLDER
+  riptide-api:workosClientId: PLACEHOLDER_WORKOS_CLIENT_ID_PLACEHOLDER
+  riptide-api:workosApiKey: PLACEHOLDER_WORKOS_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:workosApiKey <value>
+  riptide-api:workosWebhookSecret: PLACEHOLDER_WORKOS_WEBHOOK_SECRET_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:workosWebhookSecret <value>
+  riptide-api:context7ApiKey: PLACEHOLDER_CONTEXT7_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:context7ApiKey <value>
+  riptide-api:anthropicApiKey: PLACEHOLDER_ANTHROPIC_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:anthropicApiKey <value>
+  riptide-api:exaApiKey: PLACEHOLDER_EXA_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:exaApiKey <value>
+  riptide-api:sentryAuthToken: PLACEHOLDER_SENTRY_AUTH_TOKEN_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:sentryAuthToken <value>
+  riptide-api:jiraClientId: PLACEHOLDER_JIRA_CLIENT_ID_PLACEHOLDER
+  riptide-api:jiraClientSecret: PLACEHOLDER_JIRA_CLIENT_SECRET_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:jiraClientSecret <value>
+  riptide-api:linearClientId: PLACEHOLDER_LINEAR_CLIENT_ID_PLACEHOLDER
+  riptide-api:linearClientSecret: PLACEHOLDER_LINEAR_CLIENT_SECRET_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:linearClientSecret <value>
+  riptide-api:openaiApiKey: PLACEHOLDER_OPENAI_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:openaiApiKey <value>
+  riptide-api:resendApiKey: PLACEHOLDER_RESEND_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:resendApiKey <value>
+  riptide-api:slackClientId: PLACEHOLDER_SLACK_CLIENT_ID_PLACEHOLDER
+  riptide-api:slackClientSecret: PLACEHOLDER_SLACK_CLIENT_SECRET_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:slackClientSecret <value>
+  riptide-api:slackAppId: PLACEHOLDER_SLACK_APP_ID_PLACEHOLDER
+  riptide-api:slackSigningSecret: PLACEHOLDER_SLACK_SIGNING_SECRET_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:slackSigningSecret <value>
+  riptide-api:githubAppPrivateKey: PLACEHOLDER_GITHUB_APP_PRIVATE_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:githubAppPrivateKey <value>
+  riptide-api:githubAppId: PLACEHOLDER_GITHUB_APP_ID_PLACEHOLDER
+  riptide-api:githubAppClientId: PLACEHOLDER_GITHUB_APP_CLIENT_ID_PLACEHOLDER
+  riptide-api:githubAppSlug: PLACEHOLDER_GITHUB_APP_SLUG_PLACEHOLDER
+  riptide-api:githubAppWebhookSecret: PLACEHOLDER_GITHUB_APP_WEBHOOK_SECRET_PLACEHOLDER  # secret: pulumi config set --secret riptide-api:githubAppWebhookSecret <value>

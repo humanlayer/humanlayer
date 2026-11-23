@@ -1,0 +1,11 @@
+name: rds-postgres
+description: RDS Postgres instance with read replica and Secrets Manager
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

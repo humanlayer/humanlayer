@@ -7,6 +7,7 @@ import {
 	draftTitle,
 	launchError,
 	launchHost,
+	launchInTask,
 	slugify,
 	startTask,
 	workingCopy,
@@ -59,10 +60,16 @@ describe('launchHost', () => {
 		expect(launchHost(hosts, { picked: null, task: null })?.host.host_id).toBe('box')
 	})
 
-	it('keeps a directory task on its host, even offline, and moves a project task off an offline one', () => {
-		expect(launchHost(hosts, { picked: 'vm', task: { hostId: 'mac', movable: false } })?.host.host_id).toBe('mac')
-		expect(launchHost(hosts, { picked: null, task: { hostId: 'mac', movable: true } })?.host.host_id).toBe('box')
-		expect(launchHost(hosts, { picked: null, task: { hostId: 'vm', movable: true } })?.host.host_id).toBe('vm')
+	it('a picked host wins for any task; otherwise the task stays on its host while it is online', () => {
+		expect(launchHost(hosts, { picked: 'vm', task: { hostId: 'mac' } })?.host.host_id).toBe('vm')
+		expect(launchHost(hosts, { picked: 'box', task: { hostId: 'vm' } })?.host.host_id).toBe('box')
+		expect(launchHost(hosts, { picked: null, task: { hostId: 'mac' } })?.host.host_id).toBe('box')
+		expect(launchHost(hosts, { picked: null, task: { hostId: 'vm' } })?.host.host_id).toBe('vm')
+	})
+
+	it('stays on an offline task host when no host is online', () => {
+		const offline = [{ host: { host_id: 'mac' }, online: false }]
+		expect(launchHost(offline, { picked: null, task: { hostId: 'mac' } })?.host.host_id).toBe('mac')
 	})
 })
 
@@ -87,6 +94,15 @@ describe('workingCopy', () => {
 		expect(workingCopy({ ...base, inTask: true })).toBeNull()
 		expect(workingCopy({ ...base, inTask: true, movedFrom: 'mac' })?.title).toContain('stay on mac')
 	})
+
+	it('keeps a moved directory task in its directory, with no branch to check out', () => {
+		expect(workingCopy({ ...base, inTask: true, project: false })).toBeNull()
+		expect(workingCopy({ ...base, inTask: true, project: false, movedFrom: 'mac' })).toEqual({
+			label: 'In this directory',
+			title: 'The agent edits your checkout directly',
+			branch: false,
+		})
+	})
 })
 
 describe('launchError', () => {
@@ -104,6 +120,20 @@ describe('launchError', () => {
 	it('says what to do about billing and access', () => {
 		expect(launchError(new ORPCError('BILLING_REQUIRED', { status: 402 }))).toContain('Settings → Billing')
 		expect(launchError(new ORPCError('FORBIDDEN', { status: 403 }))).toContain("can't start tasks here")
+	})
+
+	it('names the failing field for a validation rejection', () => {
+		const error = new ORPCError('INPUT_VALIDATION_FAILED', {
+			status: 400,
+			data: { fieldErrors: { slug: ['String must contain at most 100 character(s)'] } },
+		})
+		expect(launchError(error)).toContain('slug is not valid')
+		expect(launchError(error)).toContain('string must contain at most 100 character(s)')
+	})
+
+	it('gives a fallback when validation carries no field errors', () => {
+		const error = new ORPCError('INPUT_VALIDATION_FAILED', { status: 400, data: {} })
+		expect(launchError(error)).toContain('The server rejected the request')
 	})
 
 	it('keeps to the plain message otherwise', () => {
@@ -282,4 +312,52 @@ describe('startTask', () => {
 			})
 		},
 	)
+})
+
+describe('launchInTask', () => {
+	const settings: ComposerSettings = {
+		agent: 'claude',
+		model: 'opus',
+		effort: 'high',
+		fastMode: false,
+		permissionsMode: 'auto',
+	}
+	const input = {
+		sessionId: 'session-2',
+		eventId: 'event-2',
+		text: 'Fix the login bug',
+		hostId: 'h1',
+		workingDirectory: '/code/app',
+		settings,
+	}
+
+	function fakeApi() {
+		const api = {
+			sessions: { launch: vi.fn(async () => ({})), v2: { create: vi.fn(async () => ({})) } },
+		}
+		return { api, client: api as unknown as RiptideApiClient }
+	}
+
+	it('starts a session in a directory task without a title, so the server generates one', async () => {
+		const { api, client } = fakeApi()
+		await launchInTask(client, { id: 'task-1', workspace_id: null }, input)
+		expect(api.sessions.v2.create).not.toHaveBeenCalled()
+		const [launched] = api.sessions.launch.mock.calls[0] as unknown as [Record<string, unknown>]
+		expect(launched).toMatchObject({
+			id: 'session-2',
+			taskId: 'task-1',
+			hostId: 'h1',
+			workingDirectory: '/code/app',
+		})
+		expect(launched.title).toBeNull()
+	})
+
+	it('starts a session in a project task through sessions.v2.create, also without a title', async () => {
+		const { api, client } = fakeApi()
+		await launchInTask(client, { id: 'task-1', workspace_id: 'ws-1' }, input)
+		expect(api.sessions.launch).not.toHaveBeenCalled()
+		const [created] = api.sessions.v2.create.mock.calls[0] as unknown as [Record<string, unknown>]
+		expect(created).toMatchObject({ sessionId: 'session-2', workspaceId: 'ws-1', taskId: 'task-1' })
+		expect(created.title).toBeNull()
+	})
 })

@@ -1,0 +1,11 @@
+name: memorydb
+description: MemoryDB Redis-compatible KV infrastructure for billing state
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+    typescript: false
+    nodeargs: '--import=tsx'
+main: pulumi.ts
+options:
+  refresh: always

@@ -1,0 +1,21 @@
+{
+	"compilerOptions": {
+		"lib": [
+			"ESNext"
+		],
+		"target": "ESNext",
+		"module": "Preserve",
+		"moduleResolution": "bundler",
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"noEmit": true,
+		"types": [
+			"node"
+		]
+	},
+	"files": [
+		"pulumi.ts"
+	]
+}

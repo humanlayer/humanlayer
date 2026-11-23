@@ -1,0 +1,131 @@
+name: Deploy Pulumi Project
+
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        description: "Path to the Pulumi project directory (e.g. pulumi-infra/core)"
+        required: true
+        type: string
+      stack:
+        description: "Full Pulumi stack name (e.g. humanlayer/core/dev)"
+        required: true
+        type: string
+      action:
+        description: "Pulumi action to run: preview or up"
+        required: true
+        type: string
+      pre-command:
+        description: "Optional command to run before pulumi (e.g. bun run build)"
+        required: false
+        type: string
+        default: ""
+      ref:
+        description: "Synclayer ref (branch/tag/SHA) holding the Pulumi program"
+        required: false
+        type: string
+        default: ""
+      public_repo:
+        description: "Public repo cloned into humanlayer/"
+        required: false
+        type: string
+        default: humanlayer/humanlayer
+      public_sha:
+        description: "Public commit to deploy. Empty means the public repo's main at job start."
+        required: false
+        type: string
+        default: ""
+      dry_run:
+        description: "Run pulumi preview instead of the requested action"
+        required: false
+        type: boolean
+        default: false
+      arm64:
+        description: "Run on a native ARM64 Blacksmith runner"
+        required: false
+        type: boolean
+        default: false
+      docker-cache-key:
+        description: "Blacksmith Docker layer cache key for projects that build images"
+        required: false
+        type: string
+        default: ""
+      upsert:
+        description: "Create the Pulumi stack when it does not exist"
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      PULUMI_ACCESS_TOKEN:
+        required: true
+      SENTRY_AUTH_TOKEN:
+        required: false
+      PUBLIC_REPO_READ_TOKEN:
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ${{ inputs.arm64 && 'blacksmith-8vcpu-ubuntu-2404-arm' || 'blacksmith-8vcpu-ubuntu-2404' }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - name: Install Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+
+      # Install fresh rather than restore the old Bun cache shared by x64 and
+      # ARM64 runners (including native build dependencies).
+      - name: Clone the public repo and install
+        uses: ./.github/actions/checkout-public-clone
+        with:
+          public_repo: ${{ inputs.public_repo }}
+          public_sha: ${{ inputs.public_sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+          frozen_lockfile: "true"
+
+      - name: Pre-command
+        if: inputs.pre-command != ''
+        run: ${{ inputs.pre-command }}
+        working-directory: ${{ inputs.project-path }}
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@00943011d9042930efac3dcd3a170e4273319bc8 # v5.1.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Install Sentry CLI
+        uses: ./.github/actions/install-sentry-cli
+
+      - name: Set up Blacksmith Docker builder
+        if: inputs.docker-cache-key != ''
+        uses: useblacksmith/setup-docker-builder@19215110ab936351210feebdfa5b440b4493e184 # v2
+        with:
+          cache-key: ${{ inputs.docker-cache-key }}
+
+      - name: Pulumi ${{ inputs.dry_run && 'preview' || inputs.action }}
+        uses: pulumi/actions@8582a9e8cc630786854029b4e09281acd6794b58 # v6
+        with:
+          command: ${{ inputs.dry_run && 'preview' || inputs.action }}
+          stack-name: ${{ inputs.stack }}
+          work-dir: ${{ inputs.project-path }}
+          upsert: ${{ inputs.upsert }}
+          # Rivet ignores autoscaler-managed desiredCount; read live capacity before reusing state.
+          refresh: ${{ inputs.project-path == 'pulumi-infra/rivet' }}
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          SENTRY_AUTH_TOKEN: ${{ !inputs.dry_run && secrets.SENTRY_AUTH_TOKEN || '' }}

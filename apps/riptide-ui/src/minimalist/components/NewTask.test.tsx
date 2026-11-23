@@ -6,17 +6,21 @@ import { useSettingsStore } from '@/hooks/stores/settingsStore'
 
 import { NewTask } from './NewTask'
 
-const { useProjects, useTask, useRecentDirectories, useSlashCommands, launchInTask, startTask, navigate } = vi.hoisted(
-	() => ({
+const { useHosts, useProjects, useTask, useRecentDirectories, useSlashCommands, launchInTask, startTask, navigate } =
+	vi.hoisted(() => ({
 		startTask: vi.fn(),
+		useHosts: vi.fn(),
 		useProjects: vi.fn(),
 		useTask: vi.fn(),
 		useRecentDirectories: vi.fn(),
 		useSlashCommands: vi.fn(),
 		launchInTask: vi.fn(),
 		navigate: vi.fn(),
-	}),
-)
+	}))
+
+function hostView(id: string, online = true) {
+	return { host: { host_id: id, supported_models: null }, name: id, online }
+}
 
 vi.mock('@tanstack/react-query', () => ({ useQuery: () => ({}) }))
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => navigate }))
@@ -38,10 +42,7 @@ vi.mock('@/minimalist/lib/data', () => ({
 	useProjects,
 	useTask,
 	useRecentDirectories,
-	useHosts: () => ({
-		hosts: [{ host: { host_id: 'host', supported_models: null }, name: 'Host', online: true }],
-		isReady: true,
-	}),
+	useHosts,
 	useTaskTree: () => ({ recent: [] }),
 	useSlashCommands,
 }))
@@ -55,6 +56,7 @@ vi.mock('@/minimalist/components/Composer', () => ({
 		onSubmit,
 		submitDisabled,
 		submitLabel,
+		placeholder,
 	}: {
 		value: string
 		onChange: (value: string) => void
@@ -62,22 +64,38 @@ vi.mock('@/minimalist/components/Composer', () => ({
 		onSubmit: () => void
 		submitDisabled: boolean
 		submitLabel: string
+		placeholder: string
 	}) => (
 		<div>
 			{children}
-			<textarea aria-label="Task instructions" value={value} onChange={(event) => onChange(event.target.value)} />
+			<textarea
+				aria-label="Task instructions"
+				placeholder={placeholder}
+				value={value}
+				onChange={(event) => onChange(event.target.value)}
+			/>
 			<button type="button" disabled={submitDisabled} onClick={onSubmit}>
 				{submitLabel}
 			</button>
 		</div>
 	),
 }))
-vi.mock('@/minimalist/components/LaunchMenus', () => ({
+// The directory menu is the real one, so a session in a moved directory task picks from it.
+vi.mock('@/minimalist/components/LaunchMenus', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/minimalist/components/LaunchMenus')>()),
 	HostIcon: () => null,
 	HostMenu: ({ onPick }: { onPick: (hostId: string) => void }) => (
-		<button type="button" onClick={() => onPick('host')}>
-			Pick host
-		</button>
+		<>
+			<button type="button" onClick={() => onPick('host')}>
+				Pick host
+			</button>
+			<button type="button" onClick={() => onPick('mac')}>
+				Pick mac
+			</button>
+			<button type="button" onClick={() => onPick('vm')}>
+				Pick vm
+			</button>
+		</>
 	),
 	TargetMenu: ({
 		open,
@@ -105,6 +123,7 @@ beforeEach(() => {
 	localStorage.clear()
 	launchInTask.mockResolvedValue(undefined)
 	startTask.mockResolvedValue(undefined)
+	useHosts.mockReturnValue({ hosts: [hostView('host')], isReady: true })
 	useProjects.mockReturnValue({ data: [{ id: 'project', name: 'HumanLayer', repositories: [] }], isPending: false })
 	useTask.mockReturnValue({ task: null, sessions: [], isReady: true })
 	useRecentDirectories.mockReturnValue([])
@@ -277,5 +296,128 @@ describe('picking how big a new task is', () => {
 			workflow: { workflowType: 'freeform', autoAdvance: false },
 			directImplementation: true,
 		})
+	})
+})
+
+describe('a new session in a directory task', () => {
+	const taskDirectory = '/Users/me/repos/self'
+
+	beforeEach(() => {
+		useHosts.mockReturnValue({ hosts: [hostView('mac'), hostView('vm')], isReady: true })
+		useTask.mockReturnValue({
+			task: {
+				id: 'task',
+				name: 'Prep the weekly update',
+				project_id: null,
+				workspace_id: null,
+				slug: 'prep-the-weekly-update',
+				default_working_directory: taskDirectory,
+			},
+			sessions: [{ id: 'session', host_id: 'mac', working_directory: taskDirectory }],
+			isReady: true,
+		})
+	})
+
+	function startSession() {
+		fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Draft the summary' } })
+		fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
+	}
+
+	it("runs in the task's directory on its own host", async () => {
+		render(<NewTask existingTaskId="task" />)
+		expect(screen.queryByText('In this directory')).not.toBeInTheDocument()
+		// On its own host the directory is a label, not a menu.
+		expect(screen.queryByRole('button', { name: 'self' })).not.toBeInTheDocument()
+		startSession()
+		await waitFor(() => expect(launchInTask).toHaveBeenCalledOnce())
+		expect(launchInTask.mock.calls[0]?.[2]).toMatchObject({ hostId: 'mac', workingDirectory: taskDirectory })
+	})
+
+	it("moves to a host that has used the task's directory and runs there", async () => {
+		useRecentDirectories.mockImplementation((hostId: string | null) =>
+			hostId === 'vm' ? ['/home/me/notes', taskDirectory] : [],
+		)
+		render(<NewTask existingTaskId="task" />)
+		fireEvent.click(screen.getByRole('button', { name: 'Pick vm' }))
+		expect(screen.getByText('In this directory')).toBeInTheDocument()
+		expect(useSlashCommands).toHaveBeenLastCalledWith({
+			hostId: 'vm',
+			workspacePath: taskDirectory,
+			agent: 'claude',
+		})
+		startSession()
+		await waitFor(() => expect(launchInTask).toHaveBeenCalledOnce())
+		expect(launchInTask.mock.calls[0]?.[2]).toMatchObject({ hostId: 'vm', workingDirectory: taskDirectory })
+	})
+
+	it("moves off an offline task host to one that has used the task's directory", async () => {
+		useHosts.mockReturnValue({ hosts: [hostView('mac', false), hostView('vm')], isReady: true })
+		useRecentDirectories.mockImplementation((hostId: string | null) => (hostId === 'vm' ? [taskDirectory] : []))
+		render(<NewTask existingTaskId="task" />)
+		startSession()
+		await waitFor(() => expect(launchInTask).toHaveBeenCalledOnce())
+		expect(launchInTask.mock.calls[0]?.[2]).toMatchObject({ hostId: 'vm', workingDirectory: taskDirectory })
+	})
+
+	it("asks for a directory on a host that hasn't used the task's directory", () => {
+		useRecentDirectories.mockImplementation((hostId: string | null) => (hostId === 'vm' ? ['/home/me/notes'] : []))
+		render(<NewTask existingTaskId="task" />)
+		fireEvent.click(screen.getByRole('button', { name: 'Pick vm' }))
+		expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Choose a directory on vm')
+		expect(useSlashCommands).toHaveBeenLastCalledWith({ hostId: 'vm', workspacePath: null, agent: 'claude' })
+		startSession()
+		expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+		expect(launchInTask).not.toHaveBeenCalled()
+	})
+
+	it('runs in a recent directory chosen on the new host', async () => {
+		useRecentDirectories.mockImplementation((hostId: string | null) => (hostId === 'vm' ? ['/home/me/notes'] : []))
+		render(<NewTask existingTaskId="task" />)
+		fireEvent.click(screen.getByRole('button', { name: 'Pick vm' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Choose a directory' }))
+		expect(screen.getByText('Directories on vm')).toBeInTheDocument()
+		fireEvent.click(screen.getByRole('button', { name: /^notes/ }))
+		expect(screen.queryByText('Directories on vm')).not.toBeInTheDocument()
+		expect(screen.getByRole('button', { name: 'notes' })).toBeInTheDocument()
+		expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Ask the agent to do anything')
+		expect(useSlashCommands).toHaveBeenLastCalledWith({
+			hostId: 'vm',
+			workspacePath: '/home/me/notes',
+			agent: 'claude',
+		})
+		startSession()
+		await waitFor(() => expect(launchInTask).toHaveBeenCalledOnce())
+		expect(launchInTask.mock.calls[0]?.[2]).toMatchObject({ hostId: 'vm', workingDirectory: '/home/me/notes' })
+	})
+
+	it('runs in a path typed for the new host', async () => {
+		render(<NewTask existingTaskId="task" />)
+		fireEvent.click(screen.getByRole('button', { name: 'Pick vm' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Choose a directory' }))
+		const path = screen.getByRole('textbox', { name: 'Directory path' })
+		expect(path).toHaveAttribute('placeholder', 'Path on vm, e.g. ~/code/app')
+		fireEvent.change(path, { target: { value: ' /srv/weekly ' } })
+		fireEvent.click(screen.getByRole('button', { name: 'Use directory' }))
+		expect(screen.getByRole('button', { name: 'weekly' })).toBeInTheDocument()
+		startSession()
+		await waitFor(() => expect(launchInTask).toHaveBeenCalledOnce())
+		expect(launchInTask.mock.calls[0]?.[2]).toMatchObject({ hostId: 'vm', workingDirectory: '/srv/weekly' })
+	})
+
+	it("goes back to the task's directory on its own host and drops the chosen one", async () => {
+		useRecentDirectories.mockImplementation((hostId: string | null) => (hostId === 'vm' ? ['/home/me/notes'] : []))
+		render(<NewTask existingTaskId="task" />)
+		fireEvent.click(screen.getByRole('button', { name: 'Pick vm' }))
+		fireEvent.click(screen.getByRole('button', { name: 'Choose a directory' }))
+		fireEvent.click(screen.getByRole('button', { name: /^notes/ }))
+		fireEvent.click(screen.getByRole('button', { name: 'Pick mac' }))
+		expect(screen.queryByRole('button', { name: 'notes' })).not.toBeInTheDocument()
+		// Back on the other host, the directory has to be chosen again.
+		fireEvent.click(screen.getByRole('button', { name: 'Pick vm' }))
+		expect(screen.getByRole('textbox')).toHaveAttribute('placeholder', 'Choose a directory on vm')
+		fireEvent.click(screen.getByRole('button', { name: 'Pick mac' }))
+		startSession()
+		await waitFor(() => expect(launchInTask).toHaveBeenCalledOnce())
+		expect(launchInTask.mock.calls[0]?.[2]).toMatchObject({ hostId: 'mac', workingDirectory: taskDirectory })
 	})
 })

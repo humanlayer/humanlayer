@@ -1,0 +1,22 @@
+config:
+  aws:region: us-east-1
+  aws:allowedAccountIds:
+    - "PLACEHOLDER_AWS_ACCOUNT_ID_PLACEHOLDER"
+  pulumi:autonaming:
+    pattern: ${name}-${stack}-${alphanum(6)}
+  riptide-electric-proxy:sentryEnvironment: devcloud
+  riptide-electric-proxy:sentryDsn: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  riptide-electric-proxy:fargate:
+    cpu: 512
+    memory: 1024
+    desiredCount: 2
+  riptide-electric-proxy:dbPool:
+    max: 10
+    idleTimeout: 20
+    maxLifetime: 300
+    connectTimeout: 10
+  riptide-electric-proxy:alarmThresholds:
+    albTarget5xxCount: 750
+  riptide-electric-proxy:workosApiKey: PLACEHOLDER_WORKOS_API_KEY_PLACEHOLDER  # secret: pulumi config set --secret riptide-electric-proxy:workosApiKey <value>
+  riptide-electric-proxy:workosClientId: PLACEHOLDER_WORKOS_CLIENT_ID_PLACEHOLDER  # secret: pulumi config set --secret riptide-electric-proxy:workosClientId <value>
+  riptide-electric-proxy:sentryAuthToken: PLACEHOLDER_SENTRY_AUTH_TOKEN_PLACEHOLDER  # secret: pulumi config set --secret riptide-electric-proxy:sentryAuthToken <value>

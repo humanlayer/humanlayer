@@ -58,18 +58,19 @@ export function launchBlocker(state: {
 
 /**
  * The host a launch runs on. A new task takes the one you picked, or any online
- * host. A new session in a task stays on the task's host, except that a project
- * task can move: it sets up again on another host from its pushed branch.
+ * host. A new session in a task takes the one you picked, or the task's host
+ * while it is online, or any online host. A project task sets up again on
+ * another host from its pushed branch; a directory task runs in a directory
+ * that host knows.
  */
 export function launchHost<H extends { host: { host_id: string }; online: boolean }>(
 	hosts: readonly H[],
-	state: { picked: string | null; task: { hostId: string | null; movable: boolean } | null },
+	state: { picked: string | null; task: { hostId: string | null } | null },
 ): H | null {
 	const picked = hosts.find((entry) => entry.host.host_id === state.picked) ?? null
 	const online = hosts.find((entry) => entry.online) ?? null
 	if (!state.task) return picked ?? online
 	const taskHost = hosts.find((entry) => entry.host.host_id === state.task?.hostId) ?? null
-	if (!state.task.movable) return taskHost
 	return picked ?? (taskHost?.online ? taskHost : (online ?? taskHost))
 }
 
@@ -93,6 +94,9 @@ export function workingCopy(state: {
 	const label = state.clonesFirst ? 'New clone' : 'New worktree'
 	if (state.inTask) {
 		if (!state.movedFrom) return null
+		// A directory task has no branch to check out; it runs in a directory the new host knows.
+		if (!state.project)
+			return { label: 'In this directory', title: 'The agent edits your checkout directly', branch: false }
 		return {
 			label,
 			title: `${state.hostName} checks out the task's branch as last pushed. Changes that were not pushed stay on ${state.movedFrom}.`,
@@ -282,6 +286,18 @@ function launchFailure(error: unknown): string | null {
 	if (code === 'BILLING_REQUIRED')
 		return 'The organization needs a billing plan. An admin can add one in Settings → Billing.'
 	if (code === 'FORBIDDEN') return "Your account can't start tasks here."
+	if (code === 'INPUT_VALIDATION_FAILED') {
+		const data = (error as { data?: unknown }).data as { fieldErrors?: Record<string, string[]> } | undefined
+		const fieldErrors = data?.fieldErrors
+		if (fieldErrors) {
+			const entry = Object.entries(fieldErrors)[0]
+			if (entry) {
+				const [field, messages] = entry
+				if (messages?.[0]) return `The ${field} is not valid: ${messages[0].toLowerCase()}`
+			}
+		}
+		return 'The server rejected the request. Check the task name and try again.'
+	}
 	return null
 }
 
@@ -335,7 +351,7 @@ type SessionInTask = {
 	eventId: string
 	text: string
 	hostId: string
-	/** Used by directory tasks; project tasks get their workspace from the server. */
+	/** Used by directory tasks: the task's directory, or one on the host it moved to. Project tasks get their workspace from the server. */
 	workingDirectory: string
 	settings: ComposerSettings
 }
@@ -343,7 +359,7 @@ type SessionInTask = {
 /**
  * Starts another session in an existing task. Project tasks go through
  * `sessions.v2.create` so the server places the workspace; directory tasks use
- * the older launch with the directory the task already runs in.
+ * the older launch with the directory the session runs in.
  */
 export async function launchInTask(
 	api: RiptideApiClient,
@@ -365,7 +381,7 @@ export async function launchInTask(
 		return
 	}
 	await api.sessions.launch(
-		{ ...shared, id: input.sessionId, title: '', workingDirectory: input.workingDirectory },
+		{ ...shared, id: input.sessionId, title: null, workingDirectory: input.workingDirectory },
 		{ context: { silent: true } },
 	)
 }

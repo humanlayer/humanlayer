@@ -1,0 +1,653 @@
+name: Release Riptide Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_cask_update:
+        description: "Skip updating the Homebrew cask"
+        required: false
+        type: boolean
+        default: false
+      skip_signing:
+        description: "Skip code signing and notarization"
+        type: boolean
+        default: false
+      urgency:
+        description: "Update urgency level (normal, critical, etc.)"
+        type: string
+        default: "normal"
+      notes:
+        description: "Release notes for the updater manifest, rendered as Markdown in the update modal (leave empty for no modal body)"
+        type: string
+        default: ""
+      public_repo:
+        description: "Public repo to build from (a private stand-in during the rehearsal)"
+        type: string
+        default: humanlayer/humanlayer
+      public_ref:
+        description: "Public repo branch, tag, or SHA to build from"
+        type: string
+        default: main
+      dry_run:
+        description: "Build and sign everything, publish nothing, and preview Pulumi instead of up"
+        type: boolean
+        default: false
+      skip_pulumi:
+        description: "Skip the full infrastructure deploy (use when infra is wedged but the app release must ship)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-riptide-prod
+  cancel-in-progress: false
+
+env:
+  # Sentry DSNs baked into each client; builds from public source have none, so Sentry stays off there.
+  VITE_PUBLIC_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_DAEMON_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_NATIVE_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  RIPTIDE_ELECTRON_SENTRY_DSN: PLACEHOLDER_SENTRY_DSN_PLACEHOLDER
+  DO_NOT_TRACK: "1"
+  TURBO_UI: stream
+
+# The public repo's CI gates main; a release from another public ref runs no checks here.
+jobs:
+  resolve:
+    uses: ./.github/workflows/resolve-public-sha.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ inputs.public_ref }}
+    secrets: inherit
+
+  build-riptide-prod:
+    runs-on: blacksmith-12vcpu-macos-15
+    needs: resolve
+    outputs:
+      has_updater_artifacts: ${{ steps.updater_artifacts.outputs.has_updater_artifacts }}
+      source_sha: ${{ steps.source.outputs.sha }}
+      release_version: ${{ steps.version.outputs.release_version }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      dmg_filename: ${{ steps.version.outputs.dmg_filename }}
+      canonical_dmg_filename: ${{ steps.version.outputs.canonical_dmg_filename }}
+      updater_artifact_name: ${{ steps.version.outputs.updater_artifact_name }}
+    env:
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.RIPTIDE_SENTRY_PROJECT }}
+      # Unset in a dry run, so the Vite build uploads no sourcemaps.
+      SENTRY_AUTH_TOKEN: ${{ !inputs.dry_run && secrets.SENTRY_AUTH_TOKEN || '' }}
+      VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+      NODE_ENV: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ needs.resolve.outputs.sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+          # Full history: the app and plugin versions are derived from
+          # commits since each base version last changed
+          fetch-depth: 0
+
+      - name: Resolve source commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+      - name: Generate version
+        id: version
+        run: bun run ci-scripts/generate-version.ts >> $GITHUB_OUTPUT
+        env:
+          INPUT_RELEASE_TYPE: prod
+
+      - name: Derive daemon version
+        id: daemon_version
+        run: echo "version=$(bun run ci-scripts/derive-daemon-version.ts 2>/dev/null || echo dev)" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_RELEASE_TYPE: prod
+
+      - name: Stamp derived version into build files
+        run: bun run ci-scripts/stamp-version.ts
+        env:
+          VERSION: ${{ steps.version.outputs.release_version }}
+
+      - name: Stamp derived plugin versions
+        run: bun run ci-scripts/stamp-plugin-versions.ts
+
+      - name: Install pulumi
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.137.0
+
+      - name: Fetch Pulumi stack outputs
+        id: pulumi
+        run: |
+          API_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-api/prod)
+          SYNC_URL=$(pulumi stack output serviceUrl --stack humanlayer/riptide-electric-proxy/prod)
+          CLOUD_URL=$(pulumi stack output cloudUrl --stack humanlayer/riptide-cloud/prod)
+          BILLING_ENFORCEMENT_ENABLED=$(pulumi stack output billingEnforcementEnabled --stack humanlayer/stripe/prod)
+          APP_URL=$(pulumi stack output appUrl --stack humanlayer/riptide-ui/prod)
+          echo "api_url=$API_URL" >> $GITHUB_OUTPUT
+          echo "sync_url=$SYNC_URL" >> $GITHUB_OUTPUT
+          echo "cloud_url=$CLOUD_URL" >> $GITHUB_OUTPUT
+          echo "billing_enforcement_enabled=$BILLING_ENFORCEMENT_ENABLED" >> $GITHUB_OUTPUT
+          echo "app_url=$APP_URL" >> $GITHUB_OUTPUT
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: apps/riptide-native
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+
+      - name: Cache bun dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('**/bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # === Code Signing Steps ===
+
+      - name: Import codesigning certificate
+        if: ${{ inputs.skip_signing != true }}
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import certificate.p12 -k build.keychain \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm certificate.p12
+
+      - name: Build riptide-ui
+        if: ${{ inputs.skip_signing != true }}
+        run: bun run --cwd apps/riptide-ui build:prod
+        env:
+          # vite build with Sentry sourcemaps exceeds Node's default heap
+          NODE_OPTIONS: --max-old-space-size=8192
+          NODE_ENV: production
+          SENTRY_ENVIRONMENT: prod
+          VITE_PUBLIC_SENTRY_ENVIRONMENT: prod
+          VITE_PUBLIC_BUILD_TYPE: prod
+          VITE_PUBLIC_BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          VITE_PUBLIC_DAEMON_VERSION: ${{ steps.daemon_version.outputs.version }}
+          VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          VITE_PUBLIC_POSTHOG_KEY: PLACEHOLDER_PROD_POSTHOG_KEY_PLACEHOLDER
+          VITE_PUBLIC_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          VITE_PUBLIC_RIPTIDE_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          VITE_PUBLIC_WORKOS_CLIENT_ID: ${{ secrets.PROD_WORKOS_CLIENT_ID }}
+          VITE_PUBLIC_DEEP_LINK_SCHEME: humanlayer
+          VITE_PUBLIC_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          VITE_PUBLIC_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_BILLING_ENFORCEMENT_ENABLED: ${{ steps.pulumi.outputs.billing_enforcement_enabled }}
+
+      - name: Build riptided daemon
+        if: ${{ inputs.skip_signing != true }}
+        run: |
+          bun run --cwd apps/riptide-daemon build:prod
+          mkdir -p apps/riptide-native/bin
+          cp apps/riptide-daemon/dist/daemon apps/riptide-native/bin/riptided
+        env:
+          BUILD_TYPE: prod
+          BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          NODE_ENV: production
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          SENTRY_ENVIRONMENT: prod
+
+      - name: Sign riptided daemon
+        if: ${{ inputs.skip_signing != true }}
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          codesign -f --timestamp \
+            --entitlements apps/riptide-daemon/entitlements.plist \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            --options runtime \
+            --keychain build.keychain \
+            apps/riptide-native/bin/riptided
+
+      - name: Verify riptided signature
+        if: ${{ inputs.skip_signing != true }}
+        run: |
+          echo "Verifying riptided code signature..."
+          codesign --verify --deep --strict apps/riptide-native/bin/riptided
+          echo "Signature details:"
+          codesign -d --verbose=2 apps/riptide-native/bin/riptided
+
+      - name: Notarize riptided daemon
+        if: ${{ inputs.skip_signing != true }}
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          ditto -c -k apps/riptide-native/bin/riptided riptided-notarize.zip
+          xcrun notarytool submit riptided-notarize.zip \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_PASSWORD" \
+            --wait
+          rm riptided-notarize.zip
+
+      - name: Upload signed riptided artifact
+        if: ${{ inputs.skip_signing != true }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: riptided-prod-signed
+          path: apps/riptide-native/bin/riptided
+          if-no-files-found: error
+
+      - name: Build Riptide Prod
+        if: ${{ inputs.skip_signing == true }}
+        run: bun --bun run --cwd apps/riptide-native build:prod
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+          BUILD_TYPE: prod
+          BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          NODE_ENV: production
+          SENTRY_ENVIRONMENT: prod
+          VITE_PUBLIC_SENTRY_ENVIRONMENT: prod
+          VITE_PUBLIC_BUILD_TYPE: prod
+          VITE_PUBLIC_BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          VITE_PUBLIC_DAEMON_VERSION: ${{ steps.daemon_version.outputs.version }}
+          VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          VITE_PUBLIC_POSTHOG_KEY: PLACEHOLDER_PROD_POSTHOG_KEY_PLACEHOLDER
+          VITE_PUBLIC_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          VITE_PUBLIC_RIPTIDE_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          VITE_PUBLIC_WORKOS_CLIENT_ID: ${{ secrets.PROD_WORKOS_CLIENT_ID }}
+          VITE_PUBLIC_DEEP_LINK_SCHEME: humanlayer
+          VITE_PUBLIC_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          VITE_PUBLIC_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_BILLING_ENFORCEMENT_ENABLED: ${{ steps.pulumi.outputs.billing_enforcement_enabled }}
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+
+      - name: Build Riptide Prod (signed)
+        if: ${{ inputs.skip_signing != true }}
+        run: bun --bun run --cwd apps/riptide-native build:prod
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUILD_TYPE: prod
+          BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          NODE_ENV: production
+          SENTRY_ENVIRONMENT: prod
+          VITE_PUBLIC_SENTRY_ENVIRONMENT: prod
+          VITE_PUBLIC_BUILD_TYPE: prod
+          VITE_PUBLIC_BUILD_VERSION: ${{ steps.version.outputs.release_tag }}
+          VITE_PUBLIC_DAEMON_VERSION: ${{ steps.daemon_version.outputs.version }}
+          VITE_PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
+          VITE_PUBLIC_POSTHOG_KEY: PLACEHOLDER_PROD_POSTHOG_KEY_PLACEHOLDER
+          VITE_PUBLIC_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          VITE_PUBLIC_RIPTIDE_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          VITE_PUBLIC_WORKOS_CLIENT_ID: ${{ secrets.PROD_WORKOS_CLIENT_ID }}
+          VITE_PUBLIC_DEEP_LINK_SCHEME: humanlayer
+          VITE_PUBLIC_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          VITE_PUBLIC_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          VITE_PUBLIC_BILLING_ENFORCEMENT_ENABLED: ${{ steps.pulumi.outputs.billing_enforcement_enabled }}
+          RIPTIDE_DAEMON_API_ORIGIN: ${{ steps.pulumi.outputs.api_url }}
+          RIPTIDE_DAEMON_SYNC_ORIGIN: ${{ steps.pulumi.outputs.sync_url }}
+          RIPTIDE_DAEMON_CLOUD_ORIGIN: ${{ steps.pulumi.outputs.cloud_url }}
+          RIPTIDE_DAEMON_APP_ORIGIN: ${{ steps.pulumi.outputs.app_url }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PROD }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+
+      - name: Install Sentry CLI
+        uses: ./.github/actions/install-sentry-cli
+
+      - name: Create Sentry releases
+        if: ${{ !inputs.dry_run }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: humanlayer-00
+          VERSION: ${{ steps.version.outputs.release_tag }}
+        run: |
+          sentry-cli releases new "$VERSION" --project riptide-ui --project riptide-daemon --project riptide-native
+          sentry-cli releases set-commits --auto --ignore-missing "$VERSION"
+          sentry-cli releases deploys "$VERSION" new -e prod
+          sentry-cli releases finalize "$VERSION"
+
+      - name: Upload daemon source maps to Sentry
+        if: ${{ !inputs.dry_run }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: humanlayer-00
+          SENTRY_PROJECT: riptide-daemon
+          VERSION: ${{ steps.version.outputs.release_tag }}
+        run: |
+          sentry-cli sourcemaps upload apps/riptide-daemon/dist --release "$VERSION"
+
+      - name: Verify riptided binary
+        run: bun run ci-scripts/verify-binaries.ts
+        env:
+          BINARIES_DIR: apps/riptide-native/bin
+          REQUIRED_BINARIES: riptided
+
+      - name: Verify app bundle signature
+        if: ${{ inputs.skip_signing != true }}
+        working-directory: apps/riptide-native
+        run: |
+          APP_PATH=$(find target/release/bundle/macos -name "*.app" | head -1)
+          if [ -n "$APP_PATH" ]; then
+            echo "Verifying app bundle signature: $APP_PATH"
+            codesign --verify --deep --strict "$APP_PATH"
+            echo "App bundle signature details:"
+            codesign -d --verbose=2 "$APP_PATH"
+          else
+            echo "No .app bundle found!"
+            exit 1
+          fi
+
+      - name: Rename DMG
+        id: dmg_rename
+        working-directory: apps/riptide-native
+        run: |
+          DMG_PATH=$(find target/release/bundle/dmg -name "*.dmg" | head -1)
+          if [ -n "$DMG_PATH" ]; then
+            NEW_NAME="target/release/bundle/dmg/${{ steps.version.outputs.dmg_filename }}"
+            CANONICAL_NAME="target/release/bundle/dmg/${{ steps.version.outputs.canonical_dmg_filename }}"
+            mv "$DMG_PATH" "$NEW_NAME"
+            cp "$NEW_NAME" "$CANONICAL_NAME"
+            echo "dmg_path=$NEW_NAME" >> $GITHUB_OUTPUT
+            echo "canonical_dmg_path=$CANONICAL_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "No DMG file found!"
+            exit 1
+          fi
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: riptide-prod-macos-dmg
+          path: |
+            apps/riptide-native/${{ steps.dmg_rename.outputs.dmg_path }}
+            apps/riptide-native/${{ steps.dmg_rename.outputs.canonical_dmg_path }}
+          if-no-files-found: error
+
+      - name: Locate updater artifacts
+        id: updater_artifacts
+        working-directory: apps/riptide-native
+        run: |
+          TAR_GZ=$(find target/release/bundle/macos -name "*.app.tar.gz" | head -1)
+          SIG=$(find target/release/bundle/macos -name "*.app.tar.gz.sig" | head -1)
+          if [ -z "$TAR_GZ" ] || [ -z "$SIG" ]; then
+            echo "WARNING: Updater artifacts not found. createUpdaterArtifacts may not be configured."
+            echo "has_updater_artifacts=false" >> $GITHUB_OUTPUT
+          else
+            NEW_TAR="target/release/bundle/macos/Riptide.app.tar.gz"
+            NEW_SIG="target/release/bundle/macos/Riptide.app.tar.gz.sig"
+            mv "$TAR_GZ" "$NEW_TAR"
+            mv "$SIG" "$NEW_SIG"
+            echo "tar_gz_path=$NEW_TAR" >> $GITHUB_OUTPUT
+            echo "sig_path=$NEW_SIG" >> $GITHUB_OUTPUT
+            echo "has_updater_artifacts=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stage release products
+        run: |
+          mkdir -p release-products
+          cp "apps/riptide-native/${{ steps.dmg_rename.outputs.dmg_path }}" release-products/
+          cp "apps/riptide-native/${{ steps.dmg_rename.outputs.canonical_dmg_path }}" release-products/
+          if [ "${{ steps.updater_artifacts.outputs.has_updater_artifacts }}" = "true" ]; then
+            cp "apps/riptide-native/${{ steps.updater_artifacts.outputs.tar_gz_path }}" release-products/
+            cp "apps/riptide-native/${{ steps.updater_artifacts.outputs.sig_path }}" release-products/
+          fi
+
+      - name: Upload release products
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: riptide-prod-release-products
+          path: release-products/
+          if-no-files-found: error
+
+      - name: Cleanup keychain
+        if: ${{ always() && inputs.skip_signing != true }}
+        run: security delete-keychain build.keychain || true
+
+  build-riptide-electron-prod:
+    needs: resolve
+    if: ${{ inputs.skip_signing != true }}
+    uses: ./.github/workflows/release-riptide-electron-dev-build.yml
+    with:
+      release_type: prod
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ needs.resolve.outputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
+
+  deploy-pulumi:
+    needs: resolve
+    if: ${{ inputs.skip_pulumi != true }}
+    uses: ./.github/workflows/pulumi-deploy-prod.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ needs.resolve.outputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      deploy-updater-server: false
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+
+  deploy-updater-server:
+    needs: [resolve, build-riptide-prod, deploy-pulumi]
+    if: ${{ always() && needs.build-riptide-prod.result == 'success' && needs.build-riptide-prod.outputs.has_updater_artifacts == 'true' && (needs.deploy-pulumi.result == 'success' || needs.deploy-pulumi.result == 'skipped') }}
+    uses: ./.github/workflows/pulumi-deploy-project.yml
+    with:
+      public_repo: ${{ inputs.public_repo }}
+      public_sha: ${{ needs.resolve.outputs.sha }}
+      dry_run: ${{ inputs.dry_run }}
+      project-path: deploy/updater-server
+      stack: humanlayer/updater-server/prod
+      action: up
+      pre-command: bun run build
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PUBLIC_REPO_READ_TOKEN: ${{ secrets.PUBLIC_REPO_READ_TOKEN }}
+
+  publish-release:
+    runs-on: ubuntu-latest
+    needs: [resolve, build-riptide-prod, deploy-pulumi, deploy-updater-server]
+    if: ${{ always() && needs.build-riptide-prod.result == 'success' && (needs.deploy-pulumi.result == 'success' || needs.deploy-pulumi.result == 'skipped') && (needs.deploy-updater-server.result == 'success' || needs.deploy-updater-server.result == 'skipped') }}
+    concurrency:
+      group: homebrew-humanlayer-cask-publish
+      cancel-in-progress: false
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.public_repo }}
+          ref: ${{ needs.resolve.outputs.sha }}
+          token: ${{ secrets.PUBLIC_REPO_READ_TOKEN || github.token }}
+          persist-credentials: false
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.3.14
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download release products
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: riptide-prod-release-products
+          path: release-products
+
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run }}
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          token: ${{ secrets.HOMEBREW_HUMANLAYER_RELEASES_PAT }}
+          tag_name: ${{ needs.build-riptide-prod.outputs.release_tag }}
+          name: riptide-${{ needs.build-riptide-prod.outputs.release_version }}
+          files: release-products/*
+          draft: false
+          prerelease: false
+          make_latest: true
+          body: |
+            # Riptide Production Release
+
+            Version: ${{ needs.build-riptide-prod.outputs.release_version }}
+            Environment: prod (PLACEHOLDER_PROD_DOMAIN_PLACEHOLDER)
+
+            ## Installation
+
+            ```bash
+            brew tap humanlayer/humanlayer
+            brew install --cask riptide
+            ```
+
+      - name: Install Pulumi
+        if: ${{ needs.build-riptide-prod.outputs.has_updater_artifacts == 'true' }}
+        uses: pulumi/setup-pulumi@b374ceb6168550de27c6eba92e01c1a774040e11 # v2
+        with:
+          pulumi-version: 3.137.0
+
+      - name: Fetch updater bucket
+        if: ${{ needs.build-riptide-prod.outputs.has_updater_artifacts == 'true' }}
+        id: pulumi_updater
+        run: echo "bucket_name=$(pulumi stack output bucketName --stack humanlayer/updater-server/prod)" >> "$GITHUB_OUTPUT"
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Generate and upload latest.json
+        if: ${{ needs.build-riptide-prod.outputs.has_updater_artifacts == 'true' }}
+        run: |
+          bun run ci-scripts/generate-updater-manifest.ts
+          if [ "$DRY_RUN" = true ]; then
+            echo "dry run: not uploading latest.json"
+            cat latest.json
+          else
+            aws s3 cp latest.json s3://${{ steps.pulumi_updater.outputs.bucket_name }}/stable/latest.json
+          fi
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          VERSION: ${{ needs.build-riptide-prod.outputs.release_version }}
+          RELEASE_TAG: ${{ needs.build-riptide-prod.outputs.release_tag }}
+          ARTIFACT_NAME: ${{ needs.build-riptide-prod.outputs.updater_artifact_name }}
+          SIGNATURE_FILE: release-products/${{ needs.build-riptide-prod.outputs.updater_artifact_name }}.sig
+          NOTES: ${{ inputs.notes }}
+          URGENCY: ${{ inputs.urgency || 'normal' }}
+          OUTPUT_PATH: latest.json
+          AWS_ACCESS_KEY_ID: ${{ secrets.PROD_CLOUD_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PROD_CLOUD_AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: us-east-1
+
+      - name: Calculate DMG SHA256 and URL
+        if: ${{ inputs.skip_cask_update != true }}
+        id: dmg_hash
+        run: |
+          SHA256=$(shasum -a 256 "release-products/${{ needs.build-riptide-prod.outputs.dmg_filename }}" | awk '{print $1}')
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "dmg_url=https://github.com/humanlayer/homebrew-humanlayer/releases/download/${{ needs.build-riptide-prod.outputs.release_tag }}/${{ needs.build-riptide-prod.outputs.dmg_filename }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout homebrew-humanlayer
+        if: ${{ inputs.skip_cask_update != true }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: humanlayer/homebrew-humanlayer
+          path: homebrew-humanlayer
+          token: ${{ secrets.HUMANLAYER_HOMEBREW_CASK_WRITE_GITHUB_PAT }}
+
+      - name: Generate Homebrew cask file
+        if: ${{ inputs.skip_cask_update != true }}
+        run: bun run ci-scripts/generate-homebrew-cask.ts
+        env:
+          RELEASE_TYPE: prod
+          RELEASE_VERSION: ${{ needs.build-riptide-prod.outputs.release_version }}
+          SHA256: ${{ steps.dmg_hash.outputs.sha256 }}
+          DMG_URL: ${{ steps.dmg_hash.outputs.dmg_url }}
+          OUTPUT_DIR: homebrew-humanlayer/Casks
+
+      - name: Commit and push cask update
+        if: ${{ inputs.skip_cask_update != true && !inputs.dry_run }}
+        working-directory: homebrew-humanlayer
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/riptide.rb Casks/humanlayer.rb
+          git diff --staged --quiet || (git commit -m "Update riptide and humanlayer to ${{ needs.build-riptide-prod.outputs.release_version }}" && git push)
+
+  publish-riptide-electron-prod:
+    needs: [build-riptide-electron-prod, publish-release]
+    if: ${{ always() && needs.build-riptide-electron-prod.result == 'success' && needs.publish-release.result == 'success' }}
+    uses: ./.github/workflows/release-riptide-electron-dev-publish.yml
+    with:
+      release_type: prod
+      public_repo: ${{ inputs.public_repo }}
+      dry_run: ${{ inputs.dry_run }}
+      release_version: ${{ needs.build-riptide-electron-prod.outputs.release_version }}
+      release_tag: ${{ needs.build-riptide-electron-prod.outputs.release_tag }}
+      dmg_filename: ${{ needs.build-riptide-electron-prod.outputs.dmg_filename }}
+      zip_filename: ${{ needs.build-riptide-electron-prod.outputs.zip_filename }}
+      source_sha: ${{ needs.build-riptide-electron-prod.outputs.source_sha }}
+      skip_cask_update: ${{ inputs.skip_cask_update }}
+    secrets: inherit
+
+  publish-humanlayer-cli-prod:
+    needs: [build-riptide-prod, deploy-pulumi, publish-release, publish-riptide-electron-prod]
+    if: >-
+      ${{
+        always() &&
+        !cancelled() &&
+        needs.publish-release.result == 'success' &&
+        (needs.deploy-pulumi.result == 'success' || (inputs.skip_pulumi == true && needs.deploy-pulumi.result == 'skipped')) &&
+        (needs.publish-riptide-electron-prod.result == 'success' || (inputs.skip_signing == true && needs.publish-riptide-electron-prod.result == 'skipped'))
+      }}
+    uses: ./.github/workflows/release-humanlayer-cli.yml
+    with:
+      release_type: prod
+      public_repo: ${{ inputs.public_repo }}
+      public_ref: ${{ needs.build-riptide-prod.outputs.source_sha }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit
+    permissions:
+      contents: write
