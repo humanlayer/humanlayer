@@ -15,6 +15,7 @@ const failEmailNotConfigured = (operation: string) =>
  */
 export const unconfiguredResendService: ResendServiceShape = {
 	configured: false,
+	fromAddress: null,
 	sendPlaintext: () => failEmailNotConfigured('send_plaintext'),
 	schedulePlaintext: () => failEmailNotConfigured('schedule_plaintext'),
 	cancelScheduled: () => Effect.void,

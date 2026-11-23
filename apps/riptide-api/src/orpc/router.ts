@@ -78,6 +78,7 @@ import { listHostAliasesEffectProcedure } from './api/hosts/alias-list.effect'
 import { upsertHostAliasEffectProcedure } from './api/hosts/alias-upsert.effect'
 import { deleteHostEffectProcedure } from './api/hosts/delete.effect'
 import { requestHostUpdateEffectProcedure } from './api/hosts/update-request.effect'
+import { getIntegrationCapabilitiesProcedure } from './api/integrations/get-capabilities.effect'
 import { createGitHubInstallUrlProcedure } from './api/integrations/github/create-install-url.effect'
 import { disconnectGitHubProcedure } from './api/integrations/github/disconnect.effect'
 import { getGitHubConnectionProcedure } from './api/integrations/github/get-connection.effect'
@@ -589,6 +590,7 @@ export const apiRouter = os.router({
 		},
 	},
 	integrations: {
+		getCapabilities: getIntegrationCapabilitiesProcedure,
 		github: {
 			createInstallUrl: createGitHubInstallUrlProcedure,
 			getStatus: getGitHubStatusProcedure,

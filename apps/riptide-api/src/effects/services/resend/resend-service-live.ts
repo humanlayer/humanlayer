@@ -125,6 +125,7 @@ export const ResendServiceLive = Layer.effect(
 		const http = yield* ResendHttpClient
 		const service: ResendServiceShape = {
 			configured: true,
+			fromAddress: config.fromEmail,
 			sendPlaintext: (input) => sendPlaintext(http, config.fromEmail, input),
 			schedulePlaintext: (input) => schedulePlaintext(http, config.fromEmail, input),
 			cancelScheduled: (input) => cancelScheduled(http, input),

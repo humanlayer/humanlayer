@@ -62,6 +62,8 @@ export type ResendServiceShape = {
 	 * fail with `EmailNotConfiguredError`.
 	 */
 	readonly configured: boolean
+	/** RESEND_FROM_EMAIL when email is set up, otherwise null. Shown to admins in settings. */
+	readonly fromAddress: string | null
 	readonly sendPlaintext: (
 		input: ResendSendPlaintextInput,
 	) => Effect.Effect<{ readonly emailId: string }, ResendError>

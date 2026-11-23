@@ -11,10 +11,14 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 import { type ApiClient, useRiptideApi } from '@/api/client'
+import { useIntegrationCapabilities } from '@/hooks/useIntegrationCapabilities'
+import { isIntegrationAvailable, isIntegrationNotSetUp } from '@/lib/integration-capabilities'
 import type { GitHubCallbackResult } from '@/lib/settings-search'
 
+import { EmailIntegrationCard } from './EmailIntegrationCard'
 import { GitHubConnectionRow } from './GitHubConnectionRow'
 import { GitHubIntegrationCard } from './GitHubIntegrationCard'
+import { IntegrationUnavailableNotice } from './IntegrationUnavailableNotice'
 import { SlackIntegrationCard } from './SlackIntegrationCard'
 
 const JIRA_INTEGRATION_DOCS_URL = 'https://docs.humanlayer.com/guide/jira-integration'
@@ -222,6 +226,9 @@ export function WiredGitHubIntegrationCard({
 export function IntegrationsSection() {
 	const { client, queryClient: apiQueryClient } = useRiptideApi()
 	const { github: githubCallback, github_error: githubError } = useSearch({ from: '/settings' })
+	// Fetched once per session. An integration's status polling starts only after this answers and
+	// says the integration is set up.
+	const capabilities = useIntegrationCapabilities()
 
 	const orgSettingsQuery = useQuery(
 		apiQueryClient.auth.admin.organizations.settings.get.queryOptions({
@@ -233,6 +240,7 @@ export function IntegrationsSection() {
 	const jiraStatusQuery = useQuery(
 		apiQueryClient.integrations.jira.getStatus.queryOptions({
 			input: {},
+			enabled: isIntegrationAvailable(capabilities, 'jira'),
 			refetchInterval: 10_000,
 		}),
 	)
@@ -256,6 +264,7 @@ export function IntegrationsSection() {
 	const linearStatusQuery = useQuery(
 		apiQueryClient.integrations.linear.getStatus.queryOptions({
 			input: {},
+			enabled: isIntegrationAvailable(capabilities, 'linear'),
 			refetchInterval: 10_000,
 		}),
 	)
@@ -296,190 +305,230 @@ export function IntegrationsSection() {
 
 	const githubCallbackResult: GitHubCallbackResult | undefined = githubError ?? githubCallback
 
+	const heading = (
+		<div className="mb-4">
+			<h2 className="text-base font-semibold">Integrations</h2>
+			<p className="text-sm text-muted-foreground">Connect the tools your organization already uses.</p>
+		</div>
+	)
+
+	if (capabilities.status === 'checking') {
+		return (
+			<section aria-busy="true">
+				{heading}
+				<p className="text-sm text-muted-foreground">Checking which integrations are set up…</p>
+			</section>
+		)
+	}
+
 	return (
 		<section>
-			<div className="mb-4">
-				<h2 className="text-base font-semibold">Integrations</h2>
-				<p className="text-sm text-muted-foreground">Connect the tools your organization already uses.</p>
-			</div>
+			{heading}
 			<div className="space-y-6">
-				<WiredGitHubIntegrationCard
-					callbackResult={githubCallbackResult}
-					listConnections={() => client.integrations.github.listConnections({})}
-					createInstallUrl={(connectionId) =>
-						client.integrations.github.createInstallUrl(connectionId ? { connectionId } : {})
-					}
-					listRepositories={(connectionId) => client.integrations.github.listRepositories({ connectionId })}
-					refreshConnection={(connectionId) => client.integrations.github.refreshConnection({ connectionId })}
-					disconnectConnection={(connectionId) => client.integrations.github.disconnect({ connectionId })}
-					onEnabledChange={(checked, onSuccess) =>
-						updateOrgSettingsMutation.mutate({ githubIntegrationEnabled: checked }, { onSuccess })
-					}
-				/>
+				{isIntegrationNotSetUp(capabilities, 'github') ? (
+					<IntegrationUnavailableNotice integration="GitHub" />
+				) : (
+					<WiredGitHubIntegrationCard
+						callbackResult={githubCallbackResult}
+						listConnections={() => client.integrations.github.listConnections({})}
+						createInstallUrl={(connectionId) =>
+							client.integrations.github.createInstallUrl(connectionId ? { connectionId } : {})
+						}
+						listRepositories={(connectionId) =>
+							client.integrations.github.listRepositories({ connectionId })
+						}
+						refreshConnection={(connectionId) =>
+							client.integrations.github.refreshConnection({ connectionId })
+						}
+						disconnectConnection={(connectionId) => client.integrations.github.disconnect({ connectionId })}
+						onEnabledChange={(checked, onSuccess) =>
+							updateOrgSettingsMutation.mutate({ githubIntegrationEnabled: checked }, { onSuccess })
+						}
+					/>
+				)}
 
 				<Separator />
 
 				{/* Jira Integration */}
-				<div className="space-y-3">
-					<div className="flex items-center justify-between gap-3">
-						<div className="flex items-center gap-2">
-							<Label className="text-sm font-medium">Jira</Label>
-							{jiraStatusQuery.data?.connected && !jiraStatusQuery.data.needsReauth && (
-								<IntegrationStatusBadge
-									onDisconnect={() => disconnectJiraMutation.mutate({})}
-									isPending={disconnectJiraMutation.isPending}
-								/>
-							)}
-							{jiraStatusQuery.data?.needsReauth && (
-								<Badge variant="destructive" className="gap-1">
-									<AlertCircle className="h-3 w-3" />
-									Needs Reconnection
-								</Badge>
-							)}
+				{isIntegrationNotSetUp(capabilities, 'jira') ? (
+					<IntegrationUnavailableNotice integration="Jira" />
+				) : (
+					<div className="space-y-3">
+						<div className="flex items-center justify-between gap-3">
+							<div className="flex items-center gap-2">
+								<Label className="text-sm font-medium">Jira</Label>
+								{jiraStatusQuery.data?.connected && !jiraStatusQuery.data.needsReauth && (
+									<IntegrationStatusBadge
+										onDisconnect={() => disconnectJiraMutation.mutate({})}
+										isPending={disconnectJiraMutation.isPending}
+									/>
+								)}
+								{jiraStatusQuery.data?.needsReauth && (
+									<Badge variant="destructive" className="gap-1">
+										<AlertCircle className="h-3 w-3" />
+										Needs Reconnection
+									</Badge>
+								)}
+							</div>
+							<Button variant="link" className="h-auto p-0 text-sm" asChild>
+								<a href={JIRA_INTEGRATION_DOCS_URL} target="_blank" rel="noreferrer">
+									Setup guide
+									<ExternalLink className="ml-1 h-3.5 w-3.5" />
+								</a>
+							</Button>
 						</div>
-						<Button variant="link" className="h-auto p-0 text-sm" asChild>
-							<a href={JIRA_INTEGRATION_DOCS_URL} target="_blank" rel="noreferrer">
-								Setup guide
-								<ExternalLink className="ml-1 h-3.5 w-3.5" />
-							</a>
-						</Button>
-					</div>
-					<p className="text-sm text-muted-foreground">
-						Connect your Jira Cloud instance to create tasks from Jira tickets.
-					</p>
-					{jiraStatusQuery.data?.connected ? (
-						<div className="space-y-3">
-							<div className="flex items-center justify-between gap-4">
-								<div className="space-y-1">
-									<Label className="text-sm">Enable Jira Integration</Label>
-									<p className="text-sm text-muted-foreground">
-										Allow users to create tasks from Jira tickets.
-									</p>
+						<p className="text-sm text-muted-foreground">
+							Connect your Jira Cloud instance to create tasks from Jira tickets.
+						</p>
+						{jiraStatusQuery.data?.connected ? (
+							<div className="space-y-3">
+								<div className="flex items-center justify-between gap-4">
+									<div className="space-y-1">
+										<Label className="text-sm">Enable Jira Integration</Label>
+										<p className="text-sm text-muted-foreground">
+											Allow users to create tasks from Jira tickets.
+										</p>
+									</div>
+									<Switch
+										checked={orgSettingsQuery.data?.jiraIntegrationEnabled ?? false}
+										onCheckedChange={(checked) =>
+											updateOrgSettingsMutation.mutate({ jiraIntegrationEnabled: checked })
+										}
+										disabled={orgSettingsQuery.isLoading || updateOrgSettingsMutation.isPending}
+									/>
 								</div>
-								<Switch
-									checked={orgSettingsQuery.data?.jiraIntegrationEnabled ?? false}
-									onCheckedChange={(checked) =>
-										updateOrgSettingsMutation.mutate({ jiraIntegrationEnabled: checked })
-									}
-									disabled={orgSettingsQuery.isLoading || updateOrgSettingsMutation.isPending}
-								/>
+								<div className="flex items-center gap-2 text-sm text-muted-foreground">
+									<Link2 className="h-4 w-4" />
+									<span>{jiraStatusQuery.data.siteUrl}</span>
+								</div>
+								{jiraStatusQuery.data.needsReauth && (
+									<Button
+										size="sm"
+										variant="destructive"
+										onClick={async () => {
+											const { url } = await client.integrations.jira.createInstallUrl({
+												client: 'cloud',
+											})
+											window.location.href = url
+										}}
+									>
+										Reconnect Jira
+									</Button>
+								)}
 							</div>
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<Link2 className="h-4 w-4" />
-								<span>{jiraStatusQuery.data.siteUrl}</span>
-							</div>
-							{jiraStatusQuery.data.needsReauth && (
-								<Button
-									size="sm"
-									variant="destructive"
-									onClick={async () => {
-										const { url } = await client.integrations.jira.createInstallUrl({
-											client: 'cloud',
-										})
-										window.location.href = url
-									}}
-								>
-									Reconnect Jira
-								</Button>
-							)}
-						</div>
-					) : (
-						<Button
-							variant="outline"
-							onClick={async () => {
-								const { url } = await client.integrations.jira.createInstallUrl({
-									client: 'cloud',
-								})
-								window.location.href = url
-							}}
-						>
-							<Link2 className="mr-2 h-4 w-4" />
-							Connect Jira
-						</Button>
-					)}
-				</div>
+						) : (
+							<Button
+								variant="outline"
+								onClick={async () => {
+									const { url } = await client.integrations.jira.createInstallUrl({
+										client: 'cloud',
+									})
+									window.location.href = url
+								}}
+							>
+								<Link2 className="mr-2 h-4 w-4" />
+								Connect Jira
+							</Button>
+						)}
+					</div>
+				)}
 
 				<Separator />
 
 				{/* Linear Integration */}
-				<div className="space-y-3">
-					<div className="flex items-center justify-between gap-3">
-						<div className="flex items-center gap-2">
-							<Label className="text-sm font-medium">Linear</Label>
-							{linearStatusQuery.data?.connected && !linearStatusQuery.data.needsReauth && (
-								<IntegrationStatusBadge
-									onDisconnect={() => disconnectLinearMutation.mutate({})}
-									isPending={disconnectLinearMutation.isPending}
-								/>
-							)}
-							{linearStatusQuery.data?.needsReauth && (
-								<Badge variant="destructive" className="gap-1">
-									<AlertCircle className="h-3 w-3" />
-									Needs Reconnection
-								</Badge>
-							)}
-						</div>
-						<Button variant="link" className="h-auto p-0 text-sm" asChild>
-							<a href={LINEAR_INTEGRATION_DOCS_URL} target="_blank" rel="noreferrer">
-								Setup guide
-								<ExternalLink className="ml-1 h-3.5 w-3.5" />
-							</a>
-						</Button>
-					</div>
-					<p className="text-sm text-muted-foreground">
-						Connect your Linear workspace to sync issue status and link artifacts.
-					</p>
-					{linearStatusQuery.data?.connected ? (
-						<div className="space-y-3">
-							<div className="flex items-center justify-between gap-4">
-								<div className="space-y-1">
-									<Label className="text-sm">Enable Linear Integration</Label>
-									<p className="text-sm text-muted-foreground">
-										Allow users to create tasks from Linear issues.
-									</p>
-								</div>
-								<Switch
-									checked={orgSettingsQuery.data?.linearIntegrationEnabled ?? false}
-									onCheckedChange={(checked) =>
-										updateOrgSettingsMutation.mutate({ linearIntegrationEnabled: checked })
-									}
-									disabled={orgSettingsQuery.isLoading || updateOrgSettingsMutation.isPending}
-								/>
+				{isIntegrationNotSetUp(capabilities, 'linear') ? (
+					<IntegrationUnavailableNotice integration="Linear" />
+				) : (
+					<div className="space-y-3">
+						<div className="flex items-center justify-between gap-3">
+							<div className="flex items-center gap-2">
+								<Label className="text-sm font-medium">Linear</Label>
+								{linearStatusQuery.data?.connected && !linearStatusQuery.data.needsReauth && (
+									<IntegrationStatusBadge
+										onDisconnect={() => disconnectLinearMutation.mutate({})}
+										isPending={disconnectLinearMutation.isPending}
+									/>
+								)}
+								{linearStatusQuery.data?.needsReauth && (
+									<Badge variant="destructive" className="gap-1">
+										<AlertCircle className="h-3 w-3" />
+										Needs Reconnection
+									</Badge>
+								)}
 							</div>
-							{linearStatusQuery.data.needsReauth && (
-								<Button
-									size="sm"
-									variant="destructive"
-									onClick={async () => {
-										const { url } = await client.integrations.linear.createInstallUrl({
-											client: 'cloud',
-										})
-										window.location.href = url
-									}}
-								>
-									Reconnect Linear
-								</Button>
-							)}
+							<Button variant="link" className="h-auto p-0 text-sm" asChild>
+								<a href={LINEAR_INTEGRATION_DOCS_URL} target="_blank" rel="noreferrer">
+									Setup guide
+									<ExternalLink className="ml-1 h-3.5 w-3.5" />
+								</a>
+							</Button>
 						</div>
-					) : (
-						<Button
-							variant="outline"
-							onClick={async () => {
-								const { url } = await client.integrations.linear.createInstallUrl({
-									client: 'cloud',
-								})
-								window.location.href = url
-							}}
-						>
-							<Link2 className="mr-2 h-4 w-4" />
-							Connect Linear
-						</Button>
-					)}
-				</div>
+						<p className="text-sm text-muted-foreground">
+							Connect your Linear workspace to sync issue status and link artifacts.
+						</p>
+						{linearStatusQuery.data?.connected ? (
+							<div className="space-y-3">
+								<div className="flex items-center justify-between gap-4">
+									<div className="space-y-1">
+										<Label className="text-sm">Enable Linear Integration</Label>
+										<p className="text-sm text-muted-foreground">
+											Allow users to create tasks from Linear issues.
+										</p>
+									</div>
+									<Switch
+										checked={orgSettingsQuery.data?.linearIntegrationEnabled ?? false}
+										onCheckedChange={(checked) =>
+											updateOrgSettingsMutation.mutate({ linearIntegrationEnabled: checked })
+										}
+										disabled={orgSettingsQuery.isLoading || updateOrgSettingsMutation.isPending}
+									/>
+								</div>
+								{linearStatusQuery.data.needsReauth && (
+									<Button
+										size="sm"
+										variant="destructive"
+										onClick={async () => {
+											const { url } = await client.integrations.linear.createInstallUrl({
+												client: 'cloud',
+											})
+											window.location.href = url
+										}}
+									>
+										Reconnect Linear
+									</Button>
+								)}
+							</div>
+						) : (
+							<Button
+								variant="outline"
+								onClick={async () => {
+									const { url } = await client.integrations.linear.createInstallUrl({
+										client: 'cloud',
+									})
+									window.location.href = url
+								}}
+							>
+								<Link2 className="mr-2 h-4 w-4" />
+								Connect Linear
+							</Button>
+						)}
+					</div>
+				)}
 
 				<Separator />
 
-				<SlackIntegrationCard />
+				{isIntegrationNotSetUp(capabilities, 'slack') ? (
+					<IntegrationUnavailableNotice integration="Slack" />
+				) : (
+					<SlackIntegrationCard />
+				)}
+
+				{capabilities.status === 'known' && (
+					<>
+						<Separator />
+						<EmailIntegrationCard email={capabilities.capabilities.email} />
+					</>
+				)}
 			</div>
 		</section>
 	)

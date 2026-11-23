@@ -145,6 +145,7 @@ export const createTestOnboardingLayer = (
 
 const fakeResendLayer = Layer.succeed(ResendService, {
 	configured: true,
+	fromAddress: 'notifications@example.test',
 	sendPlaintext: () => Effect.succeed({ emailId: 'test-email-id' }),
 	schedulePlaintext: (input) =>
 		Effect.succeed({ emailId: 'test-scheduled-email-id', scheduledAt: input.scheduledAt.toISOString() }),

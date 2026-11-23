@@ -101,6 +101,7 @@ function makeFakeResendLayer(
 ) {
 	return Layer.succeed(ResendService, {
 		configured: true,
+		fromAddress: 'notifications@example.test',
 		sendPlaintext: (input) => {
 			if (opts.rateLimitOnSend) {
 				return Effect.fail(resendOperationError(true))
@@ -446,6 +447,7 @@ describe('AccessRequestService.createAccessRequest', () => {
 		// First admin succeeds, second fails on sendPlaintext
 		const partialResendLayer = Layer.succeed(ResendService, {
 			configured: true,
+			fromAddress: 'notifications@example.test',
 			sendPlaintext: (input) => {
 				sendCallCount++
 				if (sendCallCount % 2 === 0) {
