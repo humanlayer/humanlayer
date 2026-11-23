@@ -17,6 +17,7 @@ import { useRecentDirectories } from '@/hooks/live-queries/useRecentDirectories'
 import { type EditorType, useSettingsStore } from '@/hooks/stores/settingsStore'
 import { validateDirectoryExists } from '@/integrations/desktop/filesystem'
 import { DEFAULT_ZOOM_LEVEL, MAX_ZOOM_LEVEL, MIN_ZOOM_LEVEL, ZOOM_STEP } from '@/integrations/desktop/zoom'
+import { playNotificationSound } from '@/lib/notification-sound'
 import { isDesktop } from '@/lib/utils'
 import { useRiptideApi } from '@/orpc/client'
 
@@ -213,9 +214,7 @@ export function GeneralSettingsSection() {
 							onCheckedChange={(checked) => {
 								setNotificationSoundsEnabled(checked)
 								if (checked) {
-									const audio = new Audio('/sounds/notification.mp3')
-									audio.volume = notificationVolume
-									audio.play().catch(() => {})
+									playNotificationSound(notificationVolume)
 								}
 							}}
 						/>
@@ -232,9 +231,7 @@ export function GeneralSettingsSection() {
 								value={notificationVolume}
 								onChange={(e) => setNotificationVolume(Number.parseFloat(e.target.value))}
 								onMouseUp={() => {
-									const audio = new Audio('/sounds/notification.mp3')
-									audio.volume = notificationVolume
-									audio.play().catch(() => {})
+									playNotificationSound(notificationVolume)
 								}}
 								className="h-1 flex-1 appearance-none rounded-none bg-muted cursor-pointer accent-primary [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-none [&::-webkit-slider-thumb]:bg-primary"
 							/>

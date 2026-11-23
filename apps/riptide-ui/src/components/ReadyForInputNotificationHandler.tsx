@@ -6,6 +6,7 @@ import { useSync } from '@/components/providers/SyncProvider'
 import { useSettingsStore } from '@/hooks/stores/settingsStore'
 import { findAutoAdvanceField } from '@/lib/auto-advance-policy'
 import { logger } from '@/lib/logger'
+import { playNotificationSound } from '@/lib/notification-sound'
 
 type SessionChangeMessage = {
 	type: 'insert' | 'update' | 'delete'
@@ -52,9 +53,7 @@ export function ReadyForInputNotificationHandler() {
 
 					const settings = useSettingsStore.getState()
 					if (settings.notificationSoundsEnabled) {
-						const audio = new Audio('/sounds/notification.mp3')
-						audio.volume = settings.notificationVolume
-						audio.play().catch(() => {})
+						playNotificationSound(settings.notificationVolume)
 					}
 				}
 			},

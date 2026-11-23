@@ -178,6 +178,26 @@
 			},
 		},
 		{
+			// new Audio() makes the app the macOS Now Playing app, so Play/Pause replays the chime (#1072).
+			"files": ["apps/riptide-ui/src/**"],
+			"rules": {
+				"no-restricted-globals": [
+					"error",
+					{ "name": "Audio", "message": "use playNotificationSound from @/lib/notification-sound" },
+				],
+				"no-restricted-properties": [
+					"error",
+					{ "object": "window", "property": "Audio", "message": "use playNotificationSound from @/lib/notification-sound" },
+					{ "object": "globalThis", "property": "Audio", "message": "use playNotificationSound from @/lib/notification-sound" },
+					{ "object": "self", "property": "Audio", "message": "use playNotificationSound from @/lib/notification-sound" },
+				],
+				"react/forbid-elements": [
+					"error",
+					{ "forbid": [{ "element": "audio", "message": "use playNotificationSound from @/lib/notification-sound" }] },
+				],
+			},
+		},
+		{
 			// @opencode/* pins its own Effect 4.0.0-rc.112; the plugin talks to it only through its
 			// promise client, so the second copy never meets ours.
 			"files": ["apps/riptide-opencode-plugin/**"],
