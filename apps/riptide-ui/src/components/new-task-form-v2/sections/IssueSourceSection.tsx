@@ -23,10 +23,12 @@ import { GitHubIssueInput } from '@/components/GitHubIssueInput'
 import { GitHubIssuePreview, type GitHubIssuePreviewData } from '@/components/GitHubIssuePreview'
 import { GitHubRepositoryPicker, type GitHubRepositoryOption } from '@/components/GitHubRepositoryPicker'
 import { IntegrationCTA } from '@/components/IntegrationCTA'
+import { IntegrationNotSetUpNotice } from '@/components/IntegrationNotSetUpNotice'
 import { useNewTaskFormStore } from '@/hooks/stores/newTaskFormStore'
 import { useSettingsStore } from '@/hooks/stores/settingsStore'
 import { useTaskSettingsStore } from '@/hooks/stores/taskSettingsStore'
 import { useBrowserAuth } from '@/hooks/use-browser-auth'
+import { integrationNotSetUpMessage } from '@/lib/integration-capabilities'
 import { isLookupError, type TicketLookupError } from '@/lib/ticket-lookup-error'
 import { openCloudUrl, openExternal } from '@/lib/url-opener'
 import { useRiptideApi } from '@/orpc/client'
@@ -141,6 +143,10 @@ export const IssueSourceSection: FC<IssueSourceSectionProps> = ({
 	const jiraEnabled = useSettingsStore((s) => s.jiraEnabled)
 	const linearNeedsReauth = useSettingsStore((s) => s.linearNeedsReauth)
 	const jiraNeedsReauth = useSettingsStore((s) => s.jiraNeedsReauth)
+	// Whether this deployment has the keys at all; without them there is nothing to connect
+	const linearConfigured = useSettingsStore((s) => s.linearConfigured)
+	const jiraConfigured = useSettingsStore((s) => s.jiraConfigured)
+	const githubConfigured = useSettingsStore((s) => s.githubConfigured)
 
 	// Global preference setter from taskSettingsStore
 	const setV2IssueSource = useTaskSettingsStore((s) => s.setV2IssueSource)
@@ -221,17 +227,29 @@ export const IssueSourceSection: FC<IssueSourceSectionProps> = ({
 		{
 			value: 'linear',
 			label: 'Linear',
-			description: linearEnabled ? 'Import from a Linear ticket' : 'Connect Linear in settings to enable',
+			description: !linearConfigured
+				? integrationNotSetUpMessage('Linear')
+				: linearEnabled
+					? 'Import from a Linear ticket'
+					: 'Connect Linear in settings to enable',
 		},
 		{
 			value: 'jira',
 			label: 'Jira',
-			description: jiraEnabled ? 'Import from a Jira ticket' : 'Connect Jira in settings to enable',
+			description: !jiraConfigured
+				? integrationNotSetUpMessage('Jira')
+				: jiraEnabled
+					? 'Import from a Jira ticket'
+					: 'Connect Jira in settings to enable',
 		},
 		{
 			value: 'github',
 			label: 'GitHub',
-			description: githubEnabled ? 'Import from an installed repository' : 'Connect GitHub in settings to enable',
+			description: !githubConfigured
+				? integrationNotSetUpMessage('GitHub')
+				: githubEnabled
+					? 'Import from an installed repository'
+					: 'Connect GitHub in settings to enable',
 		},
 	]
 
@@ -266,7 +284,8 @@ export const IssueSourceSection: FC<IssueSourceSectionProps> = ({
 			)}
 
 			{/* Linear: connection CTA or ticket ID input */}
-			{isLinear && !linearEnabled && (
+			{isLinear && !linearConfigured && <IntegrationNotSetUpNotice name="Linear" />}
+			{isLinear && linearConfigured && !linearEnabled && (
 				<IntegrationCTA
 					name="Linear"
 					needsReauth={linearNeedsReauth}
@@ -276,7 +295,7 @@ export const IssueSourceSection: FC<IssueSourceSectionProps> = ({
 					onConnect={handleConnectLinear}
 				/>
 			)}
-			{isLinear && linearEnabled && (
+			{isLinear && linearConfigured && linearEnabled && (
 				<TicketInputField
 					ticketLabel="Linear Ticket ID or URL"
 					ticketIdInputId="linear-ticket-id"
@@ -291,7 +310,8 @@ export const IssueSourceSection: FC<IssueSourceSectionProps> = ({
 			)}
 
 			{/* Jira: connection CTA or ticket key input */}
-			{isJira && !jiraEnabled && (
+			{isJira && !jiraConfigured && <IntegrationNotSetUpNotice name="Jira" />}
+			{isJira && jiraConfigured && !jiraEnabled && (
 				<IntegrationCTA
 					name="Jira"
 					needsReauth={jiraNeedsReauth}
@@ -301,7 +321,7 @@ export const IssueSourceSection: FC<IssueSourceSectionProps> = ({
 					onConnect={handleConnectJira}
 				/>
 			)}
-			{isJira && jiraEnabled && (
+			{isJira && jiraConfigured && jiraEnabled && (
 				<TicketInputField
 					ticketLabel="Jira Ticket Key"
 					ticketIdInputId="jira-ticket-id"
@@ -315,7 +335,8 @@ export const IssueSourceSection: FC<IssueSourceSectionProps> = ({
 				/>
 			)}
 
-			{isGitHub && !githubEnabled && (
+			{isGitHub && !githubConfigured && <IntegrationNotSetUpNotice name="GitHub" />}
+			{isGitHub && githubConfigured && !githubEnabled && (
 				<div className="space-y-2">
 					<IntegrationCTA
 						name="GitHub"

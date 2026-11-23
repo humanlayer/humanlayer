@@ -12,22 +12,23 @@ import { jwksCache } from './auth/jwks-cache'
 import { db, dbReadReplica } from './db/db'
 import { appRuntime } from './effects/app-runtime'
 import { AccessRequestService } from './effects/services/access-request/access-request.service'
+import { readStripeDeployment } from './effects/services/stripe/stripe-deployment'
 import {
-	getResendApiKey,
-	getResendWebhookSecret,
 	getStripePricePro,
 	getStripePriceStarter,
 	getStripeSecretKey,
 	getStripeWebhookSecret,
 	requireEnvironment,
 } from './lib/environment'
-import { getJiraClientId, getJiraClientSecret, getJiraOAuthRedirectUrl } from './lib/jira'
+import { JiraKeyGroup, LinearKeyGroup } from './lib/integration-key-groups'
+import { getJiraOAuthRedirectUrl } from './lib/jira'
 import { JiraService } from './lib/jira-service'
-import { getLinearClientId, getLinearClientSecret, getLinearOAuthRedirectUrl } from './lib/linear'
+import { getLinearOAuthRedirectUrl } from './lib/linear'
 import { LinearService } from './lib/linear-service'
+import { optionalEnvironmentGroup } from './lib/optional-environment-group'
 import { requestBodyLimit } from './lib/request-body-limit'
 import { S3Service } from './lib/s3-service'
-import { StripeService } from './lib/stripe-service'
+import { type IStripeService, StripeService } from './lib/stripe-service'
 import { logger } from './logger'
 import { apiHandler, daemonApiHandler } from './orpc'
 import { registerBillingCheckoutCompletionRoutes } from './routes/billing-checkout-completion'
@@ -65,14 +66,34 @@ const s3Service = new S3Service(
 		: undefined,
 )
 
-const jiraService = new JiraService(getJiraClientId(), getJiraClientSecret(), db, getJiraOAuthRedirectUrl())
-const linearService = new LinearService(getLinearClientId(), getLinearClientSecret(), db, getLinearOAuthRedirectUrl())
-const stripeService = new StripeService(new Stripe(getStripeSecretKey()), getStripeWebhookSecret(), {
-	billingKvRuntime: appRuntime,
-	starterPriceId: getStripePriceStarter(),
-	proPriceId: getStripePricePro(),
-})
-const resend = new Resend(getResendApiKey())
+// Jira, Linear, and Stripe are null when this deployment lacks their keys. Startup logs which
+// keys are missing, and procedures that need the service answer "not set up" instead.
+const jiraKeys = optionalEnvironmentGroup(JiraKeyGroup.name, JiraKeyGroup.keys)
+const jiraService = jiraKeys
+	? new JiraService(jiraKeys.JIRA_CLIENT_ID, jiraKeys.JIRA_CLIENT_SECRET, db, getJiraOAuthRedirectUrl())
+	: null
+const linearKeys = optionalEnvironmentGroup(LinearKeyGroup.name, LinearKeyGroup.keys)
+const linearService = linearKeys
+	? new LinearService(linearKeys.LINEAR_CLIENT_ID, linearKeys.LINEAR_CLIENT_SECRET, db, getLinearOAuthRedirectUrl())
+	: null
+const stripeService = createStripeService()
+
+/**
+ * The classic Stripe service follows the same rule as the Effect one (`readStripeDeployment`):
+ * with billing enforcement on, a missing key throws naming it; with it off, a missing key gives
+ * null. The Effect layer already logged the missing keys at runtime startup.
+ */
+function createStripeService(): IStripeService | null {
+	if (!Effect.runSync(readStripeDeployment).stripeConfigured) return null
+	return new StripeService(new Stripe(getStripeSecretKey()), getStripeWebhookSecret(), {
+		billingKvRuntime: appRuntime,
+		starterPriceId: getStripePriceStarter(),
+		proPriceId: getStripePricePro(),
+	})
+}
+// The Resend webhook only verifies signatures, but the SDK needs an API key to build. Register the
+// route only when both keys are set; otherwise email delivery events are not received.
+const resendWebhookKeys = optionalEnvironmentGroup('Resend webhook', ['RESEND_API_KEY', 'RESEND_WEBHOOK_SECRET'])
 /**
  * App-runtime-backed facade for the WorkOS webhook's access-request backfill. The
  * webhook is not an oRPC procedure, so it can't bind to `appRuntime` the way Effect
@@ -120,19 +141,27 @@ app.get('/health', async (c) => {
 	}
 })
 
-registerStripeWebhookRoute(app, { appRuntime })
+if (stripeService) {
+	registerStripeWebhookRoute(app, { appRuntime })
+	registerBillingCheckoutCompletionRoutes(app)
+}
 registerWorkosWebhookRoute(app, {
 	workosService: workosSdkAdapter,
 	stripeService,
 	db,
 	backfillAccessRequestRequesterUserId,
 })
-registerResendWebhookRoute(app, { resend, webhookSecret: getResendWebhookSecret(), logger })
-registerBillingCheckoutCompletionRoutes(app)
+if (resendWebhookKeys) {
+	registerResendWebhookRoute(app, {
+		resend: new Resend(resendWebhookKeys.RESEND_API_KEY),
+		webhookSecret: resendWebhookKeys.RESEND_WEBHOOK_SECRET,
+		logger,
+	})
+}
 registerGitHubSetupCallbackRoute(app, { appRuntime, logger })
 registerGitHubWebhookRoute(app, { appRuntime, logger })
-registerJiraOAuthCallbackRoute(app, { jiraService, appRuntime, logger })
-registerLinearOAuthCallbackRoute(app, { linearService, appRuntime, logger })
+if (jiraService) registerJiraOAuthCallbackRoute(app, { jiraService, appRuntime, logger })
+if (linearService) registerLinearOAuthCallbackRoute(app, { linearService, appRuntime, logger })
 registerSlackOAuthCallbackRoute(app, { appRuntime, logger })
 registerSlackInteractionsRoute(app, { appRuntime, logger })
 

@@ -271,6 +271,16 @@ const advancedMetricsRequired = effectImplementer.middleware<{ auth: AuthContext
 export const effectOrpcBaseForAdvancedMetrics = effectOrpcBaseOrganizationRequired.use(advancedMetricsRequired)
 
 /**
+ * Exposes the classic `services` bag to an Effect procedure, for the class-based services that
+ * have no Effect layer yet (Jira, Linear). Everything with a layer comes from the runtime instead.
+ */
+export const classicServicesEffectMiddleware = effectImplementer.middleware<{ services: Services }, unknown>(
+	// The handler always passes `services`; the Effect context type only hides it.
+	async ({ context, next }) =>
+		next({ context: { services: (context as typeof context & { services: Services }).services } }),
+)
+
+/**
  * Middleware on the effect implementer for a procedure whick requires billing
  */
 export const requiresBillingEffectMiddleware = effectImplementer.middleware<

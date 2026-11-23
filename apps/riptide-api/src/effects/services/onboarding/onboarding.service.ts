@@ -97,10 +97,31 @@ export class OnboardingService extends Context.Service<
 	}
 >()('OnboardingService') {}
 
+/**
+ * The onboarding service for a deployment that cannot send email. Every method does nothing and
+ * reports nothing, so the request paths that record milestones (comments, tasks, artifacts,
+ * session events, tracker callbacks) never send a failure to Sentry because email is missing.
+ */
+const disabledOnboardingService: typeof OnboardingService.Service = {
+	enrollMember: () => Effect.void,
+	recordRpiTaskCreated: () => Effect.void,
+	recordTrackerConnected: () => Effect.void,
+	recordDesignDocIterated: () => Effect.void,
+	recordDesignDocInboundCommentReceived: () => Effect.void,
+	recordDesignDocInboundCommentResolved: () => Effect.void,
+	recordStructureOutlineCreated: () => Effect.void,
+	recordImplementationStarted: () => Effect.void,
+	recordImplementationComplete: () => Effect.void,
+	recordCommentedOnTeammateDoc: () => Effect.void,
+}
+
 export const OnboardingServiceLive = Layer.effect(
 	OnboardingService,
 	Effect.gen(function* () {
 		const resend = yield* ResendService
+		// Without email the campaign has nothing to send, and RESEND_PRODUCT_USERS_SEGMENT_ID may be
+		// unset, so the config below is not read.
+		if (!resend.configured) return disabledOnboardingService
 		const workos = yield* WorkosService
 		const postgres = yield* PostgresDb
 		// Resolve and validate campaign config once while the layer is built so the

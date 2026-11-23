@@ -23,26 +23,29 @@ const noop = () => {}
 
 export function LauncherSuggestionChipsWired({ disabled }: LauncherSuggestionChipsWiredProps) {
 	const connectIntegration = useConnectIntegrationAction()
+	const linearConfigured = useSettingsStore((state) => state.linearConfigured)
 	const linearEnabled = useSettingsStore((state) => state.linearEnabled)
 	const linearNeedsReauth = useSettingsStore((state) => state.linearNeedsReauth)
+	const jiraConfigured = useSettingsStore((state) => state.jiraConfigured)
 	const jiraEnabled = useSettingsStore((state) => state.jiraEnabled)
 	const jiraNeedsReauth = useSettingsStore((state) => state.jiraNeedsReauth)
 	const dismissedSuggestionIds = useTaskFormV3SuggestionsStore((state) => state.dismissedSuggestionIds)
 	const dismissSuggestion = useTaskFormV3SuggestionsStore((state) => state.dismissSuggestion)
 	const github = useGitHubIssuePreviewSource({ enabled: true, issueInput: '', setIssueInput: noop })
 
+	// Integrations this deployment has no keys for get no chip: connecting them cannot work.
 	const availableChips: LauncherSuggestionChip[] = []
-	if (linearNeedsReauth || !linearEnabled) {
+	if (linearConfigured && (linearNeedsReauth || !linearEnabled)) {
 		availableChips.push({
 			id: 'connect-linear',
 			label: linearNeedsReauth ? 'Reconnect Linear' : 'Connect Linear',
 			kind: 'integration',
 		})
 	}
-	if (!github.isLoadingRepositories && !github.isEnabled) {
+	if (github.isConfigured && !github.isLoadingRepositories && !github.isEnabled) {
 		availableChips.push({ id: 'connect-github', label: 'Connect GitHub', kind: 'integration' })
 	}
-	if (jiraNeedsReauth || !jiraEnabled) {
+	if (jiraConfigured && (jiraNeedsReauth || !jiraEnabled)) {
 		availableChips.push({
 			id: 'connect-jira',
 			label: jiraNeedsReauth ? 'Reconnect Jira' : 'Connect Jira',

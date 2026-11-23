@@ -55,6 +55,10 @@ export const ensurePullRequestStreamProcedure =
 					GitHubMissingPermissionsError: () =>
 						Effect.fail(errors.BAD_REQUEST({ data: { message: 'github_checks_permission_required' } })),
 					GitHubIntegrationUnavailableError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
+					GitHubIntegrationNotConfiguredError: () =>
+						Effect.fail(
+							errors.BAD_REQUEST({ data: { message: 'GitHub is not set up on this deployment' } }),
+						),
 				}),
 			)
 		const pullRequest = fetched

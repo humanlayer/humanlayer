@@ -43,6 +43,7 @@ describe('artifact upsert Slack dispatch', () => {
 
 		runtime = createRuntimeWithTestPostgresLayer(db, {
 			slack: Layer.succeed(SlackService, {
+				configured: true,
 				createInstallUrl: () => Effect.die('createInstallUrl not used'),
 				exchangeCode: () => Effect.die('exchangeCode not used'),
 				getStatus: () => Effect.die('getStatus not used'),
@@ -207,6 +208,7 @@ describe('artifact upsert Slack dispatch', () => {
 		return Effect.gen(function* () {
 			const defectRuntime = createRuntimeWithTestPostgresLayer(db, {
 				slack: Layer.succeed(SlackService, {
+					configured: true,
 					createInstallUrl: () => Effect.die('createInstallUrl not used'),
 					exchangeCode: () => Effect.die('exchangeCode not used'),
 					getStatus: () => Effect.die('getStatus not used'),

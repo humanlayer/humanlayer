@@ -9,10 +9,11 @@ import {
 	JiraReauthRequiredError,
 } from '../../../../lib/jira-service'
 import logger from '../../../../logger'
-import { apiBaseOrgRequired } from '../../../base'
+import { apiBaseOrgRequired, requiresJira } from '../../../base'
 
-export const getJiraIssueProcedure = apiBaseOrgRequired.integrations.jira.getIssue.handler(
-	async ({ input, context, errors }) => {
+export const getJiraIssueProcedure = apiBaseOrgRequired.integrations.jira.getIssue
+	.use(requiresJira)
+	.handler(async ({ input, context, errors }) => {
 		const {
 			auth,
 			services: { jira },
@@ -42,5 +43,4 @@ export const getJiraIssueProcedure = apiBaseOrgRequired.integrations.jira.getIss
 			Sentry.captureException(error, { tags: { error_type: 'jira_get_issue' } })
 			throw errors.INTERNAL_SERVER_ERROR()
 		}
-	},
-)
+	})

@@ -60,6 +60,14 @@ export class SlackIntegrationUnavailableError extends Data.TaggedError('SlackInt
 }> {}
 
 /**
+ * This deployment has no Slack app: at least one SLACK_* key is missing. Not a failure of
+ * Postgres or Slack, so background paths skip it quietly and user actions answer with a 400.
+ */
+export class SlackIntegrationNotConfiguredError extends Data.TaggedError('SlackIntegrationNotConfiguredError')<{
+	readonly operation: string
+}> {}
+
+/**
  * The interaction request signature was missing or did not match the recomputed
  * HMAC. Attacker-triggerable, so the route maps this to `401` and warn-logs it
  * (no Sentry). Models the caller-actionable decision — "reject as unauthenticated" —

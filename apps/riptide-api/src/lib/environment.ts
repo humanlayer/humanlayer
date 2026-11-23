@@ -24,14 +24,6 @@ export function getWorkosWebhookSecret(): string {
 	return requireEnvironment('WORKOS_WEBHOOK_SECRET')
 }
 
-export function getResendApiKey(): string {
-	return requireEnvironment('RESEND_API_KEY')
-}
-
-export function getResendWebhookSecret(): string {
-	return requireEnvironment('RESEND_WEBHOOK_SECRET')
-}
-
 export function getKvUrl(): string {
 	return requireEnvironment('KV_URL')
 }
@@ -52,8 +44,20 @@ export function getStripePriceStarter(): string {
 	return value
 }
 
+/**
+ * The one rule for IS_BILLING_ENFORCEMENT_ENABLED: unset means off, and only the exact string
+ * `true` turns enforcement on.
+ */
+export function parseBillingEnforcementFlag(value: string | undefined): boolean {
+	return value === 'true'
+}
+
+/**
+ * Per-request read of the billing flag, with the same rule startup uses
+ * (`BillingEnforcementEnabledConfig`). Never throws when the variable is unset.
+ */
 export function isBillingEnforcementEnabled(): boolean {
-	return requireEnvironment('IS_BILLING_ENFORCEMENT_ENABLED') === 'true'
+	return parseBillingEnforcementFlag(process.env.IS_BILLING_ENFORCEMENT_ENABLED)
 }
 
 /**

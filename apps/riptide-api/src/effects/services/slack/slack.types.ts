@@ -10,6 +10,7 @@ import type {
 	SlackApiUnavailableError,
 	SlackChannelNotFoundError,
 	SlackInstallStateInvalidError,
+	SlackIntegrationNotConfiguredError,
 	SlackIntegrationUnavailableError,
 	SlackMissingScopeError,
 	SlackNeedsReauthError,
@@ -319,25 +320,43 @@ export type SlackInteractionRequestInput = {
 }
 
 export type SlackServiceShape = {
+	/**
+	 * Whether this deployment has a Slack app (every SLACK_* key set). When false, the service is
+	 * a stand-in: status reads report "not connected", dispatch does nothing, and user actions
+	 * fail with `SlackIntegrationNotConfiguredError`.
+	 */
+	readonly configured: boolean
 	createInstallUrl: (
 		input: SlackServiceCreateInstallUrlInput,
-	) => Effect.Effect<SlackServiceCreateInstallUrlResult, SlackIntegrationUnavailableError, PostgresDb>
+	) => Effect.Effect<
+		SlackServiceCreateInstallUrlResult,
+		SlackIntegrationUnavailableError | SlackIntegrationNotConfiguredError,
+		PostgresDb
+	>
 	exchangeCode: (
 		input: SlackServiceExchangeCodeInput,
 	) => Effect.Effect<
 		SlackServiceExchangeCodeResult,
-		SlackInstallStateInvalidError | SlackOAuthError | SlackIntegrationUnavailableError,
+		| SlackInstallStateInvalidError
+		| SlackOAuthError
+		| SlackIntegrationUnavailableError
+		| SlackIntegrationNotConfiguredError,
 		PostgresDb
 	>
 	getStatus: (
 		input: SlackOrganizationInput,
 	) => Effect.Effect<SlackConnectionStatus, SlackIntegrationUnavailableError, PostgresDb>
-	disconnect: (input: SlackOrganizationInput) => Effect.Effect<void, SlackIntegrationUnavailableError, PostgresDb>
+	disconnect: (
+		input: SlackOrganizationInput,
+	) => Effect.Effect<void, SlackIntegrationUnavailableError | SlackIntegrationNotConfiguredError, PostgresDb>
 	listChannels: (
 		input: SlackOrganizationInput,
 	) => Effect.Effect<
 		readonly SlackChannel[],
-		SlackNotConnectedError | SlackNeedsReauthError | SlackIntegrationUnavailableError,
+		| SlackNotConnectedError
+		| SlackNeedsReauthError
+		| SlackIntegrationUnavailableError
+		| SlackIntegrationNotConfiguredError,
 		PostgresDb
 	>
 	dispatchArtifactEvent: (event: SlackArtifactEvent) => Effect.Effect<void, never, PostgresDb | WorkosService>
@@ -353,7 +372,10 @@ export type SlackServiceShape = {
 		input: SlackInteractionRequestInput,
 	) => Effect.Effect<
 		SlackInteractionPayload,
-		SlackWebhookSignatureInvalidError | SlackWebhookRequestTooOldError | SlackWebhookMalformedRequestError
+		| SlackWebhookSignatureInvalidError
+		| SlackWebhookRequestTooOldError
+		| SlackWebhookMalformedRequestError
+		| SlackIntegrationNotConfiguredError
 	>
 	/**
 	 * Best-effort processing of a verified interaction: emits one safe structured log

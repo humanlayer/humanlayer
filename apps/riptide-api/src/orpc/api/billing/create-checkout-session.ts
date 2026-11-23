@@ -7,12 +7,13 @@ import {
 	resolveBillingCheckoutClient,
 } from '../../../effects/services/billing-checkout-completion/billing-checkout-client'
 import logger from '../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 import { captureInvalidBillingOrganizationRow } from './organization-billing-schema'
 
-export const createCheckoutSessionProcedure = apiBaseForOrganizationAdmin.billing.createCheckoutSession.handler(
-	async ({ input, context, errors }) => {
+export const createCheckoutSessionProcedure = apiBaseForOrganizationAdmin.billing.createCheckoutSession
+	.use(requiresStripe)
+	.handler(async ({ input, context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, effectRuntime, stripe, workos } = context.services
 		const { promoCode } = input
@@ -112,5 +113,4 @@ export const createCheckoutSessionProcedure = apiBaseForOrganizationAdmin.billin
 
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to create checkout session' } })
 		}
-	},
-)
+	})

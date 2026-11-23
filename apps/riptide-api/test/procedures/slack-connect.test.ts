@@ -4,9 +4,11 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 
 import { SlackIntegrationUnavailableError } from '../../src/effects/services/slack/slack.errors'
 import { SlackService } from '../../src/effects/services/slack/slack.service'
+import { unconfiguredSlackService } from '../../src/effects/services/slack/slack.unconfigured'
 import { createSlackInstallUrlProcedure as liveCreateSlackInstallUrlProcedure } from '../../src/orpc/api/integrations/slack/create-install-url.effect'
 import { disconnectSlackProcedure as liveDisconnectSlackProcedure } from '../../src/orpc/api/integrations/slack/disconnect.effect'
 import { getSlackStatusProcedure as liveGetSlackStatusProcedure } from '../../src/orpc/api/integrations/slack/get-status.effect'
+import { listSlackChannelsProcedure as liveListSlackChannelsProcedure } from '../../src/orpc/api/integrations/slack/list-channels.effect'
 import { createMockApiAuth, createMockApiContext } from '../mocks'
 import { bindProcedureToRuntime, createRuntimeWithTestPostgresLayer } from '../utils/effect-procedure-test-runtime'
 
@@ -21,6 +23,7 @@ describe('Slack connect procedures', () => {
 	beforeAll(() => {
 		runtime = createRuntimeWithTestPostgresLayer({} as never, {
 			slack: Layer.succeed(SlackService, {
+				configured: true,
 				createInstallUrl: ({ organizationId: org, requestedByUserId }) =>
 					Effect.succeed({
 						url: `https://slack.test/install?org=${org}&user=${requestedByUserId}`,
@@ -95,6 +98,7 @@ describe('Slack connect procedures', () => {
 	test('maps Slack service unavailability to service unavailable', async () => {
 		const unavailableRuntime = createRuntimeWithTestPostgresLayer({} as never, {
 			slack: Layer.succeed(SlackService, {
+				configured: true,
 				createInstallUrl: () => Effect.fail(new SlackIntegrationUnavailableError({ cause: 'db-down' })),
 				exchangeCode: () => Effect.die('exchangeCode not used'),
 				getStatus: () => Effect.fail(new SlackIntegrationUnavailableError({ cause: 'db-down' })),
@@ -112,5 +116,52 @@ describe('Slack connect procedures', () => {
 			code: 'SERVICE_UNAVAILABLE',
 		})
 		await unavailableRuntime.dispose()
+	})
+
+	test('answers user actions with a 400 when this deployment has no Slack app', async () => {
+		const unconfiguredRuntime = createRuntimeWithTestPostgresLayer({} as never, {
+			slack: Layer.succeed(SlackService, unconfiguredSlackService),
+		})
+		const notSetUp = { code: 'BAD_REQUEST', data: { message: 'Slack is not set up on this deployment' } }
+		try {
+			await expect(
+				call(
+					bindProcedureToRuntime(liveCreateSlackInstallUrlProcedure, unconfiguredRuntime),
+					{},
+					{ context: context() },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveDisconnectSlackProcedure, unconfiguredRuntime),
+					{},
+					{ context: context() },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveListSlackChannelsProcedure, unconfiguredRuntime),
+					{},
+					{ context: context() },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveGetSlackStatusProcedure, unconfiguredRuntime),
+					{},
+					{
+						context: context('member'),
+					},
+				),
+			).resolves.toEqual({
+				connected: false,
+				enabled: false,
+				needsReauth: false,
+				teamName: null,
+				lastErrorCode: null,
+			})
+		} finally {
+			await unconfiguredRuntime.dispose()
+		}
 	})
 })

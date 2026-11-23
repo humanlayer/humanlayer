@@ -12,6 +12,7 @@ import type {
 	GitHubInstallationSuspendedError,
 	GitHubIntegrationDisabledError,
 	GitHubInstallStateInvalidError,
+	GitHubIntegrationNotConfiguredError,
 	GitHubIntegrationUnavailableError,
 	GitHubIssueInputInvalidError,
 	GitHubIssueNotFoundError,
@@ -69,17 +70,30 @@ export interface GitHubDisconnectResult {
 type GitHubApiOperationServices = PostgresDb | HttpClient
 
 export interface GitHubServiceShape {
+	/**
+	 * Whether this deployment has a GitHub App (every GITHUB_APP_* key set). When false, the
+	 * service is a stand-in: `listConnections` reports none, webhook handling does nothing, and
+	 * every other method fails with `GitHubIntegrationNotConfiguredError`.
+	 */
+	readonly configured: boolean
 	readonly createInstallUrl: (input: {
 		readonly organizationId: string
 		readonly requestedByUserId: string
 		readonly repairConnectionId?: string
-	}) => Effect.Effect<GitHubInstallUrl, GitHubConnectionNotFoundError | GitHubIntegrationUnavailableError, PostgresDb>
+	}) => Effect.Effect<
+		GitHubInstallUrl,
+		GitHubConnectionNotFoundError | GitHubIntegrationUnavailableError | GitHubIntegrationNotConfiguredError,
+		PostgresDb
+	>
 	readonly completeInstallation: (input: {
 		readonly installationId: string
 		readonly state?: string
 	}) => Effect.Effect<
 		GitHubInstallationCompletion,
-		GitHubInstallStateInvalidError | GitHubConnectionConflictError | GitHubIntegrationUnavailableError,
+		| GitHubInstallStateInvalidError
+		| GitHubConnectionConflictError
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices
 	>
 	readonly listConnections: (input: {
@@ -88,13 +102,17 @@ export interface GitHubServiceShape {
 	readonly getConnection: (input: {
 		readonly organizationId: string
 		readonly connectionId: string
-	}) => Effect.Effect<GitHubConnection, GitHubConnectionNotFoundError | GitHubIntegrationUnavailableError, PostgresDb>
+	}) => Effect.Effect<
+		GitHubConnection,
+		GitHubConnectionNotFoundError | GitHubIntegrationUnavailableError | GitHubIntegrationNotConfiguredError,
+		PostgresDb
+	>
 	readonly listRepositories: (input: {
 		readonly organizationId: string
 		readonly connectionId: string
 	}) => Effect.Effect<
 		ReadonlyArray<GitHubRepository>,
-		GitHubConnectionNotFoundError | GitHubIntegrationUnavailableError,
+		GitHubConnectionNotFoundError | GitHubIntegrationUnavailableError | GitHubIntegrationNotConfiguredError,
 		PostgresDb
 	>
 	readonly getIssuePreview: (input: {
@@ -111,7 +129,8 @@ export interface GitHubServiceShape {
 		| GitHubMissingPermissionsError
 		| GitHubIssueInputInvalidError
 		| GitHubIssueNotFoundError
-		| GitHubIntegrationUnavailableError,
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices
 	>
 	readonly prepareIssueImport: (input: {
@@ -130,7 +149,8 @@ export interface GitHubServiceShape {
 		| GitHubMissingPermissionsError
 		| GitHubIssueInputInvalidError
 		| GitHubIssueNotFoundError
-		| GitHubIntegrationUnavailableError,
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices | S3
 	>
 	readonly syncArtifactBacklink: (input: {
@@ -146,7 +166,8 @@ export interface GitHubServiceShape {
 		| GitHubInstallationSuspendedError
 		| GitHubMissingPermissionsError
 		| GitHubIssueInputInvalidError
-		| GitHubIntegrationUnavailableError,
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices
 	>
 	/**
@@ -160,7 +181,10 @@ export interface GitHubServiceShape {
 		readonly connectionId: string
 	}) => Effect.Effect<
 		GitHubConnection,
-		GitHubConnectionNotFoundError | GitHubInstallationSuspendedError | GitHubIntegrationUnavailableError,
+		| GitHubConnectionNotFoundError
+		| GitHubInstallationSuspendedError
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices
 	>
 	/**
@@ -173,7 +197,10 @@ export interface GitHubServiceShape {
 		readonly connectionId: string
 	}) => Effect.Effect<
 		GitHubDisconnectResult,
-		GitHubConnectionNotFoundError | GitHubDisconnectFailedError | GitHubIntegrationUnavailableError,
+		| GitHubConnectionNotFoundError
+		| GitHubDisconnectFailedError
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices
 	>
 	readonly fetchPullRequest: (input: {
@@ -186,7 +213,8 @@ export interface GitHubServiceShape {
 		| GitHubRepositoryNotAccessibleError
 		| GitHubRepositoryAccessBlockedError
 		| GitHubMissingPermissionsError
-		| GitHubIntegrationUnavailableError,
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices
 	>
 	/**
@@ -208,7 +236,8 @@ export interface GitHubServiceShape {
 		| GitHubRepositoryAccessBlockedError
 		| GitHubPullRequestNotFoundError
 		| GitHubPullRequestMutationRejectedError
-		| GitHubIntegrationUnavailableError,
+		| GitHubIntegrationUnavailableError
+		| GitHubIntegrationNotConfiguredError,
 		GitHubApiOperationServices
 	>
 	/**
@@ -219,7 +248,10 @@ export interface GitHubServiceShape {
 	readonly verifyWebhook: (input: {
 		readonly rawBody: string
 		readonly headers: Headers
-	}) => Effect.Effect<GitHubWebhookEvent, GitHubWebhookSignatureInvalidError | GitHubWebhookMalformedRequestError>
+	}) => Effect.Effect<
+		GitHubWebhookEvent,
+		GitHubWebhookSignatureInvalidError | GitHubWebhookMalformedRequestError | GitHubIntegrationNotConfiguredError
+	>
 	/**
 	 * Best-effort reconciliation of a verified webhook event. Structurally cannot fail
 	 * (`never`) after a top-level `catchCause` logs and captures every failure or defect, so the

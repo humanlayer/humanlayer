@@ -77,6 +77,7 @@ import { listHostAliasesContract } from './api/hosts/alias-list'
 import { upsertHostAliasContract } from './api/hosts/alias-upsert'
 import { deleteHostContract } from './api/hosts/delete'
 import { requestHostUpdateContract } from './api/hosts/update-request'
+import { getIntegrationCapabilitiesContract } from './api/integrations/get-capabilities'
 import { createGitHubInstallUrlContract } from './api/integrations/github/create-install-url'
 import { disconnectGitHubContract } from './api/integrations/github/disconnect'
 import { getGitHubConnectionContract } from './api/integrations/github/get-connection'
@@ -589,6 +590,7 @@ export const RiptideApiContract = {
 		},
 	},
 	integrations: {
+		getCapabilities: getIntegrationCapabilitiesContract,
 		github: {
 			createInstallUrl: createGitHubInstallUrlContract,
 			getStatus: getGitHubStatusContract,

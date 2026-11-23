@@ -15,7 +15,7 @@ import { WorkosServiceLive } from '../workos'
 import { type AccessRequestService, AccessRequestServiceLive } from './services/access-request/access-request.service'
 import type { ArtifactComments } from './services/artifact-comments/artifact-comments'
 import { ArtifactCommentsLive } from './services/artifact-comments/artifact-comments-live'
-import { BillingCheckoutCompletionServiceLive } from './services/billing-checkout-completion/billing-checkout-completion.live'
+import { BillingCheckoutCompletionServiceForDeploymentLive } from './services/billing-checkout-completion/billing-checkout-completion.live'
 import type { BillingCheckoutCompletionService } from './services/billing-checkout-completion/billing-checkout-completion.service'
 import { BillingAccessLive } from './services/billing/billing-access-service-live'
 import type { BillingAccess } from './services/billing/billing-access.service'
@@ -41,7 +41,6 @@ import {
 } from './services/postgres/postgres-read-replica.service'
 import { PrStatusStreamLive } from './services/pr-status-stream/pr-status-stream.layer'
 import type { PrStatusStream } from './services/pr-status-stream/pr-status-stream.service'
-import { type ResendConfig, ResendConfigLive } from './services/resend/resend-config.service'
 import { ResendServiceWithFetchHttpClientLive } from './services/resend/resend-service-live'
 import { type ResendService } from './services/resend/resend.service'
 import { type S3, S3Live } from './services/s3/s3.service'
@@ -51,7 +50,7 @@ import {
 } from './services/session-title-generation/session-title-generation.service'
 import { type SlackService, SlackServiceLive } from './services/slack/slack.service'
 import type { StripeHttpClient } from './services/stripe/stripe-http-client.service'
-import { StripeServiceWithFetchHttpClientLive } from './services/stripe/stripe-service-live'
+import { StripeServiceForDeploymentLive } from './services/stripe/stripe-service-live'
 import type { StripeService } from './services/stripe/stripe.service'
 import {
 	type TaskDiffService,
@@ -79,7 +78,6 @@ export type AppRuntimeServices =
 	| PersonSpendAnalytics
 	| S3
 	| WorkosService
-	| ResendConfig
 	| ResendService
 	| AccessRequestService
 	| DurableStreamsConfig
@@ -150,7 +148,6 @@ const BaseRuntimeLive = Layer.mergeAll(
 	S3Live,
 	BillingKvLive,
 	DurableStreamsConfigLive.pipe(Layer.orDie),
-	ResendConfigLive,
 )
 	// The one fetch transport, provided once. GitHub operations declare HttpClient in R and receive
 	// this instance ambiently. Other services still wire their own transport; #2415 removes those.
@@ -161,10 +158,12 @@ const CoreServiceLive = Layer.mergeAll(
 	ResendServiceWithFetchHttpClientLive,
 	DurableStreamSessionServiceLive,
 	TaskDiffServiceLive.pipe(Layer.provide(FetchHttpClient.layer), Layer.orDie),
+	// Slack, GitHub, Resend, and Stripe (billing off) start without their keys: each layer reads its
+	// key group first and returns a stand-in, logging the missing keys, when any is unset.
 	SlackServiceLive.pipe(Layer.orDie),
 	WorkspaceSetupServiceLive.pipe(Layer.provide(WorkspaceSetupPersistenceLive)),
 	GitHubServiceLive.pipe(Layer.orDie),
-	StripeServiceWithFetchHttpClientLive.pipe(Layer.orDie),
+	StripeServiceForDeploymentLive.pipe(Layer.orDie),
 	// Reads DURABLE_STREAMS_ORIGIN through DurableStreamsConfig, provided by BaseRuntimeLive below.
 	PrStatusStreamLive,
 ).pipe(Layer.provideMerge(BaseRuntimeLive))
@@ -181,7 +180,7 @@ export const AppRuntimeLive = Layer.mergeAll(
 	EntitlementsLive,
 	PersonSpendAnalyticsLive,
 	OnboardingServiceWithDependenciesLive,
-	BillingCheckoutCompletionServiceLive.pipe(Layer.orDie),
+	BillingCheckoutCompletionServiceForDeploymentLive.pipe(Layer.orDie),
 	ExperimentAnalyticsServiceLive.pipe(Layer.orDie),
 	TaskLaunchServiceLive,
 	TaskIntentClassifierLive,

@@ -128,6 +128,14 @@ export class StripeOperationError extends Data.TaggedError('StripeOperationError
 	readonly cause: StripeProviderError
 }> {}
 
+/**
+ * Billing enforcement is off and at least one STRIPE_* key is missing, so this deployment has no
+ * Stripe account. With enforcement on, a missing key stops startup instead.
+ */
+export class BillingNotConfiguredError extends Data.TaggedError('BillingNotConfiguredError')<{
+	readonly operation: string
+}> {}
+
 export class StripeBillingSyncError extends Data.TaggedError('StripeBillingSyncError')<{
 	readonly customerId: string
 	readonly dependency: 'cache' | 'postgres'
@@ -172,25 +180,35 @@ export type StripeRetrieveCheckoutSessionError =
 	| StripeServiceInputParseError
 	| StripeCheckoutSessionNotFoundError
 	| StripeOperationError
+	| BillingNotConfiguredError
 
 export type StripeRetrieveSubscriptionError =
 	| StripeServiceInputParseError
 	| StripeSubscriptionNotFoundError
 	| StripeOperationError
+	| BillingNotConfiguredError
 
-export type StripeListCustomerSubscriptionsError = StripeServiceInputParseError | StripeOperationError
+export type StripeListCustomerSubscriptionsError =
+	| StripeServiceInputParseError
+	| StripeOperationError
+	| BillingNotConfiguredError
 
 export type StripeCancelSubscriptionError =
 	| StripeServiceInputParseError
 	| StripeSubscriptionAlreadyGoneError
 	| StripeOperationError
+	| BillingNotConfiguredError
 
-export type StripeCheckoutSessionCreateError = StripeServiceInputParseError | StripeOperationError
+export type StripeCheckoutSessionCreateError =
+	| StripeServiceInputParseError
+	| StripeOperationError
+	| BillingNotConfiguredError
 
 export type StripeSyncCustomerBillingError =
 	| StripeServiceInputParseError
 	| StripeBillingSyncError
 	| StripeOperationError
+	| BillingNotConfiguredError
 
 export type StripeServiceError =
 	| StripeServiceInputParseError
@@ -199,3 +217,4 @@ export type StripeServiceError =
 	| StripeOperationError
 	| StripeSubscriptionAlreadyGoneError
 	| StripeBillingSyncError
+	| BillingNotConfiguredError

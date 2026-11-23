@@ -46,6 +46,8 @@ export type NotifyResult =
 			ok: false
 			admin: AdminInfo
 			error: string
+			/** True when no email was sent because email is not set up on this deployment. */
+			skipped?: true
 	  }
 
 export type ArtifactLookupRow = {

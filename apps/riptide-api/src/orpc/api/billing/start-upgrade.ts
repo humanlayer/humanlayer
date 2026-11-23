@@ -11,12 +11,13 @@ import {
 import { refreshStripeBillingCache } from '../../../effects/services/billing/billing-access.service'
 import { buildBillingClientUrl } from '../../../lib/stripe-service'
 import logger from '../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 import { captureInvalidBillingOrganizationRow } from './organization-billing-schema'
 
-export const startUpgradeProcedure = apiBaseForOrganizationAdmin.billing.startUpgrade.handler(
-	async ({ input, context, errors }) => {
+export const startUpgradeProcedure = apiBaseForOrganizationAdmin.billing.startUpgrade
+	.use(requiresStripe)
+	.handler(async ({ input, context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, effectRuntime, stripe, workos } = context.services
 
@@ -91,5 +92,4 @@ export const startUpgradeProcedure = apiBaseForOrganizationAdmin.billing.startUp
 			if (error instanceof ORPCError) throw error
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to start upgrade' } })
 		}
-	},
-)
+	})

@@ -30,7 +30,6 @@ import { OnboardingServiceLive } from '../../src/effects/services/onboarding/onb
 import { PostgresDbLive } from '../../src/effects/services/postgres/postgres-db.service'
 import { PostgresReadReplicaDbLive } from '../../src/effects/services/postgres/postgres-read-replica.service'
 import { PrStatusStream } from '../../src/effects/services/pr-status-stream/pr-status-stream.service'
-import { ResendConfig } from '../../src/effects/services/resend/resend-config.service'
 import { ResendService } from '../../src/effects/services/resend/resend.service'
 import { S3 } from '../../src/effects/services/s3/s3.service'
 import { SessionTitleGeneration } from '../../src/effects/services/session-title-generation/session-title-generation.service'
@@ -45,6 +44,7 @@ import { WorkosService } from '../../src/effects/services/workos/workos.service'
 import { WorkspaceSetupServiceLive } from '../../src/effects/services/workspace-setup/workspace-setup.live'
 import { WorkspaceSetupPersistenceLive } from '../../src/effects/services/workspace-setup/workspace-setup.persistence'
 import type { WorkosSdkAdapter } from '../../src/lib/workos-service'
+import { AccessRequestLinkOriginsTestConfig } from '../fixtures/resend-config-test-layer'
 
 export type TestRuntimeOptions = {
 	durableStreamsOrigin?: string
@@ -56,7 +56,6 @@ export type TestRuntimeOptions = {
 	 */
 	readReplicaDb?: PgDatabase<PostgresJsQueryResultHKT>
 	workos?: Layer.Layer<WorkosService>
-	resendConfig?: Layer.Layer<ResendConfig>
 	resend?: Layer.Layer<ResendService>
 	accessRequests?: Layer.Layer<AccessRequestService>
 	slack?: Layer.Layer<SlackService>
@@ -144,15 +143,9 @@ export const createTestOnboardingLayer = (
 		Layer.provide(Layer.mergeAll(PostgresDbLive(db), workosLayer, fakeResendLayer, OnboardingConfigTestLayer)),
 	)
 
-const fakeResendConfigLayer = Layer.succeed(ResendConfig, {
-	apiKey: Redacted.make('re_test_key'),
-	apiBaseUrl: 'https://resend.example.test',
-	fromEmail: 'test@example.com',
-	cloudOrigin: 'https://cloud.example.com',
-	appOrigin: 'https://app.example.com',
-})
-
 const fakeResendLayer = Layer.succeed(ResendService, {
+	configured: true,
+	fromAddress: 'notifications@example.test',
 	sendPlaintext: () => Effect.succeed({ emailId: 'test-email-id' }),
 	schedulePlaintext: (input) =>
 		Effect.succeed({ emailId: 'test-scheduled-email-id', scheduledAt: input.scheduledAt.toISOString() }),
@@ -182,6 +175,7 @@ const s3TestLayer = Layer.succeed(S3, {
 })
 
 export const fakeSlackLayer = Layer.succeed(SlackService, {
+	configured: true,
 	createInstallUrl: () => Effect.die('createInstallUrl not implemented in test runtime'),
 	exchangeCode: () => Effect.die('exchangeCode not implemented in test runtime'),
 	getStatus: () => Effect.die('getStatus not implemented in test runtime'),
@@ -194,6 +188,7 @@ export const fakeSlackLayer = Layer.succeed(SlackService, {
 })
 
 const fakeGitHubLayer = Layer.succeed(GitHubService, {
+	configured: true,
 	createInstallUrl: () => Effect.die('createInstallUrl not implemented in test runtime'),
 	completeInstallation: () => Effect.die('completeInstallation not implemented in test runtime'),
 	listConnections: () => Effect.die('listConnections not implemented in test runtime'),
@@ -225,6 +220,7 @@ const fakePrStatusStreamLayer = Layer.succeed(PrStatusStream, {
 })
 
 const fakeStripeLayer = Layer.succeed(StripeService, {
+	configured: true,
 	processWebhook: () => Effect.die('processWebhook not implemented in test runtime'),
 	createCheckoutSession: () => Effect.die('createCheckoutSession not implemented in test runtime'),
 	createProUpgradeCheckoutSession: () =>
@@ -325,13 +321,12 @@ export function createRuntimeWithTestPostgresLayer(
 	)
 
 	const workosLayer = options?.workos ?? defaultTestWorkosLayer
-	const resendConfigLayer = options?.resendConfig ?? fakeResendConfigLayer
 	const resendLayer = options?.resend ?? fakeResendLayer
 	const accessRequestsLayer =
 		options?.accessRequests ??
 		Layer.provideMerge(
 			AccessRequestServiceLive,
-			Layer.mergeAll(PostgresDbLive(db), workosLayer, resendLayer, resendConfigLayer),
+			Layer.mergeAll(PostgresDbLive(db), workosLayer, resendLayer, AccessRequestLinkOriginsTestConfig()),
 		)
 	const onboardingLayer = createTestOnboardingLayer(db, workosLayer)
 	const slackLayer = options?.slack ?? fakeSlackLayer
@@ -370,7 +365,6 @@ export function createRuntimeWithTestPostgresLayer(
 			PersonSpendAnalyticsLive,
 			options?.s3 ?? s3TestLayer,
 			workosLayer,
-			resendConfigLayer,
 			resendLayer,
 			accessRequestsLayer,
 			durableStreamsConfig,

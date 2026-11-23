@@ -934,6 +934,45 @@ describe('tasks v2 create', () => {
 		expect(byName.get('PROJ-99.md')?.content).toContain('Steps to reproduce the Jira issue')
 	})
 
+	test.each([
+		{ provider: 'jira' as const, ticketId: 'PROJ-99', message: 'Jira is not set up on this deployment' },
+		{ provider: 'linear' as const, ticketId: 'ENG-7', message: 'Linear is not set up on this deployment' },
+	])(
+		'rejects a $provider ticket with BAD_REQUEST when $provider is not set up',
+		async ({ provider, ticketId, message }) => {
+			const actor = await setupActor()
+			const taskId = uuidv7()
+			const ctx = createMockApiContext({
+				auth: {
+					userId: actor.userId,
+					organizationId: actor.organizationId,
+					workosOrganizationId: `workos-${actor.organizationId}`,
+				},
+				services: { ...services, [provider]: null },
+			})
+
+			await expect(
+				call(
+					createTaskV2,
+					{
+						taskId,
+						workspaceId: uuidv7(),
+						projectId: actor.projectId,
+						name: 'Unconfigured ticket task',
+						slug: `unconfigured-${provider}-task`,
+						repositories: [repository],
+						taskContent: 'Fix the issue',
+						ticketProvider: provider,
+						ticketId,
+						firstSession: { ...firstSession, hostId: actor.hostId },
+					},
+					{ context: ctx },
+				),
+			).rejects.toMatchObject({ code: 'BAD_REQUEST', data: { message } })
+			expect(await db.select().from(tasks).where(eq(tasks.id, taskId))).toHaveLength(0)
+		},
+	)
+
 	test('creates task without ticket artifact when no provider is set', async () => {
 		const actor = await setupActor()
 		const taskId = uuidv7()

@@ -7,6 +7,7 @@ import {
 	GitHubDisconnectFailedError,
 } from '../../src/effects/services/github/github.errors'
 import { GitHubService } from '../../src/effects/services/github/github.service'
+import { unconfiguredGitHubService } from '../../src/effects/services/github/github.unconfigured'
 import { createGitHubInstallUrlProcedure as liveCreateInstallUrlProcedure } from '../../src/orpc/api/integrations/github/create-install-url.effect'
 import { disconnectGitHubProcedure as liveDisconnectProcedure } from '../../src/orpc/api/integrations/github/disconnect.effect'
 import { getGitHubConnectionProcedure as liveGetConnectionProcedure } from '../../src/orpc/api/integrations/github/get-connection.effect'
@@ -60,6 +61,7 @@ describe('GitHub integration procedures', () => {
 	beforeAll(() => {
 		runtime = createRuntimeWithTestPostgresLayer({} as never, {
 			github: Layer.succeed(GitHubService, {
+				configured: true,
 				createInstallUrl: ({ organizationId: requestedOrganizationId, requestedByUserId }) =>
 					Effect.succeed({
 						url: `https://github.test/install?org=${requestedOrganizationId}&user=${requestedByUserId}`,
@@ -238,6 +240,67 @@ describe('GitHub integration procedures', () => {
 		await expect(
 			call(disconnectProcedure, { connectionId: failingConnectionId }, { context: context('admin') }),
 		).rejects.toMatchObject({ code: 'SERVICE_UNAVAILABLE' })
+	})
+
+	test('answers user actions with a 400 when this deployment has no GitHub App', async () => {
+		const unconfiguredRuntime = createRuntimeWithTestPostgresLayer({} as never, {
+			github: Layer.succeed(GitHubService, unconfiguredGitHubService),
+		})
+		const notSetUp = { code: 'BAD_REQUEST', data: { message: 'GitHub is not set up on this deployment' } }
+		try {
+			await expect(
+				call(
+					bindProcedureToRuntime(liveCreateInstallUrlProcedure, unconfiguredRuntime),
+					{},
+					{ context: context('admin') },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveGetConnectionProcedure, unconfiguredRuntime),
+					{ connectionId },
+					{ context: context('member') },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveListRepositoriesProcedure, unconfiguredRuntime),
+					{ connectionId },
+					{ context: context('member') },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveGetIssuePreviewProcedure, unconfiguredRuntime),
+					{ connectionId, repositoryId: '101', issueInput: '42' },
+					{ context: context('member') },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveRefreshConnectionProcedure, unconfiguredRuntime),
+					{ connectionId },
+					{ context: context('admin') },
+				),
+			).rejects.toMatchObject(notSetUp)
+			await expect(
+				call(
+					bindProcedureToRuntime(liveDisconnectProcedure, unconfiguredRuntime),
+					{ connectionId },
+					{ context: context('admin') },
+				),
+			).rejects.toMatchObject(notSetUp)
+			// Listing connections still works: there are none.
+			await expect(
+				call(
+					bindProcedureToRuntime(liveListConnectionsProcedure, unconfiguredRuntime),
+					{},
+					{ context: context('member') },
+				),
+			).resolves.toEqual({ enabled: false, connections: [] })
+		} finally {
+			await unconfiguredRuntime.dispose()
+		}
 	})
 })
 

@@ -128,6 +128,61 @@ describe('organizations.create', async () => {
 		expect(userMembership?.role.slug).toBe('admin')
 	})
 
+	test('Without Stripe, creates the organization and still writes the WorkOS metadata login reads', async () => {
+		const workos = createWorkos()
+		const orgName = `No Billing Org ${randomUUID()}`
+
+		const result = await call(
+			createOrganizationProcedure,
+			{ name: orgName, eulaAccepted: true },
+			{
+				context: createMockApiContextNoOrg({
+					auth: mockAuth,
+					services: { workos, db, dbReadReplica: db, stripe: null },
+				}),
+			},
+		)
+
+		expect(result.organizationName).toBe(orgName)
+		expect(result.stripeCustomerId).toBeUndefined()
+
+		const [dbOrg] = await db.select().from(organizations).where(eq(organizations.id, result.organizationId))
+		expect(dbOrg?.stripe_customer_id).toBeNull()
+
+		const workosOrg = Array.from(workos._organizations.values()).find((org) => org.name === orgName)
+		expect(workosOrg?.metadata.internal_org_id).toBe(result.organizationId)
+		expect(workosOrg?.stripeCustomerId ?? null).toBeNull()
+
+		const membership = Array.from(workos._memberships.values()).find(
+			(candidate) => candidate.organizationId === workosOrg?.id,
+		)
+		expect(membership?.userId).toBe(userId)
+		expect(membership?.role.slug).toBe('admin')
+	})
+
+	test('Without Stripe, a WorkOS metadata failure still rolls back the DB org', async () => {
+		const workos = createWorkos()
+		workos.organizations.updateOrganization = async () => {
+			throw new Error('WorkOS update failed')
+		}
+		const orgName = `No Billing Rollback Org ${randomUUID()}`
+
+		await expect(
+			call(
+				createOrganizationProcedure,
+				{ name: orgName, eulaAccepted: true },
+				{
+					context: createMockApiContextNoOrg({
+						auth: mockAuth,
+						services: { workos, db, dbReadReplica: db, stripe: null },
+					}),
+				},
+			),
+		).rejects.toMatchObject({ code: 'INTERNAL_SERVER_ERROR' })
+
+		expect(await db.select().from(organizations).where(eq(organizations.name, orgName))).toHaveLength(0)
+	})
+
 	test('Billing provisioning failure rolls back DB org and returns error', async () => {
 		const workos = createWorkos()
 		const stripe = createMockStripeService({

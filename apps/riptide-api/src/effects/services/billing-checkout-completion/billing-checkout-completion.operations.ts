@@ -31,6 +31,8 @@ export const retrieveCheckoutSessionForCompletion = (sessionId: string) =>
 				StripeServiceInputParseError: (cause) =>
 					Effect.fail(new CheckoutSessionRetrieveError({ sessionId, cause })),
 				StripeOperationError: (cause) => Effect.fail(new CheckoutSessionRetrieveError({ sessionId, cause })),
+				BillingNotConfiguredError: (cause) =>
+					Effect.fail(new CheckoutSessionRetrieveError({ sessionId, cause })),
 			}),
 		)
 	})
@@ -56,6 +58,8 @@ export const retrieveSubscriptionForCompletion = (input: {
 					Effect.fail(new SubscriptionRetrieveError({ subscriptionId: input.subscriptionId, cause })),
 				StripeOperationError: (cause) =>
 					Effect.fail(new SubscriptionRetrieveError({ subscriptionId: input.subscriptionId, cause })),
+				BillingNotConfiguredError: (cause) =>
+					Effect.fail(new SubscriptionRetrieveError({ subscriptionId: input.subscriptionId, cause })),
 			}),
 		)
 	})
@@ -69,6 +73,8 @@ export const listCustomerSubscriptionsForCompletion = (customerId: string) =>
 				StripeServiceInputParseError: (cause) =>
 					Effect.fail(new CustomerSubscriptionListError({ customerId, cause })),
 				StripeOperationError: (cause) => Effect.fail(new CustomerSubscriptionListError({ customerId, cause })),
+				BillingNotConfiguredError: (cause) =>
+					Effect.fail(new CustomerSubscriptionListError({ customerId, cause })),
 			}),
 		)
 	})
@@ -88,6 +94,8 @@ export const cancelSubscriptionForCompletion = (subscriptionId: string) =>
 					Effect.fail(new StripeSubscriptionCancelError({ subscriptionId, cause })),
 				StripeOperationError: (cause) =>
 					Effect.fail(new StripeSubscriptionCancelError({ subscriptionId, cause })),
+				BillingNotConfiguredError: (cause) =>
+					Effect.fail(new StripeSubscriptionCancelError({ subscriptionId, cause })),
 			}),
 		)
 	})
@@ -102,6 +110,7 @@ export const syncCustomerBillingToKvForCompletion = (customerId: string) =>
 					Effect.fail(new CheckoutStripeKvSyncError({ customerId, cause })),
 				StripeBillingSyncError: (cause) => Effect.fail(new CheckoutStripeKvSyncError({ customerId, cause })),
 				StripeOperationError: (cause) => Effect.fail(new CheckoutStripeKvSyncError({ customerId, cause })),
+				BillingNotConfiguredError: (cause) => Effect.fail(new CheckoutStripeKvSyncError({ customerId, cause })),
 			}),
 		)
 	})

@@ -1,8 +1,9 @@
-import { Config, Effect, Layer, Match, Predicate, Result } from 'effect'
+import { Config, Effect, Layer, Match, Option, Predicate, Result } from 'effect'
 import type * as Cause from 'effect/Cause'
 import * as Schema from 'effect/Schema'
 
 import { Sentry } from '../../../instrument'
+import { readStripeDeployment } from '../stripe/stripe-deployment'
 import type { BillingCheckoutCompletionInternalError } from './billing-checkout-completion.errors'
 import { CheckoutRedirectQueryParseError } from './billing-checkout-completion.errors'
 import {
@@ -30,13 +31,18 @@ import type {
 	RedirectOrigins,
 } from './billing-checkout-completion.types'
 
+const loadRedirectOrigins = Effect.gen(function* () {
+	const origins: RedirectOrigins = {
+		appOrigin: yield* Config.URL('APP_ORIGIN'),
+		cloudOrigin: yield* Config.URL('CLOUD_ORIGIN'),
+	}
+	return origins
+})
+
 export const BillingCheckoutCompletionServiceLive = Layer.effect(
 	BillingCheckoutCompletionService,
 	Effect.gen(function* () {
-		const origins: RedirectOrigins = {
-			appOrigin: yield* Config.URL('APP_ORIGIN'),
-			cloudOrigin: yield* Config.URL('CLOUD_ORIGIN'),
-		}
+		const origins = yield* loadRedirectOrigins
 		const proPriceId = yield* Config.String('STRIPE_PRICE_PRO')
 		const starterPriceId = yield* Config.String('STRIPE_PRICE_STARTER')
 
@@ -147,6 +153,46 @@ export const BillingCheckoutCompletionServiceLive = Layer.effect(
 			resyncFromCheckoutRedirect: (input) => completeRedirect(input, 'resync', resyncCheckout),
 		}
 	}),
+)
+
+/**
+ * Checkout completion for a deployment without Stripe. Both redirects send the member back to
+ * billing settings with `checkout_unavailable`; STRIPE_PRICE_* is never read.
+ */
+const UnconfiguredBillingCheckoutCompletionServiceLive = Layer.effect(
+	BillingCheckoutCompletionService,
+	Effect.gen(function* () {
+		const origins = yield* loadRedirectOrigins
+		const redirectUnavailable = (input: CheckoutRedirectInput, operation: string) => {
+			const requestedClient = URL.canParse(input.url) ? new URL(input.url).searchParams.get('client') : null
+			const client = Option.getOrElse(
+				Schema.decodeUnknownOption(ClientSchema)(requestedClient),
+				(): Client => 'cloud',
+			)
+			return Effect.succeed(buildFailureRedirect({ origins, client, errorCode: 'checkout_unavailable' })).pipe(
+				Effect.withSpan(`billing_checkout.${operation}`, { attributes: { stripe_configured: false } }),
+			)
+		}
+		return {
+			finalizeStarterToProUpgradeFromRedirect: (input) =>
+				redirectUnavailable(input, 'finalize_starter_to_pro_upgrade'),
+			resyncFromCheckoutRedirect: (input) => redirectUnavailable(input, 'resync'),
+		}
+	}),
+)
+
+/**
+ * The application's checkout completion service. It follows the Stripe decision in
+ * `readStripeDeployment`, so it reads STRIPE_PRICE_* only when the real Stripe service runs.
+ */
+export const BillingCheckoutCompletionServiceForDeploymentLive = Layer.unwrap(
+	readStripeDeployment.pipe(
+		Effect.map((deployment) =>
+			deployment.stripeConfigured
+				? BillingCheckoutCompletionServiceLive
+				: UnconfiguredBillingCheckoutCompletionServiceLive,
+		),
+	),
 )
 
 function captureThenNarrow(input: {

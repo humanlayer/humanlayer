@@ -32,6 +32,7 @@ import { GitHubIssuePreview, type GitHubIssuePreviewData } from '@/components/Gi
 import { GitHubRepositoryPicker, type GitHubRepositoryOption } from '@/components/GitHubRepositoryPicker'
 import { HotkeyScopeBoundary } from '@/components/HotkeyScopeBoundary'
 import { IntegrationCTA } from '@/components/IntegrationCTA'
+import { IntegrationNotSetUpNotice } from '@/components/IntegrationNotSetUpNotice'
 import { LaunchDaemonEntryPoint } from '@/components/launch-daemon/LaunchDaemonEntryPoint'
 import { LaunchDaemonModal } from '@/components/launch-daemon/LaunchDaemonModal'
 import {
@@ -402,6 +403,10 @@ const MobileIssueSourceSection: FC<MobileIssueSourceSectionProps> = ({
 	const jiraEnabled = useSettingsStore((s) => s.jiraEnabled)
 	const linearNeedsReauth = useSettingsStore((s) => s.linearNeedsReauth)
 	const jiraNeedsReauth = useSettingsStore((s) => s.jiraNeedsReauth)
+	// Whether this deployment has the keys at all; without them there is nothing to connect
+	const linearConfigured = useSettingsStore((s) => s.linearConfigured)
+	const jiraConfigured = useSettingsStore((s) => s.jiraConfigured)
+	const githubConfigured = useSettingsStore((s) => s.githubConfigured)
 	const setV2IssueSource = useTaskSettingsStore((s) => s.setV2IssueSource)
 	const { roles } = useBrowserAuth()
 	const isAdmin = roles?.includes('admin') ?? false
@@ -432,17 +437,29 @@ const MobileIssueSourceSection: FC<MobileIssueSourceSectionProps> = ({
 		{
 			value: 'linear',
 			label: 'Linear',
-			description: linearEnabled ? 'Import ticket details.' : 'Connect Linear in settings.',
+			description: !linearConfigured
+				? 'Not set up on this instance.'
+				: linearEnabled
+					? 'Import ticket details.'
+					: 'Connect Linear in settings.',
 		},
 		{
 			value: 'jira',
 			label: 'Jira',
-			description: jiraEnabled ? 'Import issue details.' : 'Connect Jira in settings.',
+			description: !jiraConfigured
+				? 'Not set up on this instance.'
+				: jiraEnabled
+					? 'Import issue details.'
+					: 'Connect Jira in settings.',
 		},
 		{
 			value: 'github',
 			label: 'GitHub',
-			description: githubEnabled ? 'Preview an installed issue.' : 'Connect GitHub in settings.',
+			description: !githubConfigured
+				? 'Not set up on this instance.'
+				: githubEnabled
+					? 'Preview an installed issue.'
+					: 'Connect GitHub in settings.',
 		},
 	]
 
@@ -471,7 +488,8 @@ const MobileIssueSourceSection: FC<MobileIssueSourceSectionProps> = ({
 				</Field>
 			)}
 
-			{issueSource === 'linear' && !linearEnabled && (
+			{issueSource === 'linear' && !linearConfigured && <IntegrationNotSetUpNotice name="Linear" />}
+			{issueSource === 'linear' && linearConfigured && !linearEnabled && (
 				<IntegrationCTA
 					name="Linear"
 					needsReauth={linearNeedsReauth}
@@ -481,7 +499,8 @@ const MobileIssueSourceSection: FC<MobileIssueSourceSectionProps> = ({
 				/>
 			)}
 
-			{issueSource === 'jira' && !jiraEnabled && (
+			{issueSource === 'jira' && !jiraConfigured && <IntegrationNotSetUpNotice name="Jira" />}
+			{issueSource === 'jira' && jiraConfigured && !jiraEnabled && (
 				<IntegrationCTA
 					name="Jira"
 					needsReauth={jiraNeedsReauth}
@@ -491,7 +510,8 @@ const MobileIssueSourceSection: FC<MobileIssueSourceSectionProps> = ({
 				/>
 			)}
 
-			{issueSource === 'github' && !githubEnabled && (
+			{issueSource === 'github' && !githubConfigured && <IntegrationNotSetUpNotice name="GitHub" />}
+			{issueSource === 'github' && githubConfigured && !githubEnabled && (
 				<div className="space-y-2">
 					<IntegrationCTA
 						name="GitHub"
@@ -504,7 +524,7 @@ const MobileIssueSourceSection: FC<MobileIssueSourceSectionProps> = ({
 				</div>
 			)}
 
-			{issueSource === 'linear' && linearEnabled && (
+			{issueSource === 'linear' && linearConfigured && linearEnabled && (
 				<Field data-invalid={!!ticketError}>
 					<FieldLabel>Linear Ticket ID or URL</FieldLabel>
 					<div className="relative">
@@ -537,7 +557,7 @@ const MobileIssueSourceSection: FC<MobileIssueSourceSectionProps> = ({
 				</Field>
 			)}
 
-			{issueSource === 'jira' && jiraEnabled && (
+			{issueSource === 'jira' && jiraConfigured && jiraEnabled && (
 				<Field data-invalid={!!ticketError}>
 					<FieldLabel>Jira Ticket Key</FieldLabel>
 					<div className="relative">

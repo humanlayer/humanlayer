@@ -12,6 +12,10 @@ export const getGitHubConnectionProcedure = effectOrpcBaseOrganizationRequired.i
 				Effect.catchTags({
 					GitHubConnectionNotFoundError: () => Effect.fail(errors.NOT_FOUND()),
 					GitHubIntegrationUnavailableError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
+					GitHubIntegrationNotConfiguredError: () =>
+						Effect.fail(
+							errors.BAD_REQUEST({ data: { message: 'GitHub is not set up on this deployment' } }),
+						),
 				}),
 			)
 		return { connection }

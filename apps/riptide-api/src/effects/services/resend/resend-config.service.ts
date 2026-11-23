@@ -4,13 +4,11 @@ export type ResendConfigShape = {
 	apiKey: Redacted.Redacted<string>
 	apiBaseUrl: string
 	fromEmail: string
-	cloudOrigin: string
-	appOrigin: string
 }
 
 /**
- * Configuration for the Resend email service.
- * Loads from environment variables. The fetch seam can be overridden for tests.
+ * Credentials and sender for the Resend email service. Built only when email is set up on this
+ * deployment (see `ResendServiceWithFetchHttpClientLive`). The fetch seam can be overridden for tests.
  */
 export class ResendConfig extends Context.Service<ResendConfig, ResendConfigShape>()('ResendConfig') {}
 
@@ -22,15 +20,11 @@ export const ResendConfigLive = Layer.effect(
 			Config.withDefault('https://api.resend.com'),
 		)
 		const fromEmail = yield* Config.String('RESEND_FROM_EMAIL')
-		const cloudOrigin = yield* Config.String('CLOUD_ORIGIN')
-		const appOrigin = yield* Config.String('APP_ORIGIN')
 
 		return {
 			apiKey,
 			apiBaseUrl,
 			fromEmail,
-			cloudOrigin,
-			appOrigin,
 		}
 	}),
 )

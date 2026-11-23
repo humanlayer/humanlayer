@@ -1,3 +1,4 @@
+import type { IntegrationCapabilities } from '@humanlayer/riptide-api-contract/api/integrations/get-capabilities'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@workos-inc/authkit-react'
 
@@ -22,9 +23,20 @@ function SettingsStoreSync({ scope, data }: SettingsStoreSyncProps) {
 	return null
 }
 
+/** Writes the deployment's capabilities into the store; null (request failed) counts all as set up. */
+function CapabilitiesStoreSync({ capabilities }: { capabilities: IntegrationCapabilities | null }) {
+	useMountEffect(() => {
+		useSettingsStore.getState().applyIntegrationCapabilities(capabilities)
+	})
+
+	return null
+}
+
 /**
  * Polls user settings every 10s and writes effective/org/user settings
  * into the Zustand settings store so they are available app-wide.
+ * Also fetches which integrations this deployment has set up, once per auth scope: the server
+ * fixes that answer at startup, so it never goes stale and is not retried.
  */
 export function SettingsSyncHandler() {
 	const { queryClient: api, authScope } = useRiptideApi()
@@ -39,5 +51,28 @@ export function SettingsSyncHandler() {
 		enabled: scope !== null,
 	})
 
-	return <SettingsStoreSync key={`${scope ?? 'signed-out'}:${dataUpdatedAt}`} scope={scope} data={data} />
+	const capabilitiesOptions = api.integrations.getCapabilities.queryOptions({
+		input: {},
+		context: { silent: true },
+	})
+	const capabilities = useQuery({
+		...capabilitiesOptions,
+		queryKey: [...capabilitiesOptions.queryKey, authScope],
+		enabled: scope !== null,
+		staleTime: Number.POSITIVE_INFINITY,
+		gcTime: Number.POSITIVE_INFINITY,
+		retry: false,
+	})
+
+	return (
+		<>
+			<SettingsStoreSync key={`${scope ?? 'signed-out'}:${dataUpdatedAt}`} scope={scope} data={data} />
+			{capabilities.isPending ? null : (
+				<CapabilitiesStoreSync
+					key={`${scope ?? 'signed-out'}:${capabilities.status}:${capabilities.dataUpdatedAt}`}
+					capabilities={capabilities.data ?? null}
+				/>
+			)}
+		</>
+	)
 }

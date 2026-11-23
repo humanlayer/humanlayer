@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import * as Sentry from '@sentry/node'
-import { Context, DateTime, Effect, Layer, Option, Result } from 'effect'
+import { Config, Context, DateTime, Effect, Layer, Option, Result } from 'effect'
 
 import type {
 	ArchiveAccessRequestInput,
@@ -12,7 +12,6 @@ import type {
 } from '../../../lib/access-request-port'
 import { retryDbTransient, retryWorkosTransient } from '../../retry-schedules'
 import type { PostgresDb } from '../postgres/postgres-db.service'
-import { ResendConfig } from '../resend/resend-config.service'
 import { ResendService } from '../resend/resend.service'
 import { WorkosService } from '../workos/workos.service'
 import {
@@ -111,7 +110,12 @@ export const AccessRequestServiceLive = Layer.effect(
 	Effect.gen(function* () {
 		const workos = yield* WorkosService
 		const resend = yield* ResendService
-		const resendConfig = yield* ResendConfig
+		// Link origins for the admin notification email. Read here rather than from ResendConfig,
+		// which only exists when email is set up on this deployment.
+		const linkOrigins = {
+			cloudOrigin: yield* Config.String('CLOUD_ORIGIN'),
+			appOrigin: yield* Config.String('APP_ORIGIN'),
+		}
 
 		const lookupUser = (userId: string | null) =>
 			userId
@@ -194,9 +198,9 @@ export const AccessRequestServiceLive = Layer.effect(
 				const requesterDisplay = buildRequesterDisplay(requesterUser, request.requesterEmail)
 				const requesterFirstName = requesterUser?.firstName ?? null
 				const artifactOwnerName = buildOwnerName(ownerUser)
-				const inviteUrl = buildInviteUrl(resendConfig.cloudOrigin, request.requesterEmail)
-				const taskUrl = request.taskId ? buildTaskUrl(resendConfig.appOrigin, request.taskId) : null
-				const artifactUrl = buildArtifactUrl(resendConfig.cloudOrigin, request.artifact_id)
+				const inviteUrl = buildInviteUrl(linkOrigins.cloudOrigin, request.requesterEmail)
+				const taskUrl = request.taskId ? buildTaskUrl(linkOrigins.appOrigin, request.taskId) : null
+				const artifactUrl = buildArtifactUrl(linkOrigins.cloudOrigin, request.artifact_id)
 
 				const results = yield* Effect.forEach(
 					admins,

@@ -1,10 +1,11 @@
 import * as Sentry from '@sentry/node'
 
 import logger from '../../../../logger'
-import { apiBaseForOrganizationAdmin } from '../../../base'
+import { apiBaseForOrganizationAdmin, requiresLinear } from '../../../base'
 
-export const disconnectLinearProcedure = apiBaseForOrganizationAdmin.integrations.linear.disconnect.handler(
-	async ({ context, errors }) => {
+export const disconnectLinearProcedure = apiBaseForOrganizationAdmin.integrations.linear.disconnect
+	.use(requiresLinear)
+	.handler(async ({ context, errors }) => {
 		const {
 			auth,
 			services: { linear },
@@ -16,5 +17,4 @@ export const disconnectLinearProcedure = apiBaseForOrganizationAdmin.integration
 			Sentry.captureException(error, { tags: { error_type: 'linear_disconnect' } })
 			throw errors.INTERNAL_SERVER_ERROR()
 		}
-	},
-)
+	})

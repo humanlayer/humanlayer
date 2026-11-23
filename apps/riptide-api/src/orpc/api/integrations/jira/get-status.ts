@@ -9,8 +9,11 @@ export const getJiraStatusProcedure = apiBaseOrgRequired.integrations.jira.getSt
 			auth,
 			services: { jira },
 		} = context
+		if (!jira) {
+			return { configured: false, enabled: false, connected: false, needsReauth: false, siteUrl: null }
+		}
 		try {
-			return await jira.getIntegrationStatus(auth.organizationId)
+			return { ...(await jira.getIntegrationStatus(auth.organizationId)), configured: true }
 		} catch (error) {
 			logger.error(error, 'Failed to get Jira integration status')
 			Sentry.captureException(error, { tags: { error_type: 'jira_get_status' } })

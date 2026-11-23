@@ -42,7 +42,7 @@ import { normalizeSubpath } from '../../../lib/normalize-subpath'
 import { buildS3Key } from '../../../lib/s3-key-builder'
 import { runSessionTitleGenerationAsync } from '../../../lib/session-title-generation'
 import logger from '../../../logger'
-import { apiBaseOrgRequired, requiresBillingMiddleware } from '../../base'
+import { apiBaseOrgRequired, integrationNotSetUpMessage, requiresBillingMiddleware } from '../../base'
 import { slugInTaskUsedMessage } from './task-conflict-messages'
 
 /** Provider identity becomes an artifact filename; keep it path-safe and unambiguous. */
@@ -354,15 +354,17 @@ export const createTaskProcedure = apiBaseOrgRequired.tasks.create
 			const importAttemptId = uuidv7()
 			const taskComposerSnapshot = getTaskComposerSnapshotWithV2Default(createdWithExperimentFlags)
 			const effectiveExperimentFlags = buildCreatedWithExperimentFlags(taskComposerSnapshot)
-			// TODO: pull this into global services object but not right now
-			const linearArtifacts = new LinearArtifactService(linear, s3)
-
 			let preparedLinearImport: PreparedLinearTicketBundle | null = null
 			let preparedGitHubImport: GitHubTextTicketArtifactBundle | null = null
 			let preparedJiraImport: { issue: JiraIssue; content: string } | null = null
 
 			try {
 				if (ticketProvider === 'linear' && ticketId) {
+					if (!linear) {
+						throw errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Linear') } })
+					}
+					// TODO: pull this into global services object but not right now
+					const linearArtifacts = new LinearArtifactService(linear, s3)
 					preparedLinearImport = await linearArtifacts.prepareTicketArtifactBundle({
 						organizationId: context.auth.organizationId,
 						ticketId,
@@ -372,6 +374,9 @@ export const createTaskProcedure = apiBaseOrgRequired.tasks.create
 				}
 
 				if (ticketProvider === 'jira' && ticketId) {
+					if (!jira) {
+						throw errors.BAD_REQUEST({ data: { message: integrationNotSetUpMessage('Jira') } })
+					}
 					const issue = await jira.getIssue(context.auth.organizationId, ticketId)
 					preparedJiraImport = { issue, content: formatJiraTicketMd(issue) }
 				}
@@ -419,6 +424,13 @@ export const createTaskProcedure = apiBaseOrgRequired.tasks.create
 											Effect.fail(errors.BAD_REQUEST({ data: { message: error.reason } })),
 										GitHubIntegrationUnavailableError: () =>
 											Effect.fail(errors.SERVICE_UNAVAILABLE()),
+										// Without this, the error reaches the outer catch as a 500 and a Sentry report.
+										GitHubIntegrationNotConfiguredError: () =>
+											Effect.fail(
+												errors.BAD_REQUEST({
+													data: { message: 'GitHub is not set up on this deployment' },
+												}),
+											),
 									}),
 								)
 						}),

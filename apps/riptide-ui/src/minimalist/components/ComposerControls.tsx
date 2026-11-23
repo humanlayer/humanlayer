@@ -2,10 +2,11 @@ import { File, Gauge, Paperclip, Plus, Ticket, Users, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { useConnectIntegrationAction } from '@/hooks/useConnectIntegrationAction'
+import { integrationNotSetUpMessage } from '@/lib/integration-capabilities'
 import { Menu, MenuItem, MenuLabel, MenuSeparator } from '@/minimalist/components/Menu'
 import { formatTokens } from '@/minimalist/lib/format'
 import type { ContextUsage } from '@/minimalist/lib/send'
-import { PROVIDER_NAMES, type TicketProvider, useIssueSourceConnected } from '@/minimalist/lib/tickets'
+import { PROVIDER_NAMES, type TicketProvider, useIssueSourceState } from '@/minimalist/lib/tickets'
 import type { ComposerAttachments } from '@/minimalist/lib/use-attachments'
 
 /** Chips for the files about to be sent: a thumbnail or file icon, upload state, and remove. */
@@ -125,7 +126,10 @@ export function AddButton({
 	)
 }
 
-/** "Linear issue" when connected; otherwise "Connect Linear", which starts the install and then opens the dialog. */
+/**
+ * "Linear issue" when connected; otherwise "Connect Linear", which starts the install and then opens the dialog.
+ * When this deployment has no Linear keys, a disabled "Linear issue" says who can set it up.
+ */
 function IssueItem({
 	provider,
 	onAddIssue,
@@ -135,9 +139,20 @@ function IssueItem({
 	onAddIssue: (provider: TicketProvider) => void
 	onDone: () => void
 }) {
-	const connected = useIssueSourceConnected(provider)
+	const state = useIssueSourceState(provider)
+	const connected = state === 'connected'
 	const connect = useConnectIntegrationAction()
 	const name = PROVIDER_NAMES[provider]
+	if (state === 'not-set-up') {
+		return (
+			<MenuItem
+				icon={<Ticket className="i sm" strokeWidth={1.6} />}
+				label={`${name} issue`}
+				detail={integrationNotSetUpMessage(name)}
+				disabled
+			/>
+		)
+	}
 	const pick = async () => {
 		onDone()
 		if (connected || (await connect(provider)) === 'already-connected') onAddIssue(provider)

@@ -3,7 +3,9 @@ import { useDebounce, useLocalStorage } from '@uidotdev/usehooks'
 import { useCallback, useState } from 'react'
 
 import type { GitHubRepositoryOption } from '@/components/GitHubRepositoryPicker'
+import { useSettingsStore } from '@/hooks/stores/settingsStore'
 import { parseGitHubIssueInput } from '@/lib/github-issue-input'
+import { integrationNotSetUpMessage } from '@/lib/integration-capabilities'
 import { useRiptideApi } from '@/orpc/client'
 
 const LAST_GITHUB_REPOSITORY_KEY = 'riptide:lastUsedGitHubRepository'
@@ -65,6 +67,9 @@ export function useGitHubIssuePreviewSource(input: {
 	readonly preferredRepositoryFullName?: string | null
 }) {
 	const { queryClient: api } = useRiptideApi()
+	// Without GitHub keys on this deployment nothing below can answer, so no query runs.
+	const isConfigured = useSettingsStore((state) => state.githubConfigured)
+	const enabled = input.enabled && isConfigured
 	const [rememberedRepositoryKey, setRememberedRepositoryKey] = useLocalStorage<string | null>(
 		LAST_GITHUB_REPOSITORY_KEY,
 		null,
@@ -73,7 +78,7 @@ export function useGitHubIssuePreviewSource(input: {
 
 	const connectionsQuery = useQuery({
 		...api.integrations.github.listConnections.queryOptions({ input: {}, context: { silent: true } }),
-		enabled: input.enabled,
+		enabled,
 	})
 	const usableConnections =
 		connectionsQuery.data?.connections.filter(
@@ -86,7 +91,7 @@ export function useGitHubIssuePreviewSource(input: {
 				input: { connectionId: connection.id },
 				context: { silent: true },
 			}),
-			enabled: input.enabled,
+			enabled,
 		})),
 	})
 
@@ -154,7 +159,7 @@ export function useGitHubIssuePreviewSource(input: {
 			context: { silent: true },
 		}),
 		enabled:
-			input.enabled &&
+			enabled &&
 			selectedRepository !== null &&
 			debouncedParsedInput?.ok === true &&
 			(debouncedParsedInput.repositoryFullName === null ||
@@ -186,14 +191,16 @@ export function useGitHubIssuePreviewSource(input: {
 	const hasPermissionBlockedConnections = connectionsQuery.data?.connections.some(
 		(connection) => !connection.capabilities.previewIssue,
 	)
-	const disabledReason = githubDisabledReason({
-		hasConnections,
-		hasSuspendedConnections: hasSuspendedConnections === true,
-		hasPermissionBlockedConnections: hasPermissionBlockedConnections === true,
-		hasUsableConnections: usableConnections.length > 0,
-		enabled: connectionsQuery.data?.enabled,
-		hasSelectableRepositories: selectableRepositories.length > 0,
-	})
+	const disabledReason = !isConfigured
+		? integrationNotSetUpMessage('GitHub')
+		: githubDisabledReason({
+				hasConnections,
+				hasSuspendedConnections: hasSuspendedConnections === true,
+				hasPermissionBlockedConnections: hasPermissionBlockedConnections === true,
+				hasUsableConnections: usableConnections.length > 0,
+				enabled: connectionsQuery.data?.enabled,
+				hasSelectableRepositories: selectableRepositories.length > 0,
+			})
 
 	return {
 		repositories,
@@ -204,7 +211,9 @@ export function useGitHubIssuePreviewSource(input: {
 		isLoadingRepositories: connectionsQuery.isLoading || repositoryQueries.some((query) => query.isLoading),
 		isFetchingPreview: previewQuery.isFetching,
 		inputError: localInputError ?? previewErrorMessage(previewQuery.error),
-		isEnabled: connectionsQuery.data?.enabled === true && selectableRepositories.length > 0,
+		isEnabled: isConfigured && connectionsQuery.data?.enabled === true && selectableRepositories.length > 0,
+		/** False when this deployment has no GitHub app: show `disabledReason` with no connect action. */
+		isConfigured,
 		disabledReason,
 	}
 }

@@ -17,12 +17,38 @@ export type TicketProvider = Ticket['provider']
 export const PROVIDER_NAMES: Record<TicketProvider, string> = { linear: 'Linear', jira: 'Jira', github: 'GitHub' }
 
 /**
- * Whether issues can come from `provider`, or it needs connecting first. GitHub counts as
- * connected once the organization has any installation; the dialog explains one that can't
- * read issues. Until the answer is in, it reads as connected so the menu doesn't flicker.
+ * - `connected`: issues can come from this provider.
+ * - `disconnected`: the organization has to connect it first.
+ * - `not-set-up`: this deployment has no keys for it, so connecting cannot work.
  */
-export function useIssueSourceConnected(provider: TicketProvider): boolean {
+export type IssueSourceState = 'connected' | 'disconnected' | 'not-set-up'
+
+export function issueSourceState({
+	configured,
+	connected,
+}: {
+	configured: boolean
+	connected: boolean
+}): IssueSourceState {
+	if (!configured) return 'not-set-up'
+	return connected ? 'connected' : 'disconnected'
+}
+
+/**
+ * Whether issues can come from `provider`, it needs connecting first, or this deployment lacks
+ * it. GitHub counts as connected once the organization has any installation; the dialog explains
+ * one that can't read issues. Until the answer is in, it reads as connected so the menu doesn't
+ * flicker.
+ */
+export function useIssueSourceState(provider: TicketProvider): IssueSourceState {
 	const { queryClient: api } = useRiptideApi()
+	const configured = useSettingsStore((state) =>
+		provider === 'linear'
+			? state.linearConfigured
+			: provider === 'jira'
+				? state.jiraConfigured
+				: state.githubConfigured,
+	)
 	const tracker = useSettingsStore((state) =>
 		provider === 'linear'
 			? state.linearEnabled && !state.linearNeedsReauth
@@ -30,10 +56,10 @@ export function useIssueSourceConnected(provider: TicketProvider): boolean {
 	)
 	const github = useQuery({
 		...api.integrations.github.listConnections.queryOptions({ input: {}, context: { silent: true } }),
-		enabled: provider === 'github',
+		enabled: provider === 'github' && configured,
 	})
-	if (provider !== 'github') return tracker
-	return github.data ? github.data.connections.length > 0 : true
+	const connected = provider !== 'github' ? tracker : github.data ? github.data.connections.length > 0 : true
+	return issueSourceState({ configured, connected })
 }
 
 type Preview = { ticket: Ticket | null; error: string | null; loading: boolean }

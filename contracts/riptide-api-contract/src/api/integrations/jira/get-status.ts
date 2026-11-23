@@ -8,5 +8,10 @@ export const GetJiraStatusOutputSchema = z.object({
 	connected: z.boolean(),
 	needsReauth: z.boolean(),
 	siteUrl: z.httpUrl().nullable(), // http or https URLs only
+	/**
+	 * False when this deployment has no Jira keys; the other fields then say not connected.
+	 * Optional so older clients and servers stay compatible.
+	 */
+	configured: z.boolean().optional(),
 })
 export const getJiraStatusContract = contractBuilder.input(GetJiraStatusInputSchema).output(GetJiraStatusOutputSchema)

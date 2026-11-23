@@ -76,6 +76,10 @@ export const mutatePullRequestProcedure =
 					GitHubPullRequestMutationRejectedError: (error) =>
 						Effect.fail(errors.BAD_REQUEST({ data: { message: error.message } })),
 					GitHubIntegrationUnavailableError: () => Effect.fail(errors.SERVICE_UNAVAILABLE()),
+					GitHubIntegrationNotConfiguredError: () =>
+						Effect.fail(
+							errors.BAD_REQUEST({ data: { message: 'GitHub is not set up on this deployment' } }),
+						),
 				}),
 			)
 		if (fetched === null) return yield* Effect.fail(errors.NOT_FOUND())

@@ -17,24 +17,14 @@ const observeSlackProviderFailure = <A, E, R>(effect: Effect.Effect<A, E, R>): E
 		Effect.tapError((error) => Effect.sync(() => Sentry.captureException(error))),
 	)
 
-export const SlackProviderClientLive = Layer.effect(
-	SlackProviderClient,
+/**
+ * Builds the Slack provider client from credentials the caller already read. `SlackService` reads
+ * the SLACK_* key group once, decides whether Slack is set up, and only then builds this client,
+ * so a deployment without Slack never reads SLACK_CLIENT_ID or SLACK_CLIENT_SECRET here.
+ */
+export const makeSlackProviderClient = (config: SlackClientConfig) =>
 	Effect.gen(function* () {
 		const slackHttp = yield* SlackHttpClient
-		const config: SlackClientConfig = {
-			clientId: yield* Config.String('SLACK_CLIENT_ID'),
-			clientSecret: yield* Config.Redacted('SLACK_CLIENT_SECRET'),
-			oauthRedirectUrl: yield* Config.String('SLACK_OAUTH_REDIRECT_URL').pipe(
-				Config.withDefault(
-					new URL(
-						'/integrations/slack/callback',
-						yield* Config.URL('RIPTIDE_API_ORIGIN').pipe(
-							Config.withDefault(new URL('http://localhost:8700')),
-						),
-					).toString(),
-				),
-			),
-		}
 		const provideHttp = <A, E>(effect: Effect.Effect<A, E, SlackHttpClient>) =>
 			// eslint-disable-next-line anti-slop/no-reprovide-ambient-service -- The provider client closes over the application-scoped transport so its public methods have no transport requirement.
 			effect.pipe(Effect.provideService(SlackHttpClient, slackHttp), observeSlackProviderFailure)
@@ -74,5 +64,26 @@ export const SlackProviderClientLive = Layer.effect(
 			postMessage: (input) => provideHttp(chatPostMessage(input)).pipe(Effect.map(({ ts }) => ({ ts }))),
 			paginateChannels,
 		})
+	})
+
+/** Reads its own credentials. Production builds the client through `SlackService` instead. */
+export const SlackProviderClientLive = Layer.effect(
+	SlackProviderClient,
+	Effect.gen(function* () {
+		const config: SlackClientConfig = {
+			clientId: yield* Config.String('SLACK_CLIENT_ID'),
+			clientSecret: yield* Config.Redacted('SLACK_CLIENT_SECRET'),
+			oauthRedirectUrl: yield* Config.String('SLACK_OAUTH_REDIRECT_URL').pipe(
+				Config.withDefault(
+					new URL(
+						'/integrations/slack/callback',
+						yield* Config.URL('RIPTIDE_API_ORIGIN').pipe(
+							Config.withDefault(new URL('http://localhost:8700')),
+						),
+					).toString(),
+				),
+			),
+		}
+		return yield* makeSlackProviderClient(config)
 	}),
 )

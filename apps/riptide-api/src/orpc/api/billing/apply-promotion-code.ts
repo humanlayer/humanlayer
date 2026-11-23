@@ -3,12 +3,13 @@ import { ORPCError } from '@orpc/server'
 import { eq } from 'drizzle-orm'
 
 import { refreshStripeBillingCache } from '../../../effects/services/billing/billing-access.service'
-import { apiBaseForOrganizationAdmin } from '../../base'
+import { apiBaseForOrganizationAdmin, requiresStripe } from '../../base'
 import { logAndCaptureBillingProcedureError } from './errors'
 import { captureInvalidBillingOrganizationRow } from './organization-billing-schema'
 
-export const applyPromotionCodeProcedure = apiBaseForOrganizationAdmin.billing.applyPromotionCode.handler(
-	async ({ input, context, errors }) => {
+export const applyPromotionCodeProcedure = apiBaseForOrganizationAdmin.billing.applyPromotionCode
+	.use(requiresStripe)
+	.handler(async ({ input, context, errors }) => {
 		const { organizationId } = context.auth
 		const { db, effectRuntime, stripe } = context.services
 		const { code } = input
@@ -77,5 +78,4 @@ export const applyPromotionCodeProcedure = apiBaseForOrganizationAdmin.billing.a
 
 			throw errors.INTERNAL_SERVER_ERROR({ data: { message: 'Failed to apply promotion code' } })
 		}
-	},
-)
+	})

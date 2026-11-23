@@ -2,6 +2,7 @@ import type { BillingKvCacheDecodeError, BillingKvUnavailableError } from '@huma
 import { Cause, Data, Option, Predicate } from 'effect'
 
 import type {
+	BillingNotConfiguredError,
 	StripeBillingSyncError,
 	StripeOperationError,
 	StripeServiceInputParseError,
@@ -18,6 +19,7 @@ export type BillingStepCause =
 	| StripeBillingSyncError
 	| StripeOperationError
 	| StripeServiceInputParseError
+	| BillingNotConfiguredError
 	| Cause.TimeoutError
 
 export class BillingStepFailure extends Data.TaggedError('BillingStepFailure')<{
@@ -31,6 +33,7 @@ const STEP_CAUSE_TAGS = [
 	'StripeBillingSyncError',
 	'StripeOperationError',
 	'StripeServiceInputParseError',
+	'BillingNotConfiguredError',
 	'TimeoutError',
 ] as const
 
