@@ -4,12 +4,17 @@ This page lists changes in each HumanLayer release. Download the latest build fr
 
 ## 0.203.0 — November 22, 2026
 
-This release fixes a security bug in the Linear ticket image importer, which could send your org's Linear token to a look-alike host. It also changes what people see when they try to create a new organization: every environment now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo for self-hosting.
+This release fixes a security bug in the Linear ticket image importer, which could send your org's Linear token to a look-alike host. It also changes what people see when they try to create a new organization: every environment now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo for self-hosting. In the minimalist UI, copied task and session links now open in a browser, and sessions started from the Next step card get their phase label.
 
 **Highlights**
 
 - **Linear token only goes to Linear** - When HumanLayer imports images from a Linear ticket, it now sends the Linear access token only to `uploads.linear.app` over https. Before, a crafted image link whose text merely contained that host name could receive the token. Fixed in both the API and the Linear CLI. ([#1177](https://github.com/humanlayer/humanlayer/pull/1177) - [@dexhorthy](https://github.com/dexhorthy))
 - **Clearer message when new organizations are blocked** - Creating an organization now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo so you can self-host. If your team already has an org, ask a teammate for an invite. ([#1167](https://github.com/humanlayer/humanlayer/pull/1167) - [@dexhorthy](https://github.com/dexhorthy))
+
+**Other Changes**
+
+- **Copied links work outside the app (Minimalist UI)** - "Copy link" on a task or session in the desktop app now copies a web link that opens in a browser and hands off to the app. Before, it copied an address that only worked inside the app window. ([#1176](https://github.com/humanlayer/humanlayer/pull/1176) - [@dannomayernotabot](https://github.com/dannomayernotabot))
+- **Next step sessions show their phase (Minimalist UI)** - A session started from the Next step card now gets its phase label, such as TDD or Implement, instead of the task falling back to the session's age. ([#1174](https://github.com/humanlayer/humanlayer/pull/1174) - [@dannomayernotabot](https://github.com/dannomayernotabot))
 
 ## 0.202.0 — November 14, 2026
 
