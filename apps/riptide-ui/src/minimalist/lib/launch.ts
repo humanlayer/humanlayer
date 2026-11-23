@@ -369,7 +369,7 @@ export async function launchInTask(
 		return
 	}
 	await api.sessions.launch(
-		{ ...shared, id: input.sessionId, title: '', workingDirectory: input.workingDirectory },
+		{ ...shared, id: input.sessionId, title: null, workingDirectory: input.workingDirectory },
 		{ context: { silent: true } },
 	)
 }

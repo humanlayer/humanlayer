@@ -7,6 +7,7 @@ import {
 	draftTitle,
 	launchError,
 	launchHost,
+	launchInTask,
 	slugify,
 	startTask,
 	workingCopy,
@@ -297,4 +298,52 @@ describe('startTask', () => {
 			})
 		},
 	)
+})
+
+describe('launchInTask', () => {
+	const settings: ComposerSettings = {
+		agent: 'claude',
+		model: 'opus',
+		effort: 'high',
+		fastMode: false,
+		permissionsMode: 'auto',
+	}
+	const input = {
+		sessionId: 'session-2',
+		eventId: 'event-2',
+		text: 'Fix the login bug',
+		hostId: 'h1',
+		workingDirectory: '/code/app',
+		settings,
+	}
+
+	function fakeApi() {
+		const api = {
+			sessions: { launch: vi.fn(async () => ({})), v2: { create: vi.fn(async () => ({})) } },
+		}
+		return { api, client: api as unknown as RiptideApiClient }
+	}
+
+	it('starts a session in a directory task without a title, so the server generates one', async () => {
+		const { api, client } = fakeApi()
+		await launchInTask(client, { id: 'task-1', workspace_id: null }, input)
+		expect(api.sessions.v2.create).not.toHaveBeenCalled()
+		const [launched] = api.sessions.launch.mock.calls[0] as unknown as [Record<string, unknown>]
+		expect(launched).toMatchObject({
+			id: 'session-2',
+			taskId: 'task-1',
+			hostId: 'h1',
+			workingDirectory: '/code/app',
+		})
+		expect(launched.title).toBeNull()
+	})
+
+	it('starts a session in a project task through sessions.v2.create, also without a title', async () => {
+		const { api, client } = fakeApi()
+		await launchInTask(client, { id: 'task-1', workspace_id: 'ws-1' }, input)
+		expect(api.sessions.launch).not.toHaveBeenCalled()
+		const [created] = api.sessions.v2.create.mock.calls[0] as unknown as [Record<string, unknown>]
+		expect(created).toMatchObject({ sessionId: 'session-2', workspaceId: 'ws-1', taskId: 'task-1' })
+		expect(created.title).toBeNull()
+	})
 })
