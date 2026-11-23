@@ -10,6 +10,7 @@ import { useConnectIntegrationAction } from '@/hooks/useConnectIntegrationAction
 import { useGitHubIssuePreviewSource } from '@/hooks/useGitHubIssuePreviewSource'
 import { useTicketAutoFetch } from '@/hooks/useTicketAutoFetch'
 import { formatShortcut, hotkeysCatalog } from '@/hotkeysCatalog'
+import { integrationNotSetUpMessage } from '@/lib/integration-capabilities'
 import { parseLinearIssueInput } from '@/lib/linear-issue-input'
 import { generateTaskSlug } from '@/lib/task-slug'
 import type {
@@ -53,13 +54,16 @@ export interface LauncherAttachmentControlWiredProps {
 
 function settingsIntegrationState({
 	provider,
+	configured,
 	enabled,
 	needsReauth,
 }: {
 	provider: 'Linear' | 'Jira'
+	configured: boolean
 	enabled: boolean
 	needsReauth: boolean
 }): LauncherTicketIntegrationState {
+	if (!configured) return { status: 'unsupported', description: integrationNotSetUpMessage(provider) }
 	if (needsReauth) {
 		return {
 			status: 'unavailable',
@@ -72,14 +76,33 @@ function settingsIntegrationState({
 		: { status: 'unavailable', description: `Connect ${provider} to import issues`, actionLabel: 'Connect' }
 }
 
+function githubIntegrationState(github: {
+	isConfigured: boolean
+	isLoadingRepositories: boolean
+	isEnabled: boolean
+	disabledReason: string | null
+}): LauncherTicketIntegrationState {
+	if (!github.isConfigured) return { status: 'unsupported', description: integrationNotSetUpMessage('GitHub') }
+	if (github.isLoadingRepositories)
+		return { status: 'loading', description: 'Checking installed GitHub repositories' }
+	if (github.isEnabled) return { status: 'available', description: 'Import from an installed repository' }
+	return {
+		status: 'unavailable',
+		description: github.disabledReason ?? 'Connect GitHub to import issues',
+		actionLabel: 'Connect',
+	}
+}
+
 export function LauncherAttachmentControlWired({ control, onAddFiles, disabled }: LauncherAttachmentControlWiredProps) {
 	const { field: ticket } = useController({ control, name: 'ticket' })
 	const [activeProvider, setActiveProvider] = useState<LauncherV3TicketProvider | null>(null)
 	const [input, setInput] = useState('')
 	const debouncedInput = useDebounce(input, 400)
 
+	const linearConfigured = useSettingsStore((state) => state.linearConfigured)
 	const linearEnabled = useSettingsStore((state) => state.linearEnabled)
 	const linearNeedsReauth = useSettingsStore((state) => state.linearNeedsReauth)
+	const jiraConfigured = useSettingsStore((state) => state.jiraConfigured)
 	const jiraEnabled = useSettingsStore((state) => state.jiraEnabled)
 	const jiraNeedsReauth = useSettingsStore((state) => state.jiraNeedsReauth)
 
@@ -97,19 +120,17 @@ export function LauncherAttachmentControlWired({ control, onAddFiles, disabled }
 	const integrations = {
 		linear: settingsIntegrationState({
 			provider: 'Linear',
+			configured: linearConfigured,
 			enabled: linearEnabled,
 			needsReauth: linearNeedsReauth,
 		}),
-		github: github.isLoadingRepositories
-			? { status: 'loading', description: 'Checking installed GitHub repositories' }
-			: github.isEnabled
-				? { status: 'available', description: 'Import from an installed repository' }
-				: {
-						status: 'unavailable',
-						description: github.disabledReason ?? 'Connect GitHub to import issues',
-						actionLabel: 'Connect',
-					},
-		jira: settingsIntegrationState({ provider: 'Jira', enabled: jiraEnabled, needsReauth: jiraNeedsReauth }),
+		github: githubIntegrationState(github),
+		jira: settingsIntegrationState({
+			provider: 'Jira',
+			configured: jiraConfigured,
+			enabled: jiraEnabled,
+			needsReauth: jiraNeedsReauth,
+		}),
 	} satisfies Readonly<Record<LauncherV3TicketProvider, LauncherTicketIntegrationState>>
 
 	const connectIntegration = useConnectIntegrationAction()
@@ -129,7 +150,7 @@ export function LauncherAttachmentControlWired({ control, onAddFiles, disabled }
 	}
 	const invokeProvider = (provider: LauncherV3TicketProvider) => {
 		const integration = integrations[provider]
-		if (disabled || integration.status === 'loading') return
+		if (disabled || integration.status === 'loading' || integration.status === 'unsupported') return
 		if (integration.status === 'unavailable') {
 			void connectAndMaybeOpen(provider)
 			return

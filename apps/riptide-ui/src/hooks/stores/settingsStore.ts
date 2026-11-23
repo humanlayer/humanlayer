@@ -72,6 +72,12 @@ interface SettingsState {
 	jiraNeedsReauth: boolean
 	jiraSiteUrl: string | null
 
+	// Whether this deployment has each integration's keys (session only, NOT persisted).
+	// True until integrations.getCapabilities answers, and when it fails (older API).
+	jiraConfigured: boolean
+	linearConfigured: boolean
+	githubConfigured: boolean
+
 	// Server-synced settings (persisted to localStorage AND server)
 	theme: string
 	experimentalSubagentsEnabled: boolean
@@ -280,6 +286,10 @@ interface SettingsState {
 	setSyncForceMode: (mode: SyncForceMode) => void
 
 	markMutationInFlight: () => void
+	/** Null when the capabilities request failed: every integration then counts as set up. */
+	applyIntegrationCapabilities: (
+		capabilities: { readonly jira: boolean; readonly linear: boolean; readonly github: boolean } | null,
+	) => void
 	setServerSettingsScope: (scope: string | null) => void
 
 	applyServerSettings: (
@@ -677,6 +687,9 @@ export const useSettingsStore = create<SettingsState>()(
 			jiraEnabled: false,
 			jiraNeedsReauth: false,
 			jiraSiteUrl: null,
+			jiraConfigured: true,
+			linearConfigured: true,
+			githubConfigured: true,
 
 			// Server-synced settings with defaults
 			theme: 'rose-pine',
@@ -835,6 +848,12 @@ export const useSettingsStore = create<SettingsState>()(
 			setSendMessageKeybinding: (binding) => set({ sendMessageKeybinding: binding }),
 			setSyncForceMode: (mode) => set({ syncForceMode: mode }),
 			markMutationInFlight: () => set({ _lastMutationAt: Date.now() }),
+			applyIntegrationCapabilities: (capabilities) =>
+				set({
+					jiraConfigured: capabilities?.jira ?? true,
+					linearConfigured: capabilities?.linear ?? true,
+					githubConfigured: capabilities?.github ?? true,
+				}),
 			setServerSettingsScope: (scope) => {
 				if (get()._serverSettingsRequestedScope === scope) return
 				set({ _serverSettingsRequestedScope: scope, _serverSettingsAppliedScope: null })

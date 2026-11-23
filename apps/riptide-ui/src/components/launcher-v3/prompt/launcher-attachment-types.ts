@@ -1,6 +1,11 @@
 import type { LauncherV3FormAttachment, LauncherV3TicketProvider } from '@/modules/launcher-v3/launcher-v3-form'
 
-export type LauncherTicketIntegrationStatus = 'available' | 'loading' | 'unavailable'
+/**
+ * - `unavailable`: this organization has not connected it; selecting it starts the connect flow.
+ * - `unsupported`: this deployment has no keys for it; the description says who can fix that, and
+ *   selecting it does nothing.
+ */
+export type LauncherTicketIntegrationStatus = 'available' | 'loading' | 'unavailable' | 'unsupported'
 
 export interface LauncherTicketIntegrationState {
 	status: LauncherTicketIntegrationStatus

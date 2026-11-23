@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { githubFullName, parseJiraKey, type Ticket, ticketFields, withTicket } from '@/minimalist/lib/tickets'
+import {
+	githubFullName,
+	issueSourceState,
+	parseJiraKey,
+	type Ticket,
+	ticketFields,
+	withTicket,
+} from '@/minimalist/lib/tickets'
 
 describe('parseJiraKey', () => {
 	it('reads a key or a browse link', () => {
@@ -67,5 +74,17 @@ describe('ticketFields', () => {
 		expect(githubFullName('github.com/acme/app')).toBe('acme/app')
 		expect(githubFullName('gitlab.com/acme/app')).toBeNull()
 		expect(githubFullName(undefined)).toBeNull()
+	})
+})
+
+describe('issueSourceState', () => {
+	it('reads as not set up when the deployment lacks the keys, connected or not', () => {
+		expect(issueSourceState({ configured: false, connected: true })).toBe('not-set-up')
+		expect(issueSourceState({ configured: false, connected: false })).toBe('not-set-up')
+	})
+
+	it('otherwise follows the connection', () => {
+		expect(issueSourceState({ configured: true, connected: true })).toBe('connected')
+		expect(issueSourceState({ configured: true, connected: false })).toBe('disconnected')
 	})
 })

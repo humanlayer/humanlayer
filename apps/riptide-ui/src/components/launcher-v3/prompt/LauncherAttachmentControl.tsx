@@ -126,10 +126,14 @@ export function LauncherAttachmentControl({
 						}
 						// Unavailable integrations stay clickable: selecting one starts
 						// the inline connect flow instead of opening the ticket dialog.
+						// Unsupported ones have no action, so the item is disabled and its
+						// description says who can set it up.
 						return (
 							<DropdownMenuItem
 								key={provider.value}
-								disabled={disabled || integration.status === 'loading'}
+								disabled={
+									disabled || integration.status === 'loading' || integration.status === 'unsupported'
+								}
 								onSelect={() =>
 									needsConnect ? onConnectIntegration(provider.value) : onAddTicket(provider.value)
 								}

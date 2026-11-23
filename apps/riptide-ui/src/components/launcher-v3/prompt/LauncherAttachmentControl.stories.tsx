@@ -44,3 +44,14 @@ export const Default: Story = {
 export const Disabled: Story = {
 	args: { disabled: true },
 }
+
+/** This deployment has no Jira or GitHub keys: the items say who can set them up and offer no action. */
+export const Unsupported: Story = {
+	args: {
+		integrations: {
+			linear: { status: 'available', description: 'Import from a Linear issue' },
+			github: { status: 'unsupported', description: 'GitHub is not set up on this instance. Check with your admin.' },
+			jira: { status: 'unsupported', description: 'Jira is not set up on this instance. Check with your admin.' },
+		},
+	},
+}
