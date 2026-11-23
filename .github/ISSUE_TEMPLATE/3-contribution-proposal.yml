@@ -8,9 +8,9 @@ body:
       value: |
         Pull requests from new contributors need a vouch from a maintainer. This proposal is how you get one. A maintainer reads it, and if the plan holds up, comments `!vouch`. After that, your pull requests stay open.
 
-        1. Install the HumanLayer RPI plugin in Claude Code:
+        1. Install the HumanLayer RPI plugin in Claude Code. From the root of your clone:
            ```
-           /plugin marketplace add humanlayer/riptide-rpi
+           /plugin marketplace add ./apps/riptide-rpi-claude-plugin
            /plugin install riptide-rpi@humanlayer-riptide-rpi
            ```
         2. In your clone of this repo, run `/rpi:create-design-discussion` and describe the problem and your idea.
