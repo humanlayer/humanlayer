@@ -1,9 +1,21 @@
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import * as path from 'path'
 import { URL } from 'url'
 
-import { write } from 'bun'
 import fetch from 'node-fetch'
+
+/**
+ * True only when the URL's host is exactly uploads.linear.app over https.
+ * A substring check would match attacker hosts and leak the Linear token to them.
+ */
+export function isLinearUploadUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url)
+		return parsed.protocol === 'https:' && parsed.hostname === 'uploads.linear.app'
+	} catch {
+		return false
+	}
+}
 
 /**
  * Extract image URLs from markdown content
@@ -21,7 +33,7 @@ export function extractImageUrls(markdown: string): Array<{ url: string; altText
 		// Only include URLs that look like image URLs
 		if (
 			url.startsWith('http') &&
-			(url.includes('uploads.linear.app') || url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i))
+			(isLinearUploadUrl(url) || url.match(/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?|$)/i))
 		) {
 			images.push({ url, altText })
 		}
@@ -64,7 +76,7 @@ export async function downloadImage(url: string, outputPath: string, token?: str
 	// If URL contains a signature parameter, it's already authenticated (signed URL)
 	// Otherwise, add Bearer token for Linear uploads
 	const headers: Record<string, string> = {}
-	if (url.includes('uploads.linear.app') && !url.includes('signature=') && token) {
+	if (isLinearUploadUrl(url) && !url.includes('signature=') && token) {
 		headers['Authorization'] = `Bearer ${token}`
 	}
 
@@ -80,7 +92,7 @@ export async function downloadImage(url: string, outputPath: string, token?: str
 	const dir = path.dirname(outputPath)
 	await mkdir(dir, { recursive: true })
 
-	await write(outputPath, buffer)
+	await writeFile(outputPath, buffer)
 }
 
 /**

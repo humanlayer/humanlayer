@@ -63,11 +63,22 @@ export function parseNextStep(raw: unknown): NextStep | null {
 	}
 }
 
-/** The prompt as a slash command: "use the rpi:create-plan skill for X" becomes "/rpi:create-plan for X". */
+/**
+ * The prompt as a skill instruction: "/rpi:create-plan for X" becomes "use the rpi:create-plan skill for X".
+ * The agent then calls the Skill tool, which is what labels the session with its phase. A typed slash
+ * command is expanded by the agent without that call, so the session would get no phase. The composer
+ * and the old UI send skills the same way.
+ */
 function firstMessage(prompt: string, skillName: string | null): string {
 	const text = prompt.trim()
-	if (!skillName || text.startsWith('/')) return text
-	const prefix = `use the ${skillName} skill`
-	if (text.toLowerCase().startsWith(prefix)) return `/${skillName} ${text.slice(prefix.length).trim()}`.trim()
-	return `/${skillName} ${text}`.trim()
+	if (!skillName) return text
+	const instruction = `use the ${skillName} skill`
+	if (text.toLowerCase().startsWith(instruction)) return text
+	const command = `/${skillName}`
+	const afterCommand = text.slice(command.length)
+	if (text.startsWith(command) && (afterCommand === '' || /^\s/.test(afterCommand)))
+		return `${instruction} ${afterCommand.trim()}`.trim()
+	// Some other slash command: leave it as the agent wrote it.
+	if (text.startsWith('/')) return text
+	return `${instruction} ${text}`
 }

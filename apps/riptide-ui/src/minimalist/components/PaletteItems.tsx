@@ -48,6 +48,7 @@ import { useUi } from '@/minimalist/lib/ui-state'
 import { useArchive } from '@/minimalist/lib/use-archive'
 import { useCopy } from '@/minimalist/lib/use-copy'
 import { useUnreadActions } from '@/minimalist/lib/use-unread'
+import { getSessionShareUrl } from '@/utils/sharing-links'
 
 export type PaletteItem = {
 	id: string
@@ -229,7 +230,7 @@ function useSessionActions(session: Session | null): PaletteItem[] {
 			icon: <Link2 className="i sm" />,
 			run: () =>
 				copy(
-					`${location.origin}/sessions/${session.id}`,
+					getSessionShareUrl(session.id),
 					'Session link copied',
 					'Could not copy the link. Copy the address from your browser.',
 				),
