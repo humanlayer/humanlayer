@@ -1,4 +1,5 @@
 import { useSettingsStore } from '@/hooks/stores/settingsStore'
+import { playNotificationSound } from '@/lib/notification-sound'
 
 export const COMMENT_NOTIFICATION_BURST_WINDOW_MS = 2_000
 
@@ -10,7 +11,7 @@ interface NotificationSoundSettings {
 interface CommentNotificationSoundPlayerOptions {
 	now: () => number
 	getSettings: () => NotificationSoundSettings
-	createAudio: (src: string) => HTMLAudioElement
+	playAudio: (volume: number) => void
 }
 
 export function createCommentNotificationSoundPlayer(
@@ -18,7 +19,7 @@ export function createCommentNotificationSoundPlayer(
 ): () => void {
 	const now = options.now ?? Date.now
 	const getSettings = options.getSettings ?? (() => useSettingsStore.getState())
-	const createAudio = options.createAudio ?? ((src) => new Audio(src))
+	const playAudio = options.playAudio ?? playNotificationSound
 	let lastRequestAt: number | null = null
 
 	return () => {
@@ -30,9 +31,7 @@ export function createCommentNotificationSoundPlayer(
 		lastRequestAt = requestedAt
 		if (isSameBurst) return
 
-		const audio = createAudio('/sounds/notification.mp3')
-		audio.volume = settings.notificationVolume
-		audio.play().catch(() => {})
+		playAudio(settings.notificationVolume)
 	}
 }
 
