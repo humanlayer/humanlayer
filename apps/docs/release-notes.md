@@ -4,10 +4,11 @@ This page lists changes in each HumanLayer release. Download the latest build fr
 
 ## 0.203.0 — November 22, 2026
 
-This release changes what people see when they try to create a new organization. Every environment now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, and links to the announcement and to the open source repo for self-hosting.
+This release fixes a security bug in the Linear ticket image importer, which could send your org's Linear token to a look-alike host. It also changes what people see when they try to create a new organization: every environment now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo for self-hosting.
 
 **Highlights**
 
+- **Linear token only goes to Linear** - When HumanLayer imports images from a Linear ticket, it now sends the Linear access token only to `uploads.linear.app` over https. Before, a crafted image link whose text merely contained that host name could receive the token. Fixed in both the API and the Linear CLI. ([#1177](https://github.com/humanlayer/humanlayer/pull/1177) - [@dexhorthy](https://github.com/dexhorthy))
 - **Clearer message when new organizations are blocked** - Creating an organization now explains that HumanLayer Cloud is shutting down as HumanLayer joins Factory, with links to the announcement and to the open source repo so you can self-host. If your team already has an org, ask a teammate for an invite. ([#1167](https://github.com/humanlayer/humanlayer/pull/1167) - [@dexhorthy](https://github.com/dexhorthy))
 
 ## 0.202.0 — November 14, 2026
