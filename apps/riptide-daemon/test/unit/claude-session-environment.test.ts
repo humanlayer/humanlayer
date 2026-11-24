@@ -10,12 +10,58 @@ import { expect } from 'vitest'
 
 import {
 	ClaudeExecutableNotFoundError,
+	ClaudeWorkingDirectoryError,
 	locateClaudeExecutable,
+	resolveClaudeWorkingDirectory,
 } from '../../src/effects/services/claude-sessions/claude-session-environment'
 
 function tempHomeDirectory() {
 	return mkdtemp(join(tmpdir(), 'claude-locate-'))
 }
+
+describe('resolveClaudeWorkingDirectory', () => {
+	it.effect('expands ~ and returns a directory that exists', () =>
+		Effect.gen(function* () {
+			const homeDirectory = yield* Effect.promise(tempHomeDirectory)
+			yield* Effect.promise(() => mkdir(join(homeDirectory, 'repo')))
+
+			const result = yield* resolveClaudeWorkingDirectory({ workingDirectory: '~/repo', homeDirectory })
+
+			expect(result).toBe(join(homeDirectory, 'repo'))
+		}).pipe(Effect.provide(BunServices.layer)),
+	)
+
+	// A task can keep a directory from another host, or a worktree that was removed.
+	it.effect('says a missing directory does not exist on this host, without the platform error', () =>
+		Effect.gen(function* () {
+			const homeDirectory = yield* Effect.promise(tempHomeDirectory)
+			const missing = join(homeDirectory, 'workspaces', 'gone', 'repo')
+
+			const result = yield* Effect.flip(
+				resolveClaudeWorkingDirectory({ workingDirectory: missing, homeDirectory }),
+			)
+
+			expect(result).toBeInstanceOf(ClaudeWorkingDirectoryError)
+			expect(result.message).toBe(
+				`Could not start the session. ${missing} does not exist on this host. Choose a directory that exists here, or create this one.`,
+			)
+		}).pipe(Effect.provide(BunServices.layer)),
+	)
+
+	it.effect('says a file is not a directory', () =>
+		Effect.gen(function* () {
+			const homeDirectory = yield* Effect.promise(tempHomeDirectory)
+			const file = join(homeDirectory, 'notes.md')
+			yield* Effect.promise(() => writeFile(file, '', 'utf8'))
+
+			const result = yield* Effect.flip(resolveClaudeWorkingDirectory({ workingDirectory: file, homeDirectory }))
+
+			expect(result.message).toBe(
+				`Could not start the session. ${file} is a file, not a directory. Choose a directory instead.`,
+			)
+		}).pipe(Effect.provide(BunServices.layer)),
+	)
+})
 
 describe('locateClaudeExecutable', () => {
 	it.effect('does not fall back to PATH when the configured path is invalid', () =>

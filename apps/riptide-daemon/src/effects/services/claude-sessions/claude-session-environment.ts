@@ -1,4 +1,4 @@
-import { Config, Data, Effect, Option } from 'effect'
+import { Config, Data, Effect, Option, Predicate } from 'effect'
 import * as FileSystem from 'effect/FileSystem'
 import * as Path from 'effect/Path'
 import type { Path as PathService } from 'effect/Path'
@@ -23,17 +23,21 @@ export const resolveClaudeWorkingDirectory = Effect.fn('claude.resolve_working_d
 	const fileSystem = yield* FileSystem.FileSystem
 	const path = yield* Path.Path
 	const workingDirectory = path.resolve(expandHomeDirectory(input.workingDirectory, input.homeDirectory, path))
+	// The session's error message is shown to the user, so say what is wrong with the directory
+	// rather than passing on the platform error.
 	const information = yield* fileSystem.stat(workingDirectory).pipe(
 		Effect.mapError(
 			(cause) =>
 				new ClaudeWorkingDirectoryError({
-					message: `Cannot access working directory ${workingDirectory}: ${String(cause)}`,
+					message: Predicate.isTagged(cause.reason, 'NotFound')
+						? `Could not start the session. ${workingDirectory} does not exist on this host. Choose a directory that exists here, or create this one.`
+						: `Could not open ${workingDirectory}: ${cause.message}`,
 				}),
 		),
 	)
 	if (information.type !== 'Directory') {
 		return yield* new ClaudeWorkingDirectoryError({
-			message: `Path is not a directory: ${workingDirectory}`,
+			message: `Could not start the session. ${workingDirectory} is a file, not a directory. Choose a directory instead.`,
 		})
 	}
 	return workingDirectory
