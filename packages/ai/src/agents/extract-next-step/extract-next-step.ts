@@ -85,6 +85,39 @@ function normalizeSkillType(value: string | undefined): SkillType {
 	return VALID_SKILL_TYPES.includes(normalized as SkillType) ? (normalized as SkillType) : 'other'
 }
 
+// The daemon resolves a relative path against its process cwd, so only home and absolute
+// paths point to the directory the message meant.
+const HOME_OR_ABSOLUTE_PATH = /^(?:~(?:\/|$)|[\\/]|[A-Za-z]:[\\/])/
+// PATH_MAX on Linux.
+const MAX_PATH_LENGTH = 4096
+const NAME_CHAR = /[\p{L}\p{M}\p{N}_-]/u
+const isSeparator = (char: string | undefined) => char === '/' || char === '\\'
+
+// True when `path` is not a bare `/` or `\` and the message has it as a whole path, not as a part
+// of a longer one. Trailing separators are ignored, because the model can add or drop one.
+function namesWholePath(message: string, path: string): boolean {
+	let length = path.length
+	while (length > 1 && isSeparator(path[length - 1])) length--
+	const name = path.slice(0, length)
+	if (isSeparator(name)) return false
+	for (let start = message.indexOf(name); start !== -1; start = message.indexOf(name, start + 1)) {
+		const before = message[start - 1] ?? ' '
+		if (NAME_CHAR.test(before) || '.~:/\\'.includes(before)) continue
+		let end = start + name.length
+		while (isSeparator(message[end])) end++
+		const next = message[end] === '.' ? message[end + 1] : message[end]
+		if (!NAME_CHAR.test(next ?? ' ')) return true
+	}
+	return false
+}
+
+// The model can write its reasoning (#1129) or a prompt example into this field.
+function toSuggestedDirectory(value: string | undefined, messageContent: string): string | undefined {
+	const directory = value?.trim()
+	if (!directory || directory.length > MAX_PATH_LENGTH || /\p{Cc}/u.test(directory)) return undefined
+	return HOME_OR_ABSOLUTE_PATH.test(directory) && namesWholePath(messageContent, directory) ? directory : undefined
+}
+
 export async function extractNextStep(
 	messageContent: string,
 	{ model = resolveModel('haiku') }: { model?: LanguageModelV3 } = {},
@@ -114,7 +147,7 @@ export async function extractNextStep(
 					nextStepSummary: result.nextStepSummary ?? '',
 					nextStepType: normalizeSkillType(result.nextStepType),
 					taskReference: result.taskReference ?? '',
-					suggestedDirectory: result.suggestedDirectory,
+					suggestedDirectory: toSuggestedDirectory(result.suggestedDirectory, messageContent),
 				}
 			: {
 					type: 'no_next_step',
