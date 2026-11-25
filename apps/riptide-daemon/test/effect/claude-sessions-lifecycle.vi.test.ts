@@ -1,7 +1,7 @@
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import * as BunServices from '@effect/platform-bun/BunServices'
 import { describe, it } from '@effect/vitest'
-import { Deferred, Effect, Fiber, Layer, Queue, Stream } from 'effect'
+import { Deferred, Effect, Fiber, Layer, Logger, Option, Queue, Stream } from 'effect'
 import * as ConfigProvider from 'effect/ConfigProvider'
 import { TestClock } from 'effect/testing'
 
@@ -9,6 +9,7 @@ import type { DaemonServices } from '@/agents/claudecode/types'
 import { ClaudeProcessEnvironment } from '@/effects/services/claude-sessions/claude-process-environment'
 import { makeClaudeSessionsLive } from '@/effects/services/claude-sessions/claude-sessions.live'
 import { ClaudeSessions } from '@/effects/services/claude-sessions/claude-sessions.service'
+import { makeClaudeSdkLive } from '@/effects/services/claude-sessions/sdk/claude-sdk-session.layer'
 import { ClaudeSdk } from '@/effects/services/claude-sessions/sdk/claude-sdk-session.service'
 import { DaemonApi } from '@/effects/services/daemon-api/daemon-api.service'
 import { DaemonCollections } from '@/effects/services/daemon-collections/daemon-collections.service'
@@ -19,6 +20,7 @@ import { TaskDiffServiceRegistry } from '@/effects/services/task-diff/task-diff-
 import { HostUsageLimitsLive } from '@/lib/usage-limits/host-usage-limits'
 
 import { makeBasicEffectSession, makeSessionContext } from '../fixtures/effect-claude-runtime'
+import { makeSdkShapedQuery } from '../mocks/claude-sdk-query.mock'
 import { makeMockTaskWorkspaceContextLayer } from '../mocks/task-workspace-context.mock'
 
 interface LifecycleControls {
@@ -30,18 +32,14 @@ interface LifecycleControls {
 
 const resultEvent = { type: 'result', subtype: 'success' } as SDKMessage
 
-function makeClaudeSessionsTestLayer(
-	controls: LifecycleControls,
-	closeSession: (sessionId: string) => Effect.Effect<void> = () =>
-		Queue.offer(controls.closes, undefined).pipe(Effect.asVoid),
-) {
+function makeLifecycleDependencies(controls: LifecycleControls) {
 	const collections = {
 		sessions: { subscribeChanges: () => ({ unsubscribe: () => {} }) },
 		approvals: { subscribeChanges: () => ({ unsubscribe: () => {} }) },
 		tasks: { toArray: [] },
 		workspaceSetup: { toArray: [] },
 	} as unknown as DaemonServices['collections']
-	const dependencies = Layer.mergeAll(
+	return Layer.mergeAll(
 		GitRunnerConfigurationLive,
 		HostUsageLimitsLive,
 		Layer.succeed(
@@ -120,6 +118,13 @@ function makeClaudeSessionsTestLayer(
 		Layer.succeed(ClaudeProcessEnvironment, process.env),
 		Layer.succeed(DurableStreamFetch, { fetch }),
 	).pipe(Layer.provideMerge(BunServices.layer))
+}
+
+function makeClaudeSessionsTestLayer(
+	controls: LifecycleControls,
+	closeSession: (sessionId: string) => Effect.Effect<void> = () =>
+		Queue.offer(controls.closes, undefined).pipe(Effect.asVoid),
+) {
 	const sdk = Layer.succeed(ClaudeSdk, {
 		open: (input) =>
 			Effect.succeed({
@@ -146,7 +151,10 @@ function makeClaudeSessionsTestLayer(
 			Effect.andThen(Stream.fromQueue(controls.events).pipe(Stream.runForEach(() => completeResult))),
 		)
 	}
-	return makeClaudeSessionsLive(processOpenSession).pipe(Layer.provideMerge(sdk), Layer.provideMerge(dependencies))
+	return makeClaudeSessionsLive(processOpenSession).pipe(
+		Layer.provideMerge(sdk),
+		Layer.provideMerge(makeLifecycleDependencies(controls)),
+	)
 }
 
 const makeControls = Effect.gen(function* () {
@@ -272,6 +280,62 @@ describe('ClaudeSessionsLive lifecycle', () => {
 				yield* Queue.take(controls.closes)
 				yield* Deferred.succeed(stuckCloseRelease, undefined)
 			}).pipe(Effect.provide(makeClaudeSessionsTestLayer(controls, closeSession)), Effect.scoped)
+		}),
+	)
+
+	it.effect('stops an idle session read from the SDK layer before the run termination timeout', ({ expect }) =>
+		Effect.gen(function* () {
+			const controls = yield* makeControls
+			const harness = makeSdkShapedQuery()
+			const cleanups = yield* Queue.unbounded<Readonly<Record<string, unknown>>>()
+			const logger = Logger.layer([
+				Logger.map(Logger.formatStructured, (output) => {
+					if (output.message === 'Claude SDK session generation cleanup finished') {
+						Queue.offerUnsafe(cleanups, output.annotations)
+					}
+				}),
+			])
+			const readSdkOutput: Parameters<typeof makeClaudeSessionsLive>[0] = (input) =>
+				input.sdkSession.output.pipe(
+					Stream.runForEach((message) =>
+						message.type === 'result'
+							? (input.onResult ?? Effect.void).pipe(
+									Effect.andThen(Queue.offer(controls.readyForInput, undefined)),
+								)
+							: Effect.void,
+					),
+				)
+			const session = makeBasicEffectSession()
+
+			yield* Effect.gen(function* () {
+				const sessions = yield* ClaudeSessions
+				yield* sessions.executeClaudeSession({
+					context: makeSessionContext(session),
+					setupArtifactPaths: () => Promise.reject('unused'),
+				})
+				harness.emit(resultEvent)
+				yield* Queue.take(controls.readyForInput)
+				yield* Effect.promise(harness.whenWaiting)
+
+				yield* TestClock.adjust('10 minutes')
+				const cleanup = yield* Queue.take(cleanups).pipe(Effect.timeoutOption('1 second'), TestClock.withLive)
+
+				expect(Option.map(cleanup, (annotations) => annotations.outcome)).toEqual(Option.some('stopped'))
+				expect(harness.isChildAlive()).toBe(false)
+				expect(harness.interrupt).toHaveBeenCalledTimes(1)
+				expect(harness.close).toHaveBeenCalledTimes(1)
+				expect(yield* sessions.activeSessionIds).toEqual([])
+			}).pipe(
+				Effect.ensuring(Effect.sync(harness.exitChild)),
+				Effect.provide(
+					makeClaudeSessionsLive(readSdkOutput).pipe(
+						Layer.provideMerge(makeClaudeSdkLive(harness.factory)),
+						Layer.provideMerge(makeLifecycleDependencies(controls)),
+					),
+				),
+				Effect.provide(logger),
+				Effect.scoped,
+			)
 		}),
 	)
 })

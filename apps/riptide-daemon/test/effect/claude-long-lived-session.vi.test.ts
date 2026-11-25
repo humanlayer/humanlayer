@@ -1,6 +1,6 @@
 import type { Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import { it } from '@effect/vitest'
-import { Deferred, Effect, Fiber, Stream } from 'effect'
+import { Deferred, Effect, Fiber, Logger, Option, Stream } from 'effect'
 import { TestClock } from 'effect/testing'
 import { describe, expect, test, vi } from 'vitest'
 
@@ -9,6 +9,8 @@ import {
 	type ClaudeQueryFactory,
 } from '@/effects/services/claude-sessions/sdk/claude-sdk-session.layer'
 import { ClaudeSdk } from '@/effects/services/claude-sessions/sdk/claude-sdk-session.service'
+
+import { makeSdkShapedQuery } from '../mocks/claude-sdk-query.mock'
 
 function makeQueryHarness(interruptQuery: () => Promise<void> = async () => {}) {
 	let prompt: AsyncIterable<SDKUserMessage> | undefined
@@ -114,4 +116,139 @@ describe('long-lived Claude SDK input', () => {
 			expect(harness.close).toHaveBeenCalledTimes(1)
 		}),
 	)
+
+	describe('stopping a session whose output is being read', () => {
+		const resultMessage = { type: 'result', subtype: 'success' } as SDKMessage
+
+		const readOutput = (
+			harness: ReturnType<typeof makeSdkShapedQuery>,
+			onMessage: (message: SDKMessage) => Effect.Effect<void> = () => Effect.void,
+		) =>
+			Effect.scoped(
+				Effect.gen(function* () {
+					const sdk = yield* ClaudeSdk
+					const session = yield* sdk.open({ sessionId: 'session-1', prompt: 'first', options: {} })
+					yield* session.output.pipe(Stream.runForEach(onMessage))
+					yield* session.markCompleted
+				}),
+			).pipe(Effect.provide(makeClaudeSdkLive(harness.factory)))
+
+		it.effect('closes the query when the session is stopped while it waits for the next message', ({ expect }) => {
+			const harness = makeSdkShapedQuery()
+			return Effect.gen(function* () {
+				harness.emit(resultMessage)
+				const run = yield* readOutput(harness).pipe(Effect.forkChild)
+				yield* Effect.promise(harness.whenWaiting)
+
+				const stopped = yield* Fiber.interrupt(run).pipe(Effect.timeoutOption('1 second'), TestClock.withLive)
+
+				expect(Option.isSome(stopped)).toBe(true)
+				expect(harness.isChildAlive()).toBe(false)
+				expect(harness.interrupt).toHaveBeenCalledTimes(1)
+				expect(harness.close).toHaveBeenCalledTimes(1)
+			}).pipe(Effect.ensuring(Effect.sync(harness.exitChild)))
+		})
+
+		it.effect(
+			'closes the query when its output stops, before the rest of the session scope closes',
+			({ expect }) => {
+				const harness = makeSdkShapedQuery()
+				let releaseSessionFinalizer = () => {}
+				const sessionFinalizerHeld = new Promise<void>((resolve) => {
+					releaseSessionFinalizer = resolve
+				})
+				return Effect.gen(function* () {
+					const sessionFinalizerStarted = yield* Deferred.make<void>()
+					const run = yield* Effect.scoped(
+						Effect.gen(function* () {
+							const sdk = yield* ClaudeSdk
+							const session = yield* sdk.open({ sessionId: 'session-1', prompt: 'first', options: {} })
+							yield* Effect.addFinalizer(() =>
+								Deferred.succeed(sessionFinalizerStarted, undefined).pipe(
+									Effect.andThen(Effect.promise(() => sessionFinalizerHeld)),
+								),
+							)
+							yield* session.output.pipe(Stream.runDrain)
+						}),
+					).pipe(Effect.provide(makeClaudeSdkLive(harness.factory)), Effect.forkChild)
+					yield* Effect.promise(harness.whenWaiting)
+
+					const stop = yield* Fiber.interrupt(run).pipe(Effect.forkChild)
+					const started = yield* Deferred.await(sessionFinalizerStarted).pipe(
+						Effect.timeoutOption('1 second'),
+						TestClock.withLive,
+					)
+
+					expect(Option.isSome(started)).toBe(true)
+					expect(harness.interrupt).toHaveBeenCalledTimes(1)
+					expect(harness.close).toHaveBeenCalledTimes(1)
+					releaseSessionFinalizer()
+					yield* Fiber.join(stop)
+				}).pipe(
+					Effect.ensuring(
+						Effect.sync(() => {
+							releaseSessionFinalizer()
+							harness.exitChild()
+						}),
+					),
+				)
+			},
+		)
+
+		it.effect('interrupts the query before closing it when the session is stopped mid-message', ({ expect }) => {
+			const harness = makeSdkShapedQuery()
+			const logs: unknown[] = []
+			const logger = Logger.layer([Logger.map(Logger.formatStructured, (output) => logs.push(output.message))])
+			return Effect.gen(function* () {
+				const handling = yield* Deferred.make<void>()
+				harness.emit(resultMessage)
+				const run = yield* readOutput(harness, () =>
+					Deferred.succeed(handling, undefined).pipe(Effect.andThen(Effect.never)),
+				).pipe(Effect.forkChild)
+				yield* Deferred.await(handling)
+
+				yield* Fiber.interrupt(run)
+
+				expect(harness.interrupt).toHaveBeenCalledTimes(1)
+				expect(harness.close).toHaveBeenCalledTimes(1)
+				expect(harness.interrupt.mock.invocationCallOrder[0]).toBeLessThan(
+					harness.close.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY,
+				)
+				expect(logs).not.toContain('Graceful Claude SDK interruption failed')
+			}).pipe(Effect.provide(logger), Effect.ensuring(Effect.sync(harness.exitChild)))
+		})
+
+		it.effect('leaves a query alone when its output already ended', ({ expect }) => {
+			const harness = makeSdkShapedQuery()
+			return Effect.gen(function* () {
+				harness.emit(resultMessage)
+				harness.exitChild()
+
+				yield* readOutput(harness)
+
+				expect(harness.interrupt).not.toHaveBeenCalled()
+				expect(harness.close).not.toHaveBeenCalled()
+			})
+		})
+
+		it.effect('closes the query when the session stops reading before the output ends', ({ expect }) => {
+			const harness = makeSdkShapedQuery()
+			return Effect.gen(function* () {
+				harness.emit(resultMessage)
+
+				yield* Effect.scoped(
+					Effect.gen(function* () {
+						const sdk = yield* ClaudeSdk
+						const session = yield* sdk.open({ sessionId: 'session-1', prompt: 'first', options: {} })
+						yield* session.output.pipe(Stream.take(1), Stream.runDrain)
+						yield* session.markCompleted
+					}),
+				).pipe(Effect.provide(makeClaudeSdkLive(harness.factory)))
+
+				expect(harness.interrupt).toHaveBeenCalledTimes(1)
+				expect(harness.close).toHaveBeenCalledTimes(1)
+				expect(harness.isChildAlive()).toBe(false)
+			}).pipe(Effect.ensuring(Effect.sync(harness.exitChild)))
+		})
+	})
 })
