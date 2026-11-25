@@ -64,6 +64,25 @@ const interruptAndCloseQuery = (sdkQuery: Query, sessionId: string) =>
 		Effect.withSpan('claude.sdk.interrupt_and_close', { attributes: { session_id: sessionId } }),
 	)
 
+// No return(): the SDK's return() waits behind a pending next(), which an idle child ends only at
+// the query close. onExit checks ended(), not a success exit: a reader that stops early also succeeds.
+const readMessages = (sdkQuery: Query) => {
+	let ended = false
+	return {
+		ended: () => ended,
+		[Symbol.asyncIterator]: () => {
+			const messages = sdkQuery[Symbol.asyncIterator]()
+			return {
+				next: async () => {
+					const result = await messages.next()
+					if (result.done) ended = true
+					return result
+				},
+			}
+		},
+	}
+}
+
 // The SDK marks this control experimental and will rename it; every caller goes through here.
 // skipBehaviors skips a scan of every transcript from the last seven days that only fills a section the daemon ignores.
 const readSdkUsage = (sdkQuery: Query) =>
@@ -134,6 +153,7 @@ function openQuery(query: ClaudeQueryFactory, input: OpenClaudeSdkSessionInput) 
 
 	return {
 		sdkQuery,
+		messages: readMessages(sdkQuery),
 		closeInput,
 		sendMessage,
 		isCompleted: () => completed,
@@ -162,9 +182,9 @@ export function makeClaudeSdkLive(query: ClaudeQueryFactory) {
 			).pipe(
 				Effect.map((resource) => ({
 					output: Stream.fromAsyncIterable(
-						resource.sdkQuery as Query,
+						resource.messages,
 						(cause) => new ClaudeSdkError({ operation: 'output', cause }),
-					),
+					).pipe(Stream.onExit(() => (resource.messages.ended() ? Effect.void : resource.interruptAndClose))),
 					input: {
 						sendMessage: resource.sendMessage,
 						close: Effect.sync(resource.closeInput),
